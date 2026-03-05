@@ -1,0 +1,22 @@
+# Supremo Barber Management System - Supabase Configuration
+# Updated: 2024-12-11 - Supabase fully enabled with Edge Functions
+
+[project]
+enabled = true
+
+[functions]
+enabled = true
+deploy = true
+
+[functions.make-server]
+enabled = true
+deploy = true
+
+[api]
+enabled = true
+
+[db]
+enabled = true
+
+[auth]
+enabled = true

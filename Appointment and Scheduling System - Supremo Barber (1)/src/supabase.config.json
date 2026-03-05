@@ -1,0 +1,10 @@
+{
+  "enabled": true,
+  "reason": "Using Supabase backend",
+  "deployment": {
+    "functions": true,
+    "migrations": true,
+    "autodetect": true
+  },
+  "note": "Supabase integration enabled. App uses Supabase Edge Functions and Postgres."
+}

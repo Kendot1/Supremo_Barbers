@@ -1,0 +1,8 @@
+{
+  "deployment": {
+    "enabled": true,
+    "functions": true,
+    "migrations": false
+  },
+  "note": "Supremo Barber Management System - Supabase deployment enabled"
+}

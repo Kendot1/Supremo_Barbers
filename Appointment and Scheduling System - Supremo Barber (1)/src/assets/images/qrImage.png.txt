@@ -1,0 +1,19 @@
+# QR Code Image Placeholder
+
+This file represents where the QR code image should be placed.
+
+## To add your QR code:
+
+1. Create or obtain your GCash/payment QR code image
+2. Save it as `qrImage.png` in this directory (/assets/images/)
+3. The image will be automatically displayed in the booking flow
+
+## Recommended image specifications:
+- Format: PNG
+- Size: 300x300 pixels minimum
+- Background: White
+- Clear and high contrast
+
+## Temporary Solution:
+Since the actual QR image is missing, the BookingFlow component has been updated
+to handle the missing image gracefully with a placeholder.

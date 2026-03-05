@@ -1,0 +1,7 @@
+{
+  "deploy": true,
+  "compilerOptions": {
+    "allowJs": true,
+    "jsx": "react-jsx"
+  }
+}

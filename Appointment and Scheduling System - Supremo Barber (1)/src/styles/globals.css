@@ -1,0 +1,841 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --font-size: 16px;
+  
+  /* User-Friendly Supremo Barber Palette - Softer on Eyes */
+  --background: #FFFDF8;
+  --foreground: #5C4A3A;
+  --card: #FFFFFF;
+  --card-foreground: #5C4A3A;
+  --popover: #FFFFFF;
+  --popover-foreground: #5C4A3A;
+  
+  /* Primary: Amber #DB9D47 */
+  --primary: #DB9D47;
+  --primary-foreground: #FFFFFF;
+  
+  /* Secondary: Soft Cream */
+  --secondary: #F8F0E0;
+  --secondary-foreground: #5C4A3A;
+  
+  /* Muted - Gentle background */
+  --muted: #FBF7EF;
+  --muted-foreground: #87765E;
+  
+  /* Accent: Soft Terracotta */
+  --accent: #D98555;
+  --accent-foreground: #FFFFFF;
+  
+  /* Destructive */
+  --destructive: #E57373;
+  --destructive-foreground: #FFFFFF;
+  
+  /* Borders - Softer */
+  --border: #E8DCC8;
+  --input: transparent;
+  --input-background: #FFFDF8;
+  --switch-background: #E8DCC8;
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+  --ring: #DB9D47;
+  
+  /* Charts - Warm and Soft */
+  --chart-1: #DB9D47;
+  --chart-2: #D98555;
+  --chart-3: #94A670;
+  --chart-4: #B89968;
+  --chart-5: #A68968;
+  
+  --radius: 0.5rem;
+  
+  /* Sidebar - Softer Dark with Warm Tones */
+  --sidebar: #5C4A3A;
+  --sidebar-foreground: #F5EDD8;
+  --sidebar-primary: #DB9D47;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: #6E5A48;
+  --sidebar-accent-foreground: #F5EDD8;
+  --sidebar-border: #796653;
+  --sidebar-ring: #DB9D47;
+}
+
+.dark {
+  --background: #1A1108;
+  --foreground: #F3E5AB;
+  --card: #2A1D0A;
+  --card-foreground: #F3E5AB;
+  --popover: #2A1D0A;
+  --popover-foreground: #F3E5AB;
+  --primary: #E5AA5A;
+  --primary-foreground: #4B2E05;
+  --secondary: #5C3A0A;
+  --secondary-foreground: #F3E5AB;
+  --muted: #3A2510;
+  --muted-foreground: #C4B494;
+  --accent: #D67D44;
+  --accent-foreground: #F3E5AB;
+  --destructive: #991B1B;
+  --destructive-foreground: #F3E5AB;
+  --border: #5C3A0A;
+  --input: #3A2510;
+  --ring: #E5AA5A;
+  --chart-1: #E5AA5A;
+  --chart-2: #D67D44;
+  --chart-3: #8B9A5E;
+  --chart-4: #6B4A10;
+  --chart-5: #9B8365;
+  --sidebar: #1A1108;
+  --sidebar-foreground: #F3E5AB;
+  --sidebar-primary: #E5AA5A;
+  --sidebar-primary-foreground: #4B2E05;
+  --sidebar-accent: #3A2510;
+  --sidebar-accent-foreground: #F3E5AB;
+  --sidebar-border: #5C3A0A;
+  --sidebar-ring: #E5AA5A;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-input-background: var(--input-background);
+  --color-switch-background: var(--switch-background);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/**
+ * Base typography. This is not applied to elements which have an ancestor with a Tailwind text class.
+ */
+@layer base {
+  :where(:not(:has([class*=" text-"]), :not(:has([class^="text-"])))) {
+    h1 {
+      font-size: var(--text-2xl);
+      font-weight: var(--font-weight-medium);
+      line-height: 1.5;
+    }
+
+    h2 {
+      font-size: var(--text-xl);
+      font-weight: var(--font-weight-medium);
+      line-height: 1.5;
+    }
+
+    h3 {
+      font-size: var(--text-lg);
+      font-weight: var(--font-weight-medium);
+      line-height: 1.5;
+    }
+
+    h4 {
+      font-size: var(--text-base);
+      font-weight: var(--font-weight-medium);
+      line-height: 1.5;
+    }
+
+    p {
+      font-size: var(--text-base);
+      font-weight: var(--font-weight-normal);
+      line-height: 1.5;
+    }
+
+    label {
+      font-size: var(--text-base);
+      font-weight: var(--font-weight-medium);
+      line-height: 1.5;
+    }
+
+    button {
+      font-size: var(--text-base);
+      font-weight: var(--font-weight-medium);
+      line-height: 1.5;
+    }
+
+    input {
+      font-size: var(--text-base);
+      font-weight: var(--font-weight-normal);
+      line-height: 1.5;
+    }
+  }
+}
+
+html {
+  font-size: var(--font-size);
+  scroll-behavior: smooth;
+}
+
+/* Custom animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* FullCalendar Custom Styling for Supremo Barber */
+.fullcalendar-supremo {
+  --fc-border-color: #E8DCC8;
+  --fc-button-bg-color: #DB9D47;
+  --fc-button-border-color: #DB9D47;
+  --fc-button-hover-bg-color: #C58A38;
+  --fc-button-hover-border-color: #C58A38;
+  --fc-button-active-bg-color: #B57A2F;
+  --fc-button-active-border-color: #B57A2F;
+  --fc-today-bg-color: #FFF9F0;
+  --fc-neutral-bg-color: #FAFAF8;
+  --fc-page-bg-color: #FFFFFF;
+}
+
+.fullcalendar-supremo .fc {
+  font-family: inherit;
+}
+
+.fullcalendar-supremo .fc-toolbar-title {
+  color: #5C4A3A;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.fullcalendar-supremo .fc-button {
+  background-color: #DB9D47;
+  border-color: #DB9D47;
+  color: white;
+  text-transform: capitalize;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  border-radius: 0.5rem;
+  transition: all 0.2s;
+}
+
+.fullcalendar-supremo .fc-button:hover:not(:disabled) {
+  background-color: #C58A38;
+  border-color: #C58A38;
+}
+
+.fullcalendar-supremo .fc-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.fullcalendar-supremo .fc-button-active,
+.fullcalendar-supremo .fc-button-active:hover {
+  background-color: #B57A2F;
+  border-color: #B57A2F;
+}
+
+.fullcalendar-supremo .fc-col-header-cell {
+  background-color: #FBF7EF;
+  padding: 0.75rem 0.5rem;
+  font-weight: 600;
+  color: #5C4A3A;
+  border-color: #E8DCC8;
+}
+
+.fullcalendar-supremo .fc-daygrid-day {
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.fullcalendar-supremo .fc-daygrid-day:hover {
+  background-color: #FBF7EF;
+}
+
+.fullcalendar-supremo .fc-day-today {
+  background-color: #FFF9F0 !important;
+}
+
+.fullcalendar-supremo .fc-day-today .fc-daygrid-day-number {
+  background-color: #DB9D47;
+  color: white;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+}
+
+.fullcalendar-supremo .fc-day-selected {
+  /* Removed: background-color and border for selected dates */
+}
+
+.fullcalendar-supremo .fc-day-selected .fc-daygrid-day-number {
+  /* Removed: color and font-weight for selected dates */
+}
+
+.fullcalendar-supremo .fc-daygrid-day-number {
+  color: #5C4A3A;
+  padding: 0.25rem;
+  font-size: 0.875rem;
+}
+
+.fullcalendar-supremo .fc-daygrid-day.fc-day-past:not(.fc-day-today) {
+  background-color: #FAFAF8;
+  opacity: 0.6;
+}
+
+.fullcalendar-supremo .fc-daygrid-day.fc-day-past:not(.fc-day-today) .fc-daygrid-day-number {
+  color: #B5A490;
+}
+
+.fullcalendar-supremo .fc-daygrid-day.fc-day-other {
+  background-color: #FAFAF8;
+  opacity: 0.5;
+}
+
+.fullcalendar-supremo .fc-daygrid-day-events {
+  margin-top: 0.25rem;
+}
+
+.fullcalendar-supremo .fc-scrollgrid {
+  border-color: #E8DCC8;
+}
+
+.fullcalendar-supremo td,
+.fullcalendar-supremo th {
+  border-color: #E8DCC8;
+}
+
+.fullcalendar-supremo .fc-daygrid-day-frame {
+  min-height: 80px;
+  padding: 0.5rem;
+  position: relative;
+}
+
+.fullcalendar-supremo .fc-daygrid-day-top {
+  display: flex !important;
+  justify-content: flex-end;
+  position: relative;
+  z-index: 1;
+}
+
+.fullcalendar-supremo .fc-daygrid-day-number {
+  display: block !important;
+  visibility: visible !important;
+  padding: 2px 4px;
+}
+
+/* Compact Calendar Styling for Side-by-Side Layout */
+.fullcalendar-supremo-compact {
+  --fc-border-color: #E8DCC8;
+  --fc-button-bg-color: #DB9D47;
+  --fc-button-border-color: #DB9D47;
+  --fc-button-hover-bg-color: #C58A38;
+  --fc-button-hover-border-color: #C58A38;
+  --fc-button-active-bg-color: #B57A2F;
+  --fc-button-active-border-color: #B57A2F;
+  --fc-today-bg-color: #FFF9F0;
+  --fc-neutral-bg-color: #FAFAF8;
+  --fc-page-bg-color: #FFFFFF;
+}
+
+.fullcalendar-supremo-compact .fc {
+  font-family: inherit;
+  font-size: 0.625rem;
+}
+
+/* Responsive font sizes for calendar */
+@media (min-width: 640px) {
+  .fullcalendar-supremo-compact .fc {
+    font-size: 0.7rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .fullcalendar-supremo-compact .fc {
+    font-size: 0.75rem;
+  }
+}
+
+.fullcalendar-supremo-compact .fc-toolbar-title {
+  color: #5C4A3A;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+@media (min-width: 640px) {
+  .fullcalendar-supremo-compact .fc-toolbar-title {
+    font-size: 0.8125rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .fullcalendar-supremo-compact .fc-toolbar-title {
+    font-size: 0.875rem;
+  }
+}
+
+.fullcalendar-supremo-compact .fc-button {
+  background-color: #DB9D47;
+  border-color: #DB9D47;
+  color: white;
+  text-transform: capitalize;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.5625rem;
+  border-radius: 0.375rem;
+  transition: all 0.2s;
+}
+
+@media (min-width: 640px) {
+  .fullcalendar-supremo-compact .fc-button {
+    padding: 0.3125rem 0.5625rem;
+    font-size: 0.5937rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .fullcalendar-supremo-compact .fc-button {
+    padding: 0.375rem 0.625rem;
+    font-size: 0.625rem;
+  }
+}
+
+.fullcalendar-supremo-compact .fc-col-header-cell {
+  background-color: #FBF7EF;
+  padding: 0.25rem 0.125rem;
+  font-weight: 600;
+  color: #5C4A3A;
+  border-color: #E8DCC8;
+  font-size: 0.5625rem;
+}
+
+@media (min-width: 640px) {
+  .fullcalendar-supremo-compact .fc-col-header-cell {
+    padding: 0.3125rem 0.1875rem;
+    font-size: 0.5937rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .fullcalendar-supremo-compact .fc-col-header-cell {
+    padding: 0.375rem 0.25rem;
+    font-size: 0.625rem;
+  }
+}
+
+.fullcalendar-supremo-compact .fc-daygrid-day {
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.fullcalendar-supremo-compact .fc-daygrid-day:hover {
+  background-color: #FBF7EF;
+}
+
+.fullcalendar-supremo-compact .fc-day-today {
+  background-color: #FFF9F0 !important;
+}
+
+.fullcalendar-supremo-compact .fc-day-today .fc-daygrid-day-number {
+  background-color: #DB9D47;
+  color: white;
+  border-radius: 50%;
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.5625rem;
+}
+
+@media (min-width: 640px) {
+  .fullcalendar-supremo-compact .fc-day-today .fc-daygrid-day-number {
+    width: 18px;
+    height: 18px;
+    font-size: 0.5937rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .fullcalendar-supremo-compact .fc-day-today .fc-daygrid-day-number {
+    width: 20px;
+    height: 20px;
+    font-size: 0.625rem;
+  }
+}
+
+.fullcalendar-supremo-compact .fc-day-selected {
+  /* Removed: background-color and border for selected dates */
+}
+
+.fullcalendar-supremo-compact .fc-day-selected .fc-daygrid-day-number {
+  /* Removed: color and font-weight for selected dates */
+}
+
+.fullcalendar-supremo-compact .fc-daygrid-day-number {
+  color: #5C4A3A;
+  padding: 0.125rem;
+  font-size: 0.5625rem;
+}
+
+@media (min-width: 640px) {
+  .fullcalendar-supremo-compact .fc-daygrid-day-number {
+    padding: 0.1875rem;
+    font-size: 0.5937rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .fullcalendar-supremo-compact .fc-daygrid-day-number {
+    padding: 0.25rem;
+    font-size: 0.625rem;
+  }
+}
+
+.fullcalendar-supremo-compact .fc-daygrid-day.fc-day-past:not(.fc-day-today) {
+  background-color: #FAFAF8;
+  opacity: 0.6;
+}
+
+.fullcalendar-supremo-compact .fc-daygrid-day.fc-day-past:not(.fc-day-today) .fc-daygrid-day-number {
+  color: #B5A490;
+}
+
+.fullcalendar-supremo-compact .fc-daygrid-day.fc-day-other {
+  background-color: #FAFAF8;
+  opacity: 0.5;
+}
+
+.fullcalendar-supremo-compact .fc-daygrid-day-events {
+  margin-top: 0.125rem;
+}
+
+.fullcalendar-supremo-compact .fc-scrollgrid {
+  border-color: #E8DCC8;
+}
+
+.fullcalendar-supremo-compact td,
+.fullcalendar-supremo-compact th {
+  border-color: #E8DCC8;
+}
+
+.fullcalendar-supremo-compact .fc-daygrid-day-frame {
+  min-height: 28px;
+  padding: 0.125rem;
+  position: relative;
+}
+
+@media (min-width: 640px) {
+  .fullcalendar-supremo-compact .fc-daygrid-day-frame {
+    min-height: 32px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .fullcalendar-supremo-compact .fc-daygrid-day-frame {
+    min-height: 35px;
+  }
+}
+
+.fullcalendar-supremo-compact .fc-daygrid-day-top {
+  display: flex !important;
+  justify-content: flex-end;
+  position: relative;
+  z-index: 1;
+}
+
+.fullcalendar-supremo-compact .fc-daygrid-day-number {
+  display: block !important;
+  visibility: visible !important;
+  padding: 1px 2px;
+}
+
+/* Disabled Days Styling (Sundays and Out-of-Range) */
+.fullcalendar-supremo .fc-day-disabled,
+.fullcalendar-supremo-compact .fc-day-disabled {
+  background-color: #F5F5F5 !important;
+  opacity: 0.5;
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23E53E3E' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cline x1='4.93' y1='4.93' x2='19.07' y2='19.07'/%3E%3C/svg%3E") 12 12, not-allowed !important;
+  position: relative;
+}
+
+.fullcalendar-supremo .fc-day-disabled *,
+.fullcalendar-supremo-compact .fc-day-disabled * {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23E53E3E' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cline x1='4.93' y1='4.93' x2='19.07' y2='19.07'/%3E%3C/svg%3E") 12 12, not-allowed !important;
+}
+
+.fullcalendar-supremo .fc-day-disabled:hover,
+.fullcalendar-supremo-compact .fc-day-disabled:hover {
+  background-color: #F5F5F5 !important;
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23E53E3E' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cline x1='4.93' y1='4.93' x2='19.07' y2='19.07'/%3E%3C/svg%3E") 12 12, not-allowed !important;
+}
+
+.fullcalendar-supremo .fc-day-disabled .fc-daygrid-day-number,
+.fullcalendar-supremo-compact .fc-day-disabled .fc-daygrid-day-number {
+  color: #B5A490 !important;
+  text-decoration: line-through;
+  position: relative;
+  z-index: 1;
+  display: block !important;
+  visibility: visible !important;
+}
+
+/* Out of Range Dates - Lighter styling than Sundays */
+.fullcalendar-supremo .fc-day-out-of-range,
+.fullcalendar-supremo-compact .fc-day-out-of-range {
+  background-color: #FAFAFA !important;
+  opacity: 0.4;
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23E53E3E' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cline x1='4.93' y1='4.93' x2='19.07' y2='19.07'/%3E%3C/svg%3E") 12 12, not-allowed !important;
+}
+
+.fullcalendar-supremo .fc-day-out-of-range *,
+.fullcalendar-supremo-compact .fc-day-out-of-range * {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23E53E3E' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cline x1='4.93' y1='4.93' x2='19.07' y2='19.07'/%3E%3C/svg%3E") 12 12, not-allowed !important;
+}
+
+.fullcalendar-supremo .fc-day-out-of-range .fc-daygrid-day-number,
+.fullcalendar-supremo-compact .fc-day-out-of-range .fc-daygrid-day-number {
+  color: #D0D0D0 !important;
+  font-size: 0.85em;
+}
+
+/* CLOSED label - ONLY for Sundays */
+.fullcalendar-supremo .fc-day-sunday-closed::after,
+.fullcalendar-supremo-compact .fc-day-sunday-closed::after {
+  content: 'CLOSED';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 0.5rem;
+  font-weight: 600;
+  color: #E57373;
+  opacity: 0.7;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@media (min-width: 640px) {
+  .fullcalendar-supremo .fc-day-sunday-closed::after,
+  .fullcalendar-supremo-compact .fc-day-sunday-closed::after {
+    font-size: 0.6rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .fullcalendar-supremo .fc-day-sunday-closed::after {
+    font-size: 0.75rem;
+  }
+  .fullcalendar-supremo-compact .fc-day-sunday-closed::after {
+    font-size: 0.65rem;
+  }
+}
+
+@media (min-width: 640px) {
+  .fullcalendar-supremo-compact .fc-daygrid-day-frame {
+    min-height: 38px;
+    padding: 0.1875rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .fullcalendar-supremo-compact .fc-daygrid-day-frame {
+    min-height: 40px;
+    padding: 0.25rem;
+  }
+}
+
+/* Shadcn Calendar - Disabled dates cursor styling */
+.rdp-day_disabled,
+.rdp-day_disabled *,
+button[disabled].rdp-day,
+button[disabled].rdp-day * {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23E53E3E' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cline x1='4.93' y1='4.93' x2='19.07' y2='19.07'/%3E%3C/svg%3E") 12 12, not-allowed !important;
+}
+
+.rdp-day_disabled:hover,
+button[disabled].rdp-day:hover {
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23E53E3E' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='10'/%3E%3Cline x1='4.93' y1='4.93' x2='19.07' y2='19.07'/%3E%3C/svg%3E") 12 12, not-allowed !important;
+}
+
+.fullcalendar-supremo-compact .fc-toolbar {
+  margin-bottom: 0.375rem;
+}
+
+@media (min-width: 640px) {
+  .fullcalendar-supremo-compact .fc-toolbar {
+    margin-bottom: 0.4375rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .fullcalendar-supremo-compact .fc-toolbar {
+    margin-bottom: 0.5rem;
+  }
+}
+
+.fullcalendar-supremo-compact .fc-toolbar-chunk {
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+}
+
+@media (min-width: 640px) {
+  .fullcalendar-supremo-compact .fc-toolbar-chunk {
+    gap: 0.1875rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .fullcalendar-supremo-compact .fc-toolbar-chunk {
+    gap: 0.25rem;
+  }
+}
+
+/* Calendar Appointment Indicators */
+.calendar-with-indicators .rdp-day {
+  position: relative;
+}
+
+.calendar-with-indicators .has-appointments-indicator {
+  position: relative;
+}
+
+/* Add amber dot indicator below dates with appointments */
+.calendar-with-indicators .has-appointments-indicator button::after {
+  content: '';
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background-color: #DB9D47;
+  z-index: 10;
+}
+
+/* Ensure selected dates also show the indicator */
+.calendar-with-indicators .has-appointments-indicator.rdp-day_selected button::after {
+  background-color: white;
+}
+
+/* Ensure today dates also show the indicator properly */
+.calendar-with-indicators .has-appointments-indicator.rdp-day_today button::after {
+  bottom: 3px;
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out;
+}
+
+.animate-slide-in-left {
+  animation: slideInLeft 0.3s ease-out;
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite;
+  background: linear-gradient(to right, #FAF7F0 4%, #E8DFC8 25%, #FAF7F0 36%);
+  background-size: 1000px 100%;
+}
+
+/* Smooth transitions */
+* {
+  transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+/* Hover effects with amber glow */
+.hover-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 25px -5px rgba(219, 157, 71, 0.3), 0 10px 10px -5px rgba(219, 157, 71, 0.15);
+}
+
+/* Custom gradient effects */
+.amber-gradient {
+  background: linear-gradient(135deg, #DB9D47 0%, #C56E33 100%);
+}
+
+.amber-gradient-hover:hover {
+  background: linear-gradient(135deg, #C88A35 0%, #B56020 100%);
+}
+
+.earthy-gradient {
+  background: linear-gradient(135deg, #7B8A4E 0%, #4B2E05 100%);
+}
+
+/* Text shadows for readability */
+.text-shadow {
+  text-shadow: 0 2px 4px rgba(75, 46, 5, 0.1);
+}
+
+/* Hide scrollbar for horizontal scroll */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari and Opera */
+}

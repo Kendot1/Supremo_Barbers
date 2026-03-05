@@ -1,0 +1,1240 @@
+import { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "./ui/card";
+import { Button } from "./ui/button";
+import { Badge } from "./ui/badge";
+import { Input } from "./ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "./ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "./ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "./ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "./ui/tabs";
+import {
+  CheckCircle2,
+  XCircle,
+  Clock,
+  DollarSign,
+  Calendar as CalendarIcon,
+  User,
+  Scissors,
+  Eye,
+  Image as ImageIcon,
+  AlertCircle,
+  FileText,
+  Search,
+  Filter,
+  RefreshCw,
+  Loader2,
+} from "lucide-react";
+import { toast } from "sonner";
+import type { Appointment } from "../App";
+import { Textarea } from "./ui/textarea";
+import { Label } from "./ui/label";
+import {
+  createNotification,
+  type Notification,
+} from "./NotificationCenter";
+import API from "../services/api.service";
+
+// Utility function to parse date string without timezone issues
+const parseLocalDate = (dateString: string): Date => {
+  const [year, month, day] = dateString.split("-").map(Number);
+  return new Date(year, month - 1, day);
+};
+
+// Payment record interface matching database schema
+interface PaymentRecord {
+  id: string;
+  appointment_id: string;
+  amount: number;
+  payment_method: string;
+  payment_type: "downpayment" | "full" | "remaining";
+  created_at: string;
+}
+
+// Extended appointment with payment data
+interface AppointmentWithPayment extends Appointment {
+  payment?: PaymentRecord;
+  paymentAmount?: number;
+  paymentReference?: string;
+  paymentMethod?: string;
+  paymentType?: string;
+}
+
+interface PaymentVerificationProps {
+  appointments: Appointment[];
+  onUpdateAppointment: (
+    appointmentId: string,
+    updates: Partial<Appointment>,
+  ) => void;
+  userRole: "admin" | "barber";
+  onAddNotification?: (notification: Notification) => void;
+  onRefreshAppointments?: () => Promise<void>;
+}
+
+export function PaymentVerification({
+  appointments,
+  onUpdateAppointment,
+  userRole,
+  onAddNotification,
+  onRefreshAppointments,
+}: PaymentVerificationProps) {
+  const [selectedAppointment, setSelectedAppointment] =
+    useState<AppointmentWithPayment | null>(null);
+  const [isViewDialogOpen, setIsViewDialogOpen] =
+    useState(false);
+  const [isApproveDialogOpen, setIsApproveDialogOpen] =
+    useState(false);
+  const [isRejectDialogOpen, setIsRejectDialogOpen] =
+    useState(false);
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [filterStatus, setFilterStatus] = useState<
+    "all" | "pending" | "verified" | "rejected"
+  >("pending");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterBarber, setFilterBarber] = useState("all");
+
+  // Database state
+  const [payments, setPayments] = useState<PaymentRecord[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [services, setServices] = useState<any[]>([]);
+
+  // Fetch payments from database
+  const fetchPayments = async (
+    showRefreshIndicator = false,
+  ) => {
+    try {
+      if (showRefreshIndicator) {
+        setIsRefreshing(true);
+      }
+
+      const paymentsData = await API.payments.getAll();
+      setPayments(paymentsData || []);
+    
+
+      // Also fetch services to get real prices
+      const servicesData = await API.services.getAll();
+      setServices(servicesData || []);
+    } catch (error) {
+      console.error("❌ Error fetching payments:", error);
+      toast.error("Failed to load payment data");
+    } finally {
+      setIsLoading(false);
+      if (showRefreshIndicator) {
+        setIsRefreshing(false);
+      }
+    }
+  };
+
+  // Fetch on mount and set up auto-refresh
+  useEffect(() => {
+    fetchPayments();
+
+    // Auto-refresh every 30 seconds
+    const interval = setInterval(() => {
+      fetchPayments(true);
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Join appointments with payment records
+  const appointmentsWithPaymentData: AppointmentWithPayment[] =
+    appointments.map((apt) => {
+      const payment = payments.find(
+        (p) => p.appointment_id === apt.id,
+      );
+      const service = services.find(
+        (s) => s.id === apt.serviceId || s.name === apt.service,
+      );
+
+      return {
+        ...apt,
+        payment,
+        paymentAmount: payment?.amount,
+        paymentMethod: payment?.payment_method,
+        paymentType: payment?.payment_type,
+        paymentProof: apt.paymentProof,
+        // Use real service price if available
+        price: service?.price || apt.price,
+      };
+    });
+
+  // Get unique barbers for filter
+  const barbers = Array.from(
+    new Set(appointments.map((apt) => apt.barber)),
+  );
+
+  // Filter appointments with payment proofs
+  const appointmentsWithPayment =
+    appointmentsWithPaymentData.filter((apt) => {
+      // Only show appointments that have payment records in database OR have paymentProof
+      const hasPayment = apt.payment || apt.paymentProof;
+      const matchesStatus =
+        filterStatus === "all" ||
+        apt.paymentStatus === filterStatus;
+
+      // Format date for better search experience
+      const formattedDate = parseLocalDate(
+        apt.date,
+      ).toLocaleDateString();
+
+      const matchesSearch =
+        apt.id
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
+        apt.customerName
+          ?.toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
+        apt.service
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
+        apt.barber
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
+        apt.date.includes(searchTerm) ||
+        formattedDate
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
+        apt.time
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
+        apt.price.toString().includes(searchTerm) ||
+        apt.paymentReference
+          ?.toLowerCase()
+          .includes(searchTerm.toLowerCase());
+      const matchesBarber =
+        filterBarber === "all" || apt.barber === filterBarber;
+
+      return (
+        hasPayment &&
+        matchesStatus &&
+        matchesSearch &&
+        matchesBarber
+      );
+    });
+
+  const pendingCount = appointmentsWithPaymentData.filter(
+    (apt) =>
+      (apt.payment || apt.paymentProof) &&
+      apt.paymentStatus === "pending",
+  ).length;
+
+  const verifiedCount = appointmentsWithPaymentData.filter(
+    (apt) =>
+      (apt.payment || apt.paymentProof) &&
+      apt.paymentStatus === "verified",
+  ).length;
+
+  const rejectedCount = appointmentsWithPaymentData.filter(
+    (apt) =>
+      (apt.payment || apt.paymentProof) &&
+      apt.paymentStatus === "rejected",
+  ).length;
+
+  const handleViewProof = (
+    appointment: AppointmentWithPayment,
+  ) => {
+    setSelectedAppointment(appointment);
+    setIsViewDialogOpen(true);
+  };
+
+  const handleApproveClick = (
+    appointment: AppointmentWithPayment,
+  ) => {
+    setSelectedAppointment(appointment);
+    setIsApproveDialogOpen(true);
+  };
+
+  const handleRejectClick = (
+    appointment: AppointmentWithPayment,
+  ) => {
+    setSelectedAppointment(appointment);
+    setRejectionReason("");
+    setIsRejectDialogOpen(true);
+  };
+
+  const handleConfirmApprove = async () => {
+    if (!selectedAppointment) return;
+
+    try {
+     
+      
+      // Update appointment payment status in database
+      // Use "paid" - database only allows: pending, partial, paid, refunded
+      const updatePayload = { payment_status: "paid" };
+     
+      
+      const updatedAppointment = await API.appointments.update(
+        selectedAppointment.id,
+        updatePayload
+      );
+      
+     
+
+      // Update payment record if it exists
+      if (selectedAppointment.payment?.id) {
+        try {
+        
+          await API.payments.update(
+            selectedAppointment.payment.id,
+            {
+              status: "completed",
+              verified_by:
+                userRole === "admin" ? "Admin" : "Barber",
+              verified_at: new Date().toISOString(),
+            },
+          );
+       
+        } catch (error) {
+          // This is not critical - appointment update is the main operation
+         
+        }
+      } else {
+       
+      }
+
+      // Update local state with "verified" for UI display (mapped from "paid")
+      onUpdateAppointment(selectedAppointment.id, {
+        paymentStatus: "verified",
+        paymentVerifiedAt: new Date().toISOString(),
+        paymentVerifiedBy:
+          userRole === "admin" ? "Admin" : "Barber",
+      });
+
+      toast.success(
+        `Payment approved for ${selectedAppointment.customerName}'s appointment`,
+        {
+          description:
+            "Customer will be notified via email/SMS",
+        },
+      );
+
+      // Create notification for customer
+      if (onAddNotification) {
+        const customerNotification = createNotification(
+          selectedAppointment.userId,
+          "Payment Verified ✓",
+          `Your payment for ${selectedAppointment.service} on ${parseLocalDate(selectedAppointment.date).toLocaleDateString()} has been verified. Your booking is confirmed!`,
+          "normal",
+          {
+            appointmentId: selectedAppointment.id,
+            amount:
+              selectedAppointment.paymentAmount ||
+              selectedAppointment.price / 2,
+          },
+        );
+        onAddNotification(customerNotification);
+      }
+
+     
+
+      // Trigger appointment refresh in parent component FIRST
+      if (onRefreshAppointments) {
+       
+        await onRefreshAppointments();
+       
+      }
+
+      // Then refresh local payment data
+    
+      await fetchPayments(true);
+   
+
+      setIsApproveDialogOpen(false);
+      setIsViewDialogOpen(false);
+      setSelectedAppointment(null);
+    } catch (error: any) {
+      console.error("❌ Error approving payment:", error);
+      console.error("❌ Error details:", error.message || error);
+      console.error("❌ Full error object:", JSON.stringify(error, null, 2));
+      toast.error(
+        `Failed to approve payment: ${error.message || "Unknown error"}`,
+      );
+    }
+  };
+
+  const handleConfirmReject = async () => {
+    if (!selectedAppointment || !rejectionReason.trim()) {
+      toast.error("Please provide a rejection reason");
+      return;
+    }
+
+    try {
+     
+      
+      // Update appointment with rejection note
+      // Database only allows: pending, partial, paid, refunded
+    
+      
+      const updatedAppointment = await API.appointments.update(
+        selectedAppointment.id,
+        {
+          payment_status: "pending",
+          notes: `Payment rejected: ${rejectionReason}`,
+        }
+      );
+      
+     
+
+      // Update payment record if it exists
+      if (selectedAppointment.payment?.id) {
+        try {
+         
+          await API.payments.update(
+            selectedAppointment.payment.id,
+            {
+              status: "rejected",
+              verified_by:
+                userRole === "admin" ? "Admin" : "Barber",
+              verified_at: new Date().toISOString(),
+              notes: rejectionReason,
+            },
+          );
+         
+        } catch (error) {
+          console.warn(
+            "⚠️ Payment record update failed (not critical):",
+            error,
+          );
+        }
+      } else {
+       
+      }
+
+      // Update local state
+      onUpdateAppointment(selectedAppointment.id, {
+        paymentStatus: "rejected",
+        paymentVerifiedAt: new Date().toISOString(),
+        paymentVerifiedBy:
+          userRole === "admin" ? "Admin" : "Barber",
+        rejectionReason: rejectionReason,
+      });
+
+      toast.error(
+        `Payment rejected for ${selectedAppointment.customerName}'s appointment`,
+        {
+          description:
+            "Customer will be notified to resubmit payment proof",
+        },
+      );
+
+      // Create notification for customer
+      if (onAddNotification) {
+        const customerNotification = createNotification(
+          selectedAppointment.userId,
+          "Payment Rejected ✗",
+          `Your payment proof for ${selectedAppointment.service} was rejected. Reason: ${rejectionReason}. Please resubmit your payment proof.`,
+          "high",
+          {
+            appointmentId: selectedAppointment.id,
+            amount:
+              selectedAppointment.paymentAmount ||
+              selectedAppointment.price / 2,
+          },
+        );
+        onAddNotification(customerNotification);
+      }
+
+    
+
+
+      // Then refresh local payment data
+      await fetchPayments(true);
+
+      setIsRejectDialogOpen(false);
+      setIsViewDialogOpen(false);
+      setSelectedAppointment(null);
+    } catch (error: any) {
+      console.error("❌ Error rejecting payment:", error);
+      console.error("❌ Error details:", error.message || error);
+      toast.error(
+        `Failed to reject payment: ${error.message || "Unknown error"}`,
+      );
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    const config = {
+      pending: {
+        label: "Pending",
+        className:
+          "bg-yellow-100 text-yellow-700 border-yellow-300",
+        icon: Clock,
+      },
+      verified: {
+        label: "Verified",
+        className:
+          "bg-green-100 text-green-700 border-green-300",
+        icon: CheckCircle2,
+      },
+      rejected: {
+        label: "Rejected",
+        className: "bg-red-100 text-red-700 border-red-300",
+        icon: XCircle,
+      },
+    };
+
+    const statusConfig = config[status as keyof typeof config];
+    const Icon = statusConfig?.icon || Clock;
+
+    return (
+      <Badge
+        variant="outline"
+        className={statusConfig?.className || ""}
+      >
+        <Icon className="w-3 h-3 mr-1" />
+        {statusConfig?.label || status}
+      </Badge>
+    );
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-[#DB9D47]" />
+        <span className="ml-3 text-[#5C4A3A]">
+          Loading payment data...
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4 md:space-y-6">
+      {/* Header with Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+        <Card className="border-[#DB9D47] bg-[#FBF7EF]">
+          <CardContent className="pt-4 md:pt-6 p-3 md:p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs md:text-sm text-[#87765E]">
+                  All
+                </p>
+                <p className="text-2xl md:text-3xl text-[#5C4A3A]">
+                  {pendingCount + verifiedCount + rejectedCount}
+                </p>
+              </div>
+              <FileText className="w-8 h-8 md:w-10 md:h-10 text-[#DB9D47]" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-yellow-200 bg-yellow-50">
+          <CardContent className="pt-4 md:pt-6 p-3 md:p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs md:text-sm text-yellow-700">
+                  Pending
+                </p>
+                <p className="text-2xl md:text-3xl text-yellow-900">
+                  {pendingCount}
+                </p>
+              </div>
+              <Clock className="w-8 h-8 md:w-10 md:h-10 text-yellow-600" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-green-200 bg-green-50">
+          <CardContent className="pt-4 md:pt-6 p-3 md:p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs md:text-sm text-green-700">
+                  Verified
+                </p>
+                <p className="text-2xl md:text-3xl text-green-900">
+                  {verifiedCount}
+                </p>
+              </div>
+              <CheckCircle2 className="w-8 h-8 md:w-10 md:h-10 text-green-600" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="pt-4 md:pt-6 p-3 md:p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs md:text-sm text-red-700">
+                  Rejected
+                </p>
+                <p className="text-2xl md:text-3xl text-red-900">
+                  {rejectedCount}
+                </p>
+              </div>
+              <XCircle className="w-8 h-8 md:w-10 md:h-10 text-red-600" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Main Table Card */}
+      <Card className="border-[#E8DCC8]">
+        <CardHeader>
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 md:gap-4">
+            <div>
+              <CardTitle className="text-[#5C4A3A] text-base md:text-lg flex items-center gap-2">
+                Payment Verification
+                {isRefreshing && (
+                  <RefreshCw className="w-4 h-4 animate-spin text-[#DB9D47]" />
+                )}
+              </CardTitle>
+              <CardDescription className="text-[#87765E] text-xs md:text-sm">
+                Review and verify customer payment proofs from
+                database
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fetchPayments(true)}
+                disabled={isRefreshing}
+                className="border-[#DB9D47] text-[#DB9D47] hover:bg-[#DB9D47] hover:text-white"
+              >
+                <RefreshCw
+                  className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`}
+                />
+                <span className="ml-2 hidden sm:inline">
+                  Refresh
+                </span>
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {/* Status Filter Tabs */}
+          <Tabs
+            value={filterStatus}
+            onValueChange={(value: any) =>
+              setFilterStatus(value)
+            }
+            className="mb-4 md:mb-6"
+          >
+            <TabsList className="grid w-full grid-cols-4 bg-[#FBF7EF]">
+              <TabsTrigger
+                value="all"
+                className="text-xs md:text-sm"
+              >
+                All (
+                {
+                  appointmentsWithPaymentData.filter(
+                    (apt) => apt.payment || apt.paymentProof,
+                  ).length
+                }
+                )
+              </TabsTrigger>
+              <TabsTrigger
+                value="pending"
+                className="text-xs md:text-sm"
+              >
+                Pending ({pendingCount})
+              </TabsTrigger>
+              <TabsTrigger
+                value="verified"
+                className="text-xs md:text-sm"
+              >
+                Verified ({verifiedCount})
+              </TabsTrigger>
+              <TabsTrigger
+                value="rejected"
+                className="text-xs md:text-sm"
+              >
+                Rejected ({rejectedCount})
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          {/* Search and Filter Row */}
+          <div className="flex flex-col md:flex-row gap-3 md:gap-4 mb-4 md:mb-6">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#87765E] w-4 h-4" />
+              <Input
+                placeholder="Search payments by customer, service, reference..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10 border-[#E8DCC8] text-sm"
+              />
+            </div>
+            <Select
+              value={filterBarber}
+              onValueChange={setFilterBarber}
+            >
+              <SelectTrigger className="w-full md:w-48 border-[#E8DCC8] text-sm">
+                <Filter className="w-4 h-4 mr-2" />
+                <SelectValue placeholder="Filter by barber" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Barbers</SelectItem>
+                {barbers.map((barber) => (
+                  <SelectItem key={barber} value={barber}>
+                    {barber}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Payment Count */}
+          <div className="mb-4 md:mb-6 text-sm text-[#87765E]">
+            Showing: {appointmentsWithPayment.length} payment
+            {appointmentsWithPayment.length !== 1 ? "s" : ""}
+          </div>
+
+          {/* Table */}
+          {appointmentsWithPayment.length === 0 ? (
+            <div className="text-center py-12 bg-[#FBF7EF] rounded-lg">
+              <FileText className="w-16 h-16 text-[#87765E] mx-auto mb-4" />
+              <p className="text-[#5C4A3A] mb-2">
+                No payment proofs to review
+              </p>
+              <p className="text-sm text-[#87765E]">
+                {filterStatus === "pending"
+                  ? "All pending payments have been processed"
+                  : `No ${filterStatus} payments found`}
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-lg border border-[#E8DCC8] overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-[#FBF7EF]">
+                    <TableHead className="text-[#5C4A3A] text-xs md:text-sm">
+                      Customer
+                    </TableHead>
+                    <TableHead className="text-[#5C4A3A] text-xs md:text-sm hidden lg:table-cell">
+                      Service
+                    </TableHead>
+                    <TableHead className="text-[#5C4A3A] text-xs md:text-sm hidden md:table-cell">
+                      Barber
+                    </TableHead>
+                    <TableHead className="text-[#5C4A3A] text-xs md:text-sm">
+                      Date
+                    </TableHead>
+                    <TableHead className="text-[#5C4A3A] text-xs md:text-sm hidden sm:table-cell">
+                      Balance
+                    </TableHead>
+                    <TableHead className="text-[#5C4A3A] text-xs md:text-sm hidden xl:table-cell">
+                      Total Price
+                    </TableHead>
+                    <TableHead className="text-[#5C4A3A] text-xs md:text-sm">
+                      Status
+                    </TableHead>
+                    <TableHead className="text-[#5C4A3A] text-xs md:text-sm">
+                      Actions
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {appointmentsWithPayment.map(
+                    (appointment) => (
+                      <TableRow key={appointment.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-1 md:gap-2">
+                            <User className="w-3 h-3 md:w-4 md:h-4 text-[#87765E] hidden sm:block" />
+                            <span className="text-[#5C4A3A] text-xs md:text-sm truncate max-w-[100px] md:max-w-none">
+                              {appointment.customerName ||
+                                "Unknown"}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden lg:table-cell">
+                          <div className="flex items-center gap-2">
+                            <Scissors className="w-4 h-4 text-[#87765E]" />
+                            <span className="text-[#5C4A3A] text-sm">
+                              {appointment.service}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-[#5C4A3A] text-xs hidden md:table-cell">
+                          {appointment.barber}
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-xs md:text-sm whitespace-nowrap">
+                            <div className="text-[#5C4A3A]">
+                              {parseLocalDate(
+                                appointment.date,
+                              ).toLocaleDateString("en-US", {
+                                month: "short",
+                                day: "numeric",
+                              })}
+                            </div>
+                            <div className="text-[#87765E] text-[10px] md:text-xs">
+                              {appointment.time}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell">
+                          <div className="text-xs md:text-sm">
+                            <div className="text-[#5C4A3A]">
+                              ₱
+                              {appointment.paymentAmount?.toFixed(
+                                2,
+                              ) ||
+                                (appointment.price / 2).toFixed(
+                                  2,
+                                )}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden xl:table-cell">
+                          <div className="text-xs text-[#5C4A3A]">
+                            ₱
+                            {appointment.price?.toFixed(2) ||
+                              "0.00"}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {getStatusBadge(
+                            appointment.paymentStatus ||
+                              "pending",
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-1 flex-wrap">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() =>
+                                handleViewProof(appointment)
+                              }
+                              className="border-[#DB9D47] text-[#DB9D47] hover:bg-[#DB9D47] hover:text-white h-7 md:h-8 px-1.5 md:px-2"
+                            >
+                              <Eye className="w-3 h-3 md:w-4 md:h-4" />
+                              <span className="hidden lg:inline ml-1 text-xs">
+                                View
+                              </span>
+                            </Button>
+                            {appointment.paymentStatus ===
+                              "pending" && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  onClick={() =>
+                                    handleApproveClick(
+                                      appointment,
+                                    )
+                                  }
+                                  className="bg-green-600 hover:bg-green-700 text-white h-7 md:h-8 px-1.5 md:px-2"
+                                >
+                                  <CheckCircle2 className="w-3 h-3 md:w-4 md:h-4" />
+                                  <span className="hidden lg:inline ml-1 text-xs">
+                                    Approve
+                                  </span>
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() =>
+                                    handleRejectClick(
+                                      appointment,
+                                    )
+                                  }
+                                  className="border-red-500 text-red-600 hover:bg-red-500 hover:text-white h-7 md:h-8 px-1.5 md:px-2"
+                                >
+                                  <XCircle className="w-3 h-3 md:w-4 md:h-4" />
+                                  <span className="hidden lg:inline ml-1 text-xs">
+                                    Reject
+                                  </span>
+                                </Button>
+                              </>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ),
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* View Payment Proof Dialog */}
+      <Dialog
+        open={isViewDialogOpen}
+        onOpenChange={setIsViewDialogOpen}
+      >
+        <DialogContent className="sm:max-w-[700px]">
+          <DialogHeader>
+            <DialogTitle className="text-[#5C4A3A]">
+              Payment Proof Details
+            </DialogTitle>
+            <DialogDescription className="text-[#87765E]">
+              Review the payment proof and appointment details
+              from database
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedAppointment && (
+            <div className="space-y-6">
+              {/* Appointment Details */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-[#FBF7EF] rounded-lg">
+                <div>
+                  <p className="text-sm text-[#87765E]">
+                    Customer
+                  </p>
+                  <p className="text-[#5C4A3A]">
+                    {selectedAppointment.customerName}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-[#87765E]">
+                    Service
+                  </p>
+                  <p className="text-[#5C4A3A]">
+                    {selectedAppointment.service}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-[#87765E]">
+                    Barber
+                  </p>
+                  <p className="text-[#5C4A3A]">
+                    {selectedAppointment.barber}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-[#87765E]">
+                    Date & Time
+                  </p>
+                  <p className="text-[#5C4A3A]">
+                    {parseLocalDate(
+                      selectedAppointment.date,
+                    ).toLocaleDateString()}{" "}
+                    at {selectedAppointment.time}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-[#87765E]">
+                    Total Service Price
+                  </p>
+                  <p className="text-[#5C4A3A]">
+                    ₱{selectedAppointment.price.toFixed(2)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-[#87765E]">
+                    Payment Amount
+                  </p>
+                  <p className="text-[#5C4A3A] font-bold">
+                    ₱
+                    {(
+                      selectedAppointment.paymentAmount ||
+                      selectedAppointment.price / 2
+                    ).toFixed(2)}
+                  </p>
+                  <p className="text-xs text-[#87765E]">
+                    {selectedAppointment.paymentType === "full"
+                      ? "Full Payment"
+                      : selectedAppointment.paymentType ===
+                          "remaining"
+                        ? "Remaining Balance"
+                        : "50% Down Payment"}
+                  </p>
+                </div>
+                {selectedAppointment.paymentReference && (
+                  <div>
+                    <p className="text-sm text-[#87765E]">
+                      Reference Number
+                    </p>
+                    <p className="text-[#5C4A3A] font-mono text-sm">
+                      {selectedAppointment.paymentReference}
+                    </p>
+                  </div>
+                )}
+                {selectedAppointment.paymentMethod && (
+                  <div>
+                    <p className="text-sm text-[#87765E]">
+                      Payment Method
+                    </p>
+                    <p className="text-[#5C4A3A] uppercase">
+                      {selectedAppointment.paymentMethod}
+                    </p>
+                  </div>
+                )}
+                <div>
+                  <p className="text-sm text-[#87765E]">
+                    Payment Status
+                  </p>
+                  {getStatusBadge(
+                    selectedAppointment.paymentStatus ||
+                      "pending",
+                  )}
+                </div>
+                {selectedAppointment.payment?.verified_by && (
+                  <div>
+                    <p className="text-sm text-[#87765E]">
+                      Verified By
+                    </p>
+                    <p className="text-[#5C4A3A]">
+                      {selectedAppointment.payment.verified_by}
+                    </p>
+                    {selectedAppointment.payment
+                      .verified_at && (
+                      <p className="text-xs text-[#87765E]">
+                        {new Date(
+                          selectedAppointment.payment.verified_at,
+                        ).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Payment Proof Image */}
+              <div>
+                <p className="text-sm text-[#87765E] mb-2 flex items-center gap-2">
+                  <ImageIcon className="w-4 h-4" />
+                  Payment Proof from Cloudflare R2
+                </p>
+                {selectedAppointment.paymentProof ? (
+                  <div className="border border-[#E8DCC8] rounded-lg overflow-hidden">
+                    <img
+                      src={selectedAppointment.paymentProof}
+                      alt="Payment Proof"
+                      className="w-full h-auto max-h-[400px] object-contain bg-gray-50"
+                      onError={(e) => {
+                        console.error(
+                          "Failed to load image:",
+                          selectedAppointment.paymentProof,
+                        );
+                        e.currentTarget.style.display = "none";
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <div className="p-8 text-center border border-[#E8DCC8] rounded-lg bg-[#FBF7EF]">
+                    <AlertCircle className="w-12 h-12 text-[#87765E] mx-auto mb-2" />
+                    <p className="text-[#87765E]">
+                      No payment proof uploaded
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Rejection Notes */}
+              {selectedAppointment.paymentStatus ===
+                "rejected" &&
+                (selectedAppointment.payment?.notes ||
+                  selectedAppointment.rejectionReason) && (
+                  <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm text-red-700 font-medium mb-1">
+                      Rejection Reason:
+                    </p>
+                    <p className="text-sm text-red-600">
+                      {selectedAppointment.payment?.notes ||
+                        selectedAppointment.rejectionReason}
+                    </p>
+                  </div>
+                )}
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 justify-end">
+                {selectedAppointment.paymentStatus ===
+                "pending" ? (
+                  <>
+                    <Button
+                      variant="outline"
+                      onClick={() => setIsViewDialogOpen(false)}
+                      className="border-[#E8DCC8] text-[#5C4A3A]"
+                    >
+                      Close
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setIsViewDialogOpen(false);
+                        handleRejectClick(selectedAppointment);
+                      }}
+                      className="border-red-500 text-red-600 hover:bg-red-500 hover:text-white"
+                    >
+                      <XCircle className="w-4 h-4 mr-2" />
+                      Reject
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setIsViewDialogOpen(false);
+                        handleApproveClick(selectedAppointment);
+                      }}
+                      className="bg-green-600 hover:bg-green-700 text-white"
+                    >
+                      <CheckCircle2 className="w-4 h-4 mr-2" />
+                      Approve
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsViewDialogOpen(false)}
+                    className="border-[#E8DCC8] text-[#5C4A3A]"
+                  >
+                    Close
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Approve Confirmation Dialog */}
+      <AlertDialog
+        open={isApproveDialogOpen}
+        onOpenChange={setIsApproveDialogOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-[#5C4A3A]">
+              Approve Payment?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-[#87765E]">
+              Are you sure you want to approve this payment? The
+              customer will be notified and their booking will
+              be confirmed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          {selectedAppointment && (
+            <div className="mt-4 p-3 bg-[#FBF7EF] rounded-lg space-y-1 text-sm">
+              <p className="text-[#5C4A3A]">
+                <span className="text-[#87765E]">
+                  Customer:
+                </span>{" "}
+                {selectedAppointment.customerName}
+              </p>
+              <p className="text-[#5C4A3A]">
+                <span className="text-[#87765E]">Service:</span>{" "}
+                {selectedAppointment.service}
+              </p>
+              <p className="text-[#5C4A3A]">
+                <span className="text-[#87765E]">Amount:</span>{" "}
+                ₱
+                {(
+                  selectedAppointment.paymentAmount ||
+                  selectedAppointment.price / 2
+                ).toFixed(2)}
+              </p>
+              {selectedAppointment.paymentReference && (
+                <p className="text-[#5C4A3A]">
+                  <span className="text-[#87765E]">
+                    Reference:
+                  </span>{" "}
+                  {selectedAppointment.paymentReference}
+                </p>
+              )}
+            </div>
+          )}
+
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-[#E8DCC8] text-[#5C4A3A]">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmApprove}
+              className="bg-green-600 hover:bg-green-700 text-white"
+            >
+              <CheckCircle2 className="w-4 h-4 mr-2" />
+              Approve Payment
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Reject Confirmation Dialog */}
+      <AlertDialog
+        open={isRejectDialogOpen}
+        onOpenChange={setIsRejectDialogOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-[#5C4A3A]">
+              Reject Payment?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-[#87765E]">
+              Please provide a reason for rejecting this
+              payment. The customer will be notified and asked
+              to resubmit.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="space-y-4">
+            <div>
+              <Label
+                htmlFor="rejection-reason"
+                className="text-[#5C4A3A]"
+              >
+                Rejection Reason *
+              </Label>
+              <Textarea
+                id="rejection-reason"
+                placeholder="e.g., Payment proof is blurry, wrong amount, incorrect reference number, etc."
+                value={rejectionReason}
+                onChange={(e) =>
+                  setRejectionReason(e.target.value)
+                }
+                className="mt-2 border-[#E8DCC8]"
+                rows={4}
+              />
+            </div>
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-[#E8DCC8] text-[#5C4A3A]">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmReject}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              <XCircle className="w-4 h-4 mr-2" />
+              Reject Payment
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
