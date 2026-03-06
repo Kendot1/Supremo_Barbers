@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import {
   Users,
   Calendar,
+  DollarSign,
   LayoutDashboard,
   Settings,
   LogOut,
@@ -16,6 +17,7 @@ import {
   TrendingUp,
   Star,
   Activity,
+  RefreshCw,
 } from "lucide-react";
 import {
   Sheet,
@@ -26,7 +28,6 @@ import {
   SheetTrigger,
 } from "./ui/sheet";
 import { Button } from "./ui/button";
-import { FaPesoSign } from "react-icons/fa6";
 import {
   NotificationCenter,
   type Notification,
@@ -79,6 +80,7 @@ export function ImprovedSuperAdminDashboard({
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
   const [isLoadingUsers, setIsLoadingUsers] = useState(true);
+  const [lastRefresh, setLastRefresh] = useState(new Date());
 
   // Fetch all users on component mount
   useEffect(() => {
@@ -97,6 +99,60 @@ export function ImprovedSuperAdminDashboard({
     };
     fetchUsers();
   }, []);
+
+  // Auto-refresh appointments and users every 30 seconds
+  useEffect(() => {
+    const refreshInterval = setInterval(async () => {
+      console.log("🔄 Auto-refreshing admin dashboard data...");
+
+      // Refresh appointments if callback provided
+      if (onRefreshAppointments) {
+        try {
+          await onRefreshAppointments();
+          console.log("✅ Appointments refreshed");
+        } catch (error) {
+          console.error("❌ Failed to refresh appointments:", error);
+        }
+      }
+
+      // Refresh users
+      try {
+        const data = await API.users.getAll();
+        setUsers(data);
+        console.log("✅ Users refreshed");
+      } catch (error) {
+        console.error("❌ Failed to refresh users:", error);
+      }
+
+      setLastRefresh(new Date());
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(refreshInterval);
+  }, [onRefreshAppointments]);
+
+  // Manual refresh function
+  const handleManualRefresh = async () => {
+    console.log("🔄 Manual refresh triggered...");
+
+    // Refresh appointments
+    if (onRefreshAppointments) {
+      try {
+        await onRefreshAppointments();
+      } catch (error) {
+        console.error("❌ Failed to refresh appointments:", error);
+      }
+    }
+
+    // Refresh users
+    try {
+      const data = await API.users.getAll();
+      setUsers(data);
+    } catch (error) {
+      console.error("❌ Failed to refresh users:", error);
+    }
+
+    setLastRefresh(new Date());
+  };
 
   // Calculate stats from real data
   const currentMonth = new Date().getMonth();
@@ -136,7 +192,7 @@ export function ImprovedSuperAdminDashboard({
     {
       label: "Monthly Revenue",
       value: `₱${monthlyRevenue.toLocaleString()}`,
-      icon: FaPesoSign,
+      icon: DollarSign,
       color: "bg-[#D98555]",
     },
   ];
@@ -285,6 +341,14 @@ export function ImprovedSuperAdminDashboard({
                 <NotificationCenter
                   userId={user.id}
                   userRole="admin"
+                  onNavigate={(url) => {
+                    // Map the URL to dashboard tabs
+                    if (url === '/appointments') {
+                      setActiveTab('appointments');
+                    } else if (url === '/profile') {
+                      setActiveTab('settings');
+                    }
+                  }}
                 />
               </div>
             </div>
@@ -335,7 +399,12 @@ export function ImprovedSuperAdminDashboard({
               <BarberModule appointments={appointments} />
             )}
             {activeTab === "services" && (
-              <ServicesModule user={user} />
+              <ServicesModule
+                user={user}
+                onBookService={(serviceId) => {
+                  setActiveTab("bookings");
+                }}
+              />
             )}
             {activeTab === "bookings" && (
               <BookingReservationModule

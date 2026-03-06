@@ -495,13 +495,8 @@ export function CustomerProfile({
                   id="email"
                   type="email"
                   value={profile.email}
-                  onChange={(e) =>
-                    setProfile({
-                      ...profile,
-                      email: e.target.value,
-                    })
-                  }
-                  className="pl-9 border-[#E8DCC8] focus:border-[#DB9D47] focus:ring-[#DB9D47]"
+                  disabled
+                  className="pl-9 border-[#E8DCC8] bg-gray-50 cursor-not-allowed opacity-60"
                 />
               </div>
             </div>

@@ -32,6 +32,8 @@ venv/
 env/
 ENV/
 .venv/
+src/supabase/functions/index
+src/utils/supabase/index
 
 # Jupyter
 .ipynb_checkpoints

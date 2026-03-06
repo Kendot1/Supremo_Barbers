@@ -3,7 +3,7 @@ import { Toaster } from "./components/ui/sonner";
 import { toast } from "sonner";
 import { createNotification, type Notification } from "./components/NotificationCenter";
 import API from "./services/api.service";
-import { logUserLogin, logUserLogout } from "./services/audit-notification.service";
+import { logUserLogin, logUserLogout, logAppointmentCreated } from "./services/audit-notification.service";
 import { LoadingFallback } from "./components/LoadingFallback";
 import "./utils/clearTokens"; // Load debug helper
 
@@ -45,7 +45,7 @@ export interface Appointment {
   time: string;
   price: number;
   duration?: number; // Service duration in minutes
-  status: 'pending' | 'confirmed' | 'upcoming' | 'completed' | 'cancelled' | 'rejected';
+  status: 'pending' | 'confirmed' | 'upcoming' | 'completed' | 'cancelled' | 'rejected' | 'verified';
   canCancel: boolean;
   paymentProof?: string;
   paymentStatus?: 'pending' | 'verified' | 'rejected';
@@ -381,6 +381,31 @@ function App() {
     }
   }, [refreshUserProfile, fetchAppointments, fetchNotifications]);
 
+  // Auto-refresh appointments and notifications for customers to see real-time updates
+  // Must be AFTER fetchAppointments and fetchNotifications are defined
+  useEffect(() => {
+    if (!currentUser) return;
+
+    // Set up polling interval (every 15 seconds for customers to catch payment verification updates)
+    const pollInterval = currentUser.role === 'customer' ? 15000 : 30000; // 15s for customers, 30s for others
+    
+    const intervalId = setInterval(() => {
+      console.log('🔄 Auto-refreshing data for', currentUser.role);
+      
+      // Refresh appointments to catch payment status changes
+      fetchAppointments(currentUser.id, currentUser.role).catch(err => 
+        console.error('Auto-refresh appointments error:', err)
+      );
+      
+      // Refresh notifications
+      fetchNotifications(currentUser.id).catch(err => 
+        console.error('Auto-refresh notifications error:', err)
+      );
+    }, pollInterval);
+
+    return () => clearInterval(intervalId);
+  }, [currentUser, fetchAppointments, fetchNotifications]);
+
   // Handle login - Memoized to prevent recreation
   const handleLogin = useCallback(async (user: User) => {
     setCurrentUser(user);
@@ -466,6 +491,25 @@ function App() {
           console.error('Failed to create notifications:', error);
           // Don't fail the booking if notifications fail
         });
+      }
+      
+      // Log appointment creation in background (don't block UI)
+      if (currentUser) {
+        logAppointmentCreated(
+          currentUser.id,
+          currentUser.role as 'customer' | 'barber' | 'admin',
+          currentUser.name,
+          currentUser.email,
+          createdAppointment.id,
+          {
+            service: appointment.service,
+            barber: appointment.barber,
+            barberId: appointment.barberId || '',
+            date: appointment.date,
+            time: appointment.time,
+            price: appointment.price,
+          }
+        ).catch(err => console.error('Failed to log appointment creation:', err));
       }
       
       // Return the created appointment with database ID

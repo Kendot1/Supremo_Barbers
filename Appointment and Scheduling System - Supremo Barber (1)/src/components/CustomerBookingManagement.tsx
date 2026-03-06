@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Calendar, Clock, MapPin, User, DollarSign, X, Star, MessageSquare, Edit, Scissors, QrCode, AlertCircle, CheckCircle } from "lucide-react";
+import { Calendar, Clock, MapPin, User, DollarSign, X, XCircle, Star, MessageSquare, Edit, Scissors, QrCode, AlertCircle, CheckCircle, CheckCircle2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
@@ -28,6 +28,7 @@ interface CustomerBookingManagementProps {
   onUpdateAppointments: (appointments: Appointment[]) => void;
   onNavigateToBooking?: () => void;
   onSetPreSelectedService?: (serviceId: string) => void;
+  highlightedAppointmentId?: string | null;
 }
 
 export function CustomerBookingManagement({ 
@@ -35,7 +36,8 @@ export function CustomerBookingManagement({
   appointments, 
   onUpdateAppointments,
   onNavigateToBooking,
-  onSetPreSelectedService 
+  onSetPreSelectedService,
+  highlightedAppointmentId
 }: CustomerBookingManagementProps) {
   const [isRescheduleDialogOpen, setIsRescheduleDialogOpen] = useState(false);
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
@@ -51,6 +53,19 @@ export function CustomerBookingManagement({
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [reviewedAppointments, setReviewedAppointments] = useState<Set<string>>(new Set());
   const [showRlsError, setShowRlsError] = useState(false);
+
+  // Scroll to highlighted appointment
+  useEffect(() => {
+    if (highlightedAppointmentId) {
+      // Wait for DOM to render, then scroll to element
+      setTimeout(() => {
+        const element = document.getElementById(`appointment-${highlightedAppointmentId}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 300);
+    }
+  }, [highlightedAppointmentId]);
 
   // Fetch existing reviews to track which appointments have been reviewed
   useEffect(() => {
@@ -87,13 +102,13 @@ export function CustomerBookingManagement({
   }, [appointments, user.id]);
 
   const upcomingBookings = useMemo(() => {
-    const upcoming = userAppointments.filter((b) => b.status === "pending" || b.status === "confirmed");
+    const upcoming = userAppointments.filter((b) => b.status === "pending" || b.status === "confirmed" || b.status === "verified");
     console.log('📅 Upcoming bookings:', upcoming.length, upcoming.map(b => ({ id: b.id, status: b.status, service: b.service })));
     return upcoming;
   }, [userAppointments]);
   
   const pastBookings = useMemo(() => {
-    const past = userAppointments.filter((b) => b.status === "completed" || b.status === "cancelled");
+    const past = userAppointments.filter((b) => b.status === "completed" || b.status === "cancelled" || b.status === "rejected");
     console.log('📋 Past bookings:', past.length);
     return past;
   }, [userAppointments]);
@@ -114,6 +129,11 @@ export function CustomerBookingManagement({
         return {
           color: "bg-blue-100 text-blue-700 border-blue-200",
           label: "Confirmed",
+        };
+      case "verified":
+        return {
+          color: "bg-green-100 text-green-700 border-green-200",
+          label: "Verified",
         };
       case "upcoming":
         return {
@@ -140,6 +160,32 @@ export function CustomerBookingManagement({
           color: "bg-gray-100 text-gray-700 border-gray-200",
           label: status,
         };
+    }
+  };
+
+  // Get payment status config for better UI feedback
+  const getPaymentStatusConfig = (paymentStatus?: string) => {
+    switch (paymentStatus) {
+      case "verified":
+        return {
+          color: "bg-green-100 text-green-700 border-green-200",
+          label: "Payment Verified ✓",
+          description: "Your payment has been approved"
+        };
+      case "rejected":
+        return {
+          color: "bg-red-100 text-red-700 border-red-200",
+          label: "Payment Rejected ✗",
+          description: "Please resubmit your payment proof"
+        };
+      case "pending":
+        return {
+          color: "bg-yellow-100 text-yellow-700 border-yellow-200",
+          label: "Payment Pending",
+          description: "Awaiting verification"
+        };
+      default:
+        return null;
     }
   };
 
@@ -464,11 +510,24 @@ export function CustomerBookingManagement({
             <div className="space-y-4">
               {upcomingBookings.map((booking) => {
                 const statusConfig = getStatusConfig(booking.status);
+                const isHighlighted = highlightedAppointmentId === booking.id;
                 return (
                   <div
                     key={booking.id}
-                    className="p-5 rounded-lg bg-gradient-to-br from-[#FBF7EF] to-white border-2 border-[#E8DCC8] hover:shadow-lg transition-shadow"
+                    id={`appointment-${booking.id}`}
+                    className={`p-5 rounded-lg transition-all duration-500 ${
+                      isHighlighted
+                        ? 'bg-gradient-to-br from-[#FFF3C4] via-[#FBF7EF] to-white border-3 border-[#DB9D47] shadow-xl ring-4 ring-[#DB9D47]/30 animate-pulse'
+                        : 'bg-gradient-to-br from-[#FBF7EF] to-white border-2 border-[#E8DCC8] hover:shadow-lg'
+                    }`}
                   >
+                    {/* Just Verified Badge */}
+                    {isHighlighted && (
+                      <div className="mb-3 flex items-center gap-2 bg-gradient-to-r from-[#DB9D47] to-[#D98555] text-white px-3 py-2 rounded-full text-sm font-semibold shadow-md">
+                        <CheckCircle className="w-4 h-4" />
+                        <span>✨ Payment Just Verified!</span>
+                      </div>
+                    )}
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-start gap-4 flex-1">
                         <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-[#DB9D47] to-[#D98555] flex items-center justify-center flex-shrink-0">
@@ -500,6 +559,34 @@ export function CustomerBookingManagement({
                               <PaymentStatusBadge status={booking.paymentStatus} />
                             </div>
                           )}
+                          
+                          {/* Rejection Reason Display */}
+                          {(booking.status === 'rejected' || booking.paymentStatus === 'rejected') && booking.rejectionReason && (
+                            <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                              <p className="text-xs font-semibold text-red-700 mb-1 flex items-center gap-1">
+                                <XCircle className="w-3 h-3" />
+                                Rejection Reason:
+                              </p>
+                              <p className="text-xs text-red-600">{booking.rejectionReason}</p>
+                              <p className="text-xs text-red-500 mt-2 italic">
+                                Please resubmit your payment proof to confirm your booking.
+                              </p>
+                            </div>
+                          )}
+                          
+                          {/* Also check notes field for rejection reason */}
+                          {(booking.status === 'rejected' || booking.paymentStatus === 'rejected') && !booking.rejectionReason && booking.notes && booking.notes.includes('Payment rejected') && (
+                            <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                              <p className="text-xs font-semibold text-red-700 mb-1 flex items-center gap-1">
+                                <XCircle className="w-3 h-3" />
+                                Rejection Reason:
+                              </p>
+                              <p className="text-xs text-red-600">{booking.notes.replace('Payment rejected: ', '')}</p>
+                              <p className="text-xs text-red-500 mt-2 italic">
+                                Please resubmit your payment proof to confirm your booking.
+                              </p>
+                            </div>
+                          )}
                         </div>
                       </div>
                       <Badge variant="outline" className={statusConfig.color}>
@@ -509,8 +596,11 @@ export function CustomerBookingManagement({
                     <div className="flex items-center justify-between pt-4 border-t border-[#E8DCC8]">
                       <p className="text-lg text-[#DB9D47]">₱{booking.price}</p>
                       <div className="flex gap-2 flex-wrap">
-                        {/* Only show Pay Balance button if payment proof hasn't been submitted or was rejected */}
-                        {(!booking.paymentProof || booking.paymentStatus === 'rejected') && (
+                        {/* Payment proof submission/resubmission logic */}
+                        {/* Show button ONLY if: no payment proof, OR pending (allow resubmit), OR rejected (allow resubmit) */}
+                        {/* Hide button when verified/paid */}
+                        {(!booking.paymentProof || booking.paymentStatus === 'pending' || booking.paymentStatus === 'rejected') && 
+                         booking.paymentStatus !== 'verified' && (
                           <Button
                             variant="outline"
                             size="sm"
@@ -518,9 +608,10 @@ export function CustomerBookingManagement({
                             onClick={() => handlePaymentProof(booking)}
                           >
                             <QrCode className="w-4 h-4 mr-1" />
-                            {booking.paymentStatus === 'rejected' ? 'Resubmit Payment' : 'Pay Balance'}
+                            Resubmit Payment
                           </Button>
                         )}
+                        {/* Always show reschedule and cancel buttons regardless of payment status */}
                         <Button
                           variant="outline"
                           size="sm"
@@ -572,11 +663,33 @@ export function CustomerBookingManagement({
                     <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#DB9D47]/50 to-[#D98555]/50 flex items-center justify-center">
                       <Scissors className="w-5 h-5 text-[#DB9D47]" />
                     </div>
-                    <div>
+                    <div className="flex-1">
                       <p className="text-[#5C4A3A]">{booking.service}</p>
                       <p className="text-sm text-[#87765E]">
                         {parseLocalDate(booking.date).toLocaleDateString()} • {booking.time}
                       </p>
+                      
+                      {/* Rejection Reason Display for Past Bookings */}
+                      {(booking.status === 'rejected' || booking.paymentStatus === 'rejected') && booking.rejectionReason && (
+                        <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs">
+                          <p className="font-semibold text-red-700 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" />
+                            Rejected:
+                          </p>
+                          <p className="text-red-600">{booking.rejectionReason}</p>
+                        </div>
+                      )}
+                      
+                      {/* Also check notes field for rejection reason */}
+                      {(booking.status === 'rejected' || booking.paymentStatus === 'rejected') && !booking.rejectionReason && booking.notes && booking.notes.includes('Payment rejected') && (
+                        <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs">
+                          <p className="font-semibold text-red-700 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" />
+                            Rejected:
+                          </p>
+                          <p className="text-red-600">{booking.notes.replace('Payment rejected: ', '')}</p>
+                        </div>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">

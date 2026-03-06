@@ -85,7 +85,7 @@ export function CustomerDashboardOverview({
   const upcomingAppointments = userAppointments
     .filter(
       (apt) =>
-        apt.status === "pending" || apt.status === "confirmed",
+        apt.status === "pending" || apt.status === "confirmed" || apt.status === "verified",
     )
     .sort(
       (a, b) =>

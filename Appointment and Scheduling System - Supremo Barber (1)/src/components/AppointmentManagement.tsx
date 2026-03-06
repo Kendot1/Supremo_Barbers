@@ -1,24 +1,8 @@
-import { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { Button } from './ui/button';
-import { Badge } from './ui/badge';
-import { Input } from './ui/input';
-import { 
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
-} from './ui/table';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue
-} from './ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { 
-  CheckCircle2, XCircle, Clock, Calendar as CalendarIcon, 
-  User, Scissors, DollarSign, List, CalendarDays, Search, Filter, UserCog
-} from 'lucide-react';
-import { toast } from 'sonner';
-import { AppointmentCalendar } from './AppointmentCalendar';
 import { PaymentVerification } from './PaymentVerification';
-import type { Appointment as AppointmentType } from '../App';
+import type { Appointment as AppointmentType, User } from '../App';
 import { PasswordConfirmationDialog } from './PasswordConfirmationDialog';
+import { logAppointmentStatusUpdate } from '../services/audit-notification.service';
+import API from '../services/api.service';
 
 // Utility function to parse date string without timezone issues
 const parseLocalDate = (dateString: string): Date => {
@@ -96,7 +80,11 @@ const mockAppointments: Appointment[] = [
   },
 ];
 
-export function AppointmentManagement() {
+interface AppointmentManagementProps {
+  user?: User;
+}
+
+export function AppointmentManagement({ user }: AppointmentManagementProps = {}) {
   const [appointments, setAppointments] = useState<Appointment[]>(mockAppointments);
   const [filterStatus, setFilterStatus] = useState('all');
   const [viewMode, setViewMode] = useState<'list' | 'calendar' | 'payments'>('list');
@@ -159,12 +147,44 @@ export function AppointmentManagement() {
     });
   };
 
-  const confirmApprove = () => {
-    if (passwordConfirmation.appointmentId) {
-      setAppointments(appointments.map(apt => 
-        apt.id === passwordConfirmation.appointmentId ? { ...apt, status: 'approved' as const } : apt
-      ));
-      toast.success('Appointment approved');
+  const confirmApprove = async () => {
+    if (passwordConfirmation.appointmentId && user) {
+      const appointment = appointments.find(apt => apt.id === passwordConfirmation.appointmentId);
+      
+      if (appointment) {
+        // Update local state
+        setAppointments(appointments.map(apt => 
+          apt.id === passwordConfirmation.appointmentId ? { ...apt, status: 'approved' as const } : apt
+        ));
+        toast.success('Appointment approved');
+        
+        // Send notification to customer
+        try {
+          const fullAppointment = await API.appointments.getById(passwordConfirmation.appointmentId);
+          
+          await logAppointmentStatusUpdate(
+            user.id,
+            user.role as 'customer' | 'barber' | 'admin',
+            user.name,
+            user.email,
+            passwordConfirmation.appointmentId,
+            'pending',
+            'verified',
+            {
+              customerId: fullAppointment.customer_id || fullAppointment.userId || '',
+              customerName: appointment.customer || 'Customer',
+              barberId: fullAppointment.barber_id || '',
+              service: appointment.service,
+              date: appointment.date,
+              time: appointment.time,
+            }
+          );
+          console.log('✅ Customer notified of appointment approval');
+        } catch (error) {
+          console.error('❌ Failed to send notification:', error);
+          // Don't fail the operation if notification fails
+        }
+      }
     }
   };
 
@@ -177,12 +197,44 @@ export function AppointmentManagement() {
     });
   };
 
-  const confirmCancel = () => {
-    if (passwordConfirmation.appointmentId) {
-      setAppointments(appointments.map(apt => 
-        apt.id === passwordConfirmation.appointmentId ? { ...apt, status: 'cancelled' as const } : apt
-      ));
-      toast.success('Appointment cancelled');
+  const confirmCancel = async () => {
+    if (passwordConfirmation.appointmentId && user) {
+      const appointment = appointments.find(apt => apt.id === passwordConfirmation.appointmentId);
+      
+      if (appointment) {
+        // Update local state
+        setAppointments(appointments.map(apt => 
+          apt.id === passwordConfirmation.appointmentId ? { ...apt, status: 'cancelled' as const } : apt
+        ));
+        toast.success('Appointment cancelled');
+        
+        // Send notification to customer
+        try {
+          const fullAppointment = await API.appointments.getById(passwordConfirmation.appointmentId);
+          
+          await logAppointmentStatusUpdate(
+            user.id,
+            user.role as 'customer' | 'barber' | 'admin',
+            user.name,
+            user.email,
+            passwordConfirmation.appointmentId,
+            appointment.status,
+            'cancelled',
+            {
+              customerId: fullAppointment.customer_id || fullAppointment.userId || '',
+              customerName: appointment.customer || 'Customer',
+              barberId: fullAppointment.barber_id || '',
+              service: appointment.service,
+              date: appointment.date,
+              time: appointment.time,
+            }
+          );
+          console.log('✅ Customer notified of appointment cancellation');
+        } catch (error) {
+          console.error('❌ Failed to send notification:', error);
+          // Don't fail the operation if notification fails
+        }
+      }
     }
   };
 
@@ -195,12 +247,44 @@ export function AppointmentManagement() {
     });
   };
 
-  const confirmComplete = () => {
-    if (passwordConfirmation.appointmentId) {
-      setAppointments(appointments.map(apt => 
-        apt.id === passwordConfirmation.appointmentId ? { ...apt, status: 'completed' as const } : apt
-      ));
-      toast.success('Appointment marked as completed');
+  const confirmComplete = async () => {
+    if (passwordConfirmation.appointmentId && user) {
+      const appointment = appointments.find(apt => apt.id === passwordConfirmation.appointmentId);
+      
+      if (appointment) {
+        // Update local state
+        setAppointments(appointments.map(apt => 
+          apt.id === passwordConfirmation.appointmentId ? { ...apt, status: 'completed' as const } : apt
+        ));
+        toast.success('Appointment marked as completed');
+        
+        // Send notification to customer
+        try {
+          const fullAppointment = await API.appointments.getById(passwordConfirmation.appointmentId);
+          
+          await logAppointmentStatusUpdate(
+            user.id,
+            user.role as 'customer' | 'barber' | 'admin',
+            user.name,
+            user.email,
+            passwordConfirmation.appointmentId,
+            'approved',
+            'completed',
+            {
+              customerId: fullAppointment.customer_id || fullAppointment.userId || '',
+              customerName: appointment.customer || 'Customer',
+              barberId: fullAppointment.barber_id || '',
+              service: appointment.service,
+              date: appointment.date,
+              time: appointment.time,
+            }
+          );
+          console.log('✅ Customer notified of appointment completion');
+        } catch (error) {
+          console.error('❌ Failed to send notification:', error);
+          // Don't fail the operation if notification fails
+        }
+      }
     }
   };
 
@@ -210,6 +294,10 @@ export function AppointmentManagement() {
         return <Badge variant="secondary"><Clock className="w-3 h-3 mr-1" />Pending</Badge>;
       case 'approved':
         return <Badge variant="default"><CheckCircle2 className="w-3 h-3 mr-1" />Approved</Badge>;
+      case 'verified':
+        return <Badge className="bg-green-100 text-green-700 border-green-200"><CheckCircle2 className="w-3 h-3 mr-1" />Verified</Badge>;
+      case 'confirmed':
+        return <Badge className="bg-green-100 text-green-700 border-green-200"><CheckCircle2 className="w-3 h-3 mr-1" />Confirmed</Badge>;
       case 'completed':
         return <Badge><CheckCircle2 className="w-3 h-3 mr-1" />Completed</Badge>;
       case 'cancelled':
@@ -401,6 +489,7 @@ export function AppointmentManagement() {
                 ));
               }}
               userRole="admin"
+              currentUser={user ? { id: user.id, name: user.name, email: user.email } : undefined}
             />
           </TabsContent>
         </Tabs>
@@ -440,4 +529,3 @@ export function AppointmentManagement() {
     </Card>
   );
 }
-

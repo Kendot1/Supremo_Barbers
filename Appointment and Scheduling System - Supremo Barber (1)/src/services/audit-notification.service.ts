@@ -127,6 +127,8 @@ export async function logAppointmentCreated(
     message: `${userName} booked ${appointmentDetails.service} with ${appointmentDetails.barber} on ${new Date(appointmentDetails.date).toLocaleDateString()} at ${appointmentDetails.time}`,
     relatedId: appointmentId,
     relatedType: 'appointment',
+    actionUrl: '/appointments',
+    actionLabel: 'View Appointments',
   });
 
   // Create notification for barber
@@ -138,6 +140,8 @@ export async function logAppointmentCreated(
     message: `${userName} booked ${appointmentDetails.service} on ${new Date(appointmentDetails.date).toLocaleDateString()} at ${appointmentDetails.time}`,
     relatedId: appointmentId,
     relatedType: 'appointment',
+    actionUrl: '/appointments',
+    actionLabel: 'View Appointments',
   });
 }
 
@@ -196,6 +200,8 @@ export async function logAppointmentStatusUpdate(
       message: customerMessages[newStatus],
       relatedId: appointmentId,
       relatedType: 'appointment',
+      actionUrl: `/appointments?highlight=${appointmentId}`, // Include appointment ID for highlighting
+      actionLabel: 'View Appointment',
     });
   }
 
@@ -208,6 +214,8 @@ export async function logAppointmentStatusUpdate(
     message: `${userName} ${newStatus} appointment for ${appointmentDetails.customerName} - ${appointmentDetails.service} on ${new Date(appointmentDetails.date).toLocaleDateString()}`,
     relatedId: appointmentId,
     relatedType: 'appointment',
+    actionUrl: '/appointments',
+    actionLabel: 'View Appointments',
   });
 }
 
@@ -247,19 +255,25 @@ export async function logPaymentVerification(
     },
   });
 
-  // Create notification for customer
+  // Create notification for customer with improved messaging
+  const title = status === 'approved' 
+    ? '✅ Payment Verified!' 
+    : '❌ Payment Rejected';
+  
   const message = status === 'approved'
-    ? `Your payment of ₱${appointmentDetails.amount} for ${appointmentDetails.service} has been verified. Your booking is confirmed!`
-    : `Your payment proof was rejected. ${reason ? `Reason: ${reason}.` : ''} Please resubmit your payment proof.`;
+    ? `Great news! Your payment of ₱${appointmentDetails.amount.toFixed(2)} for ${appointmentDetails.service} on ${new Date(appointmentDetails.date).toLocaleDateString()} has been verified and approved. Your booking is confirmed!`
+    : `Your payment proof for ${appointmentDetails.service} was rejected. ${reason ? `Reason: ${reason}.` : ''} Please upload a new payment proof to confirm your booking.`;
 
   await createNotification({
     userId: appointmentDetails.customerId,
     userRole: 'customer',
     type: `payment_${status}`,
-    title: status === 'approved' ? 'Payment Verified ✓' : 'Payment Rejected ✗',
+    title,
     message,
     relatedId: appointmentId,
     relatedType: 'payment',
+    actionUrl: `/appointments?highlight=${appointmentId}`, // Include appointment ID for highlighting
+    actionLabel: status === 'approved' ? 'View Booking' : 'Resubmit Payment',
   });
 }
 
@@ -337,6 +351,8 @@ export async function logUserRegistration(
     message: `${userName} (${userEmail}) has registered as a ${userRole}`,
     relatedId: userId,
     relatedType: 'user',
+    actionUrl: '/users',
+    actionLabel: 'View Users',
   });
 }
 
@@ -406,6 +422,8 @@ export async function logReviewSubmission(
     message: `${userName} rated your service ${rating} stars`,
     relatedId: reviewId,
     relatedType: 'review',
+    actionUrl: '/profile',
+    actionLabel: 'View Reviews',
   });
 
   // Notify admin
@@ -417,6 +435,8 @@ export async function logReviewSubmission(
     message: `${userName} left a ${rating}-star review for ${barberName}`,
     relatedId: reviewId,
     relatedType: 'review',
+    actionUrl: '/reports',
+    actionLabel: 'View Reports',
   });
 }
 
@@ -757,6 +777,8 @@ export async function logPaymentProofUpload(
     message: `${userName} uploaded payment proof for ₱${amount}. Please verify.`,
     relatedId: appointmentId,
     relatedType: 'payment',
+    actionUrl: '/appointments',
+    actionLabel: 'Verify Payment',
   });
 }
 
@@ -806,6 +828,8 @@ export async function logAppointmentReschedule(
     message: `Your ${service} appointment has been rescheduled to ${new Date(newDate).toLocaleDateString()} at ${newTime}`,
     relatedId: appointmentId,
     relatedType: 'appointment',
+    actionUrl: `/appointments?highlight=${appointmentId}`, // Include appointment ID for highlighting
+    actionLabel: 'View Appointment',
   });
 
   // Notify barber
@@ -817,6 +841,8 @@ export async function logAppointmentReschedule(
     message: `${customerName}'s ${service} appointment has been moved to ${new Date(newDate).toLocaleDateString()} at ${newTime}`,
     relatedId: appointmentId,
     relatedType: 'appointment',
+    actionUrl: '/appointments',
+    actionLabel: 'View Appointments',
   });
 }
 
@@ -856,6 +882,8 @@ export async function logBarberCreated(
     message: `${adminName} added ${barberName} to the team`,
     relatedId: barberId,
     relatedType: 'barber',
+    actionUrl: '/barbers',
+    actionLabel: 'View Barbers',
   });
 }
 
@@ -921,6 +949,8 @@ export async function logBarberDeleted(
     message: `${adminName} removed ${barberName} from the team`,
     relatedId: barberId,
     relatedType: 'barber',
+    actionUrl: '/barbers',
+    actionLabel: 'View Barbers',
   });
 }
 

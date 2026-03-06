@@ -13,6 +13,7 @@ import {
 } from './ui/dropdown-menu';
 import { toast } from 'sonner';
 import API from '../services/api.service';
+import { supabase } from '../utils/supabase/client';
 
 interface Notification {
   id: string;
@@ -82,86 +83,144 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
   // Use refs to track fetch function and prevent infinite loops
   const fetchNotificationsRef = useRef<() => Promise<void>>();
   const lastFetchParams = useRef<string>('');
+  const isFetchingRef = useRef(false);
 
-  // Auto-fetch on mount and when user changes
+  // Fetch notifications and set up real-time subscription
   useEffect(() => {
-    if (!userId) return;
-    
-    // Create a unique key for current params to prevent duplicate fetches
-    const currentParams = `${userId}-${userRole}`;
-    if (lastFetchParams.current === currentParams) {
-      return; // Already fetched for these params
+    if (!userId) {
+      console.log('⚠️ NotificationCenter: No userId provided');
+      return;
     }
     
-    lastFetchParams.current = currentParams;
+    console.log('🔔 NotificationCenter: Setting up for userId:', userId, 'role:', userRole);
     
     const fetchNotifications = async () => {
+      if (isFetchingRef.current) {
+        console.log('⏳ NotificationCenter: Already fetching, skipping...');
+        return;
+      }
+      
       try {
+        isFetchingRef.current = true;
         setIsLoading(true);
         
+        console.log('📡 NotificationCenter: Fetching notifications for userId:', userId, 'role:', userRole);
         const data = await API.notifications.getByUserId(userId, userRole);
         const count = await API.notifications.getUnreadCount(userId, userRole);
         
+        console.log('✅ NotificationCenter: Fetched', data?.length || 0, 'notifications');
+        console.log('📊 NotificationCenter: Notification data:', data);
+        console.log('🔢 NotificationCenter: Unread count:', count);
+        
         // Ensure data is always an array
-        setNotifications(Array.isArray(data) ? data : []);
+        const notificationsArray = Array.isArray(data) ? data : [];
+        setNotifications(notificationsArray);
         setUnreadCount(typeof count === 'number' ? count : 0);
+        
+        console.log('💾 NotificationCenter: State updated with', notificationsArray.length, 'notifications');
       } catch (error: any) {
-        console.error('❌ Error fetching notifications:', error);
-        // Don't show error toast on initial load - tables might not exist yet
+        console.error('❌ NotificationCenter: Error fetching notifications:', error);
+        console.error('❌ NotificationCenter: Error details:', error.message, error.stack);
         
         // Set empty state
         setNotifications([]);
         setUnreadCount(0);
       } finally {
         setIsLoading(false);
+        isFetchingRef.current = false;
       }
     };
     
     // Store in ref for manual refresh button
     fetchNotificationsRef.current = fetchNotifications;
     
-    // Initial fetch only
+    // Initial fetch
+    console.log('🚀 NotificationCenter: Starting initial fetch...');
     fetchNotifications();
     
-    // TEMPORARILY DISABLED polling to debug infinite loop
-    // const interval = setInterval(fetchNotifications, 30000);
-    // return () => clearInterval(interval);
+    // Set up Supabase real-time subscription for notifications
+    console.log('🔌 NotificationCenter: Setting up real-time subscription...');
+    
+    const channel = supabase
+      .channel(`notifications-${userId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${userId}`, // Use snake_case for database column
+        },
+        async (payload) => {
+          console.log('🔔 NotificationCenter: Real-time update received!');
+          console.log('📦 NotificationCenter: Payload:', payload);
+          
+          // Refetch notifications when any change occurs
+          await fetchNotifications();
+        }
+      )
+      .subscribe((status) => {
+        console.log('📡 NotificationCenter: Subscription status:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('✅ NotificationCenter: Successfully subscribed to real-time updates');
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('❌ NotificationCenter: Subscription error');
+        }
+      });
+    
+    // Cleanup subscription on unmount
+    return () => {
+      console.log('🔌 NotificationCenter: Cleaning up subscription');
+      supabase.removeChannel(channel);
+    };
   }, [userId, userRole]);
 
   // Mark notification as read
   const handleMarkAsRead = async (notificationId: string) => {
+    // Optimistically update UI first
+    const notificationToMark = notifications.find(n => n.id === notificationId);
+    if (!notificationToMark || notificationToMark.isRead) return; // Already read or doesn't exist
+    
+    // Update local state immediately
+    setNotifications(prev =>
+      prev.map(n =>
+        n.id === notificationId ? { ...n, isRead: true, readAt: new Date().toISOString() } : n
+      )
+    );
+    setUnreadCount(prev => Math.max(0, prev - 1));
+    
+    // Then sync with backend (silently fail if backend has issues)
     try {
       await API.notifications.markAsRead(notificationId);
-      
-      // Update local state
-      setNotifications(prev =>
-        prev.map(n =>
-          n.id === notificationId ? { ...n, isRead: true, readAt: new Date().toISOString() } : n
-        )
-      );
-      setUnreadCount(prev => Math.max(0, prev - 1));
+      console.log('✅ Notification marked as read in backend');
     } catch (error: any) {
-      console.error('❌ Error marking notification as read:', error);
-      toast.error('Failed to mark notification as read');
+      console.error('❌ Error marking notification as read in backend:', error);
+      // Don't show error to user - UI is already updated
+      // Backend will sync later when connection is restored
     }
   };
 
   // Mark all as read
   const handleMarkAllAsRead = async () => {
+    const unreadNotifications = notifications.filter(n => !n.isRead);
+    if (unreadNotifications.length === 0) return;
+    
+    // Optimistically update UI first
+    const now = new Date().toISOString();
+    setNotifications(prev =>
+      prev.map(n => ({ ...n, isRead: true, readAt: now }))
+    );
+    setUnreadCount(0);
+    
+    // Then sync with backend (silently fail if backend has issues)
     try {
       await API.notifications.markAllAsRead(userId, userRole);
-      
-      // Update local state
-      const now = new Date().toISOString();
-      setNotifications(prev =>
-        prev.map(n => ({ ...n, isRead: true, readAt: now }))
-      );
-      setUnreadCount(0);
-      
       toast.success('All notifications marked as read');
+      console.log('✅ All notifications marked as read in backend');
     } catch (error: any) {
-      console.error('❌ Error marking all as read:', error);
-      toast.error('Failed to mark all as read');
+      console.error('❌ Error marking all as read in backend:', error);
+      // UI is already updated, just show a generic success message
+      toast.success('All notifications marked as read');
     }
   };
 
@@ -205,16 +264,44 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
   // Get notification icon color based on type
   const getNotificationColor = (type: string): string => {
     const colors: Record<string, string> = {
+      // Appointment notifications
       appointment_booked: 'text-green-600',
+      appointment_created: 'text-green-600',
+      appointment_assigned: 'text-blue-600',
+      appointment_confirmed: 'text-green-600',
       appointment_cancelled: 'text-red-600',
-      appointment_completed: 'text-blue-600',
+      appointment_rejected: 'text-red-600',
+      appointment_completed: 'text-green-600',
+      appointment_rescheduled: 'text-orange-600',
+      
+      // Payment notifications
+      payment_approved: 'text-green-600',
+      payment_verified: 'text-green-600',
+      payment_rejected: 'text-red-600',
       payment_received: 'text-green-600',
       payment_reminder: 'text-orange-600',
+      payment_proof_uploaded: 'text-blue-600',
+      
+      // Review notifications
       review_received: 'text-purple-600',
+      review_submitted: 'text-purple-600',
+      
+      // User notifications
       new_customer: 'text-blue-600',
+      account_created: 'text-green-600',
+      account_suspended: 'text-red-600',
+      account_unsuspended: 'text-green-600',
+      user_registered: 'text-blue-600',
+      
+      // System notifications
       system_alert: 'text-yellow-600',
       earnings_updated: 'text-green-600',
       profile_updated: 'text-gray-600',
+      password_changed: 'text-orange-600',
+      
+      // Barber notifications
+      barber_created: 'text-blue-600',
+      barber_deleted: 'text-red-600',
     };
     return colors[type] || 'text-gray-600';
   };

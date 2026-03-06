@@ -106,7 +106,7 @@ export function AdminDashboard({ user, onLogout, appointments = [] }: AdminDashb
           </TabsList>
 
           <TabsContent value="appointments">
-            <AppointmentManagement />
+            <AppointmentManagement user={user} />
           </TabsContent>
 
           <TabsContent value="barbers">

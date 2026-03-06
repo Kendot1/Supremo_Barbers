@@ -93,6 +93,7 @@ export function CustomerDashboard({
     time: string;
     barberName: string;
   } | null>(null);
+  const [highlightedAppointmentId, setHighlightedAppointmentId] = useState<string | null>(null);
 
   // Auto-navigate to booking when a service is pre-selected
   useEffect(() => {
@@ -262,6 +263,25 @@ export function CustomerDashboard({
               <NotificationCenter
                 userId={user.id}
                 userRole="customer"
+                onNavigate={(url) => {
+                  // Parse URL and extract query parameters
+                  const [path, queryString] = url.split('?');
+                  const params = new URLSearchParams(queryString || '');
+                  const highlightId = params.get('highlight');
+                  
+                  // Map the URL to dashboard tabs
+                  if (path === '/appointments') {
+                    setActiveTab('manage');
+                    // Set highlighted appointment ID if present
+                    if (highlightId) {
+                      setHighlightedAppointmentId(highlightId);
+                      // Clear highlight after 5 seconds
+                      setTimeout(() => setHighlightedAppointmentId(null), 5000);
+                    }
+                  } else if (path === '/profile') {
+                    setActiveTab('profile');
+                  }
+                }}
               />
               <Button 
                 variant="outline" 
@@ -293,6 +313,14 @@ export function CustomerDashboard({
               <NotificationCenter
                 userId={user.id}
                 userRole="customer"
+                onNavigate={(url) => {
+                  // Map the URL to dashboard tabs
+                  if (url === '/appointments') {
+                    setActiveTab('manage');
+                  } else if (url === '/profile') {
+                    setActiveTab('profile');
+                  }
+                }}
               />
               
               {/* Hamburger Menu */}
@@ -544,6 +572,7 @@ export function CustomerDashboard({
               onUpdateAppointments={onUpdateAppointments}
               onNavigateToBooking={() => setActiveTab('book')}
               onSetPreSelectedService={onSetPreSelectedService}
+              highlightedAppointmentId={highlightedAppointmentId}
             />
           )}
 
