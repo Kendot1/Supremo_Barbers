@@ -14,7 +14,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
 } from './ui/dropdown-menu';
 import { Search, Activity, Download, FileText, FileSpreadsheet, TrendingUp, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from 'sonner@2.0.3';
 import { exportToCSV } from './utils/exportUtils';
 
 // Match database schema from migration
@@ -49,9 +49,7 @@ export function AuditLogs({ isActive = true }: AuditLogsProps) {
   const fetchLogs = async () => {
     try {
       setIsLoading(true);
-      
       const data = await API.auditLogs.getAll();
-     
       setLogs(data);
     } catch (error) {
       console.error('❌ Error fetching audit logs:', error);
@@ -69,7 +67,6 @@ export function AuditLogs({ isActive = true }: AuditLogsProps) {
   // Refetch data when component becomes active (tab is switched)
   useEffect(() => {
     if (isActive) {
-     
       fetchLogs();
     }
   }, [isActive]);
@@ -95,9 +92,19 @@ export function AuditLogs({ isActive = true }: AuditLogsProps) {
     }
   };
 
+  // Format action names from snake_case to readable format
+  const formatActionName = (action: string): string => {
+    if (!action) return '';
+    
+    // Split by underscore and capitalize each word
+    return action
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
+  };
+
   const handleExportPDF = () => {
     toast.info('PDF export coming soon...');
-   
   };
 
   const handleExportCSV = () => {
@@ -226,6 +233,7 @@ export function AuditLogs({ isActive = true }: AuditLogsProps) {
             <SelectContent>
               <SelectItem value="all">All Statuses</SelectItem>
               <SelectItem value="success">Success</SelectItem>
+              <SelectItem value="warning">Warning</SelectItem>
               <SelectItem value="pending">Pending</SelectItem>
               <SelectItem value="failed">Failed</SelectItem>
             </SelectContent>
@@ -266,7 +274,7 @@ export function AuditLogs({ isActive = true }: AuditLogsProps) {
                     <TableCell className="text-[#5C4A3A] hidden md:table-cell">
                       {log.userName || log.userEmail || log.userId}
                     </TableCell>
-                    <TableCell className="text-sm text-[#5C4A3A]">{log.action}</TableCell>
+                    <TableCell className="text-sm text-[#5C4A3A]">{formatActionName(log.action)}</TableCell>
                     <TableCell className="text-sm text-[#87765E] hidden lg:table-cell">{log.description}</TableCell>
                     <TableCell>
                       <Badge variant={getStatusBadgeVariant(log.status)} className="text-xs whitespace-nowrap">

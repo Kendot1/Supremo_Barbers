@@ -90,8 +90,7 @@ export function CustomerDashboardOverview({
     .sort(
       (a, b) =>
         new Date(a.date).getTime() - new Date(b.date).getTime(),
-    )
-    .slice(0, 5);
+    );
 
   // Get recent bookings
   const recentBookings = [...userAppointments]
@@ -132,9 +131,9 @@ export function CustomerDashboardOverview({
         const todayAppointments = appointments.filter(
           (apt) => {
             const isToday = apt.date === today || apt.appointment_date === today;
-            const isActive = apt.status === 'pending' ||
-              apt.status === 'confirmed' ||
-              apt.status === 'upcoming';
+            const isActive = apt.status === 'pending' || 
+                            apt.status === 'confirmed' || 
+                            apt.status === 'upcoming';
             return isToday && isActive;
           }
         );
@@ -202,12 +201,12 @@ export function CustomerDashboardOverview({
   // Handle cancel appointment
   const handleCancelAppointment = async () => {
     if (!selectedBooking) return;
-
+    
     try {
       setIsCancelling(true);
-
+      
       const appointmentId = selectedBooking.id || selectedBooking._id;
-
+      
       // Validate UUID format
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       if (!uuidRegex.test(appointmentId)) {
@@ -216,8 +215,13 @@ export function CustomerDashboardOverview({
         setIsCancelling(false);
         return;
       }
-
-
+      
+      console.log('🚀 Cancelling appointment:', {
+        userId: user.id,
+        appointmentId,
+        API_cancel_exists: typeof API.appointments?.cancel
+      });
+      
       // Try using the cancel endpoint, fallback to update if not available
       try {
         if (API.appointments && typeof API.appointments.cancel === 'function') {
@@ -229,7 +233,7 @@ export function CustomerDashboardOverview({
           );
         } else {
           // Fallback: Use update endpoint
-         
+          console.log('⚠️ Using fallback update method');
           await API.appointments.update(appointmentId, {
             status: 'cancelled',
             cancellationReason: 'Cancelled by customer',
@@ -241,20 +245,20 @@ export function CustomerDashboardOverview({
         console.error('API Error:', apiError);
         throw apiError;
       }
-
+      
       // Update the appointments list locally
       if (onUpdateAppointments && selectedBooking) {
-        const updatedAppointments = appointments.map(apt =>
-          apt.id === selectedBooking.id
+        const updatedAppointments = appointments.map(apt => 
+          apt.id === selectedBooking.id 
             ? { ...apt, status: 'cancelled' as const }
             : apt
         );
         onUpdateAppointments(updatedAppointments);
       }
-
+      
       // Show success message
       toast.success('Appointment cancelled successfully');
-
+      
       // Close dialog after a brief delay to show success state
       setTimeout(() => {
         setIsDialogOpen(false);
@@ -402,11 +406,11 @@ export function CustomerDashboardOverview({
                   </div>
                   {selectedBooking.paymentStatus ===
                     "pending" && (
-                      <p className="text-sm text-[#DB9D47]">
-                        50% down payment required ₱
-                        {(selectedBooking.price * 0.5).toFixed(2)}
-                      </p>
-                    )}
+                    <p className="text-sm text-[#DB9D47]">
+                      50% down payment required ₱
+                      {(selectedBooking.price * 0.5).toFixed(2)}
+                    </p>
+                  )}
                 </div>
 
                 {/* Action Buttons */}
@@ -470,17 +474,15 @@ export function CustomerDashboardOverview({
           </CardHeader>
           <CardContent className="space-y-3 overflow-hidden">
             {upcomingAppointments.length > 0 ? (
-              <div
-                className="space-y-2 overflow-y-auto overflow-x-hidden pr-2 scrollbar-thin scrollbar-thumb-[#DB9D47] scrollbar-track-[#FBF7EF]"
-                style={{
+              <div 
+                className="space-y-2 overflow-y-auto overflow-x-hidden pr-2 scrollbar-thin scrollbar-thumb-[#DB9D47] scrollbar-track-[#FBF7EF]" 
+                style={{ 
                   maxHeight: '350px',
                   scrollbarWidth: 'thin',
                   scrollbarColor: '#DB9D47 #FBF7EF'
                 }}
               >
-                {upcomingAppointments
-                  .slice(0, 5)
-                  .map((booking) => (
+                {upcomingAppointments.map((booking) => (
                     <div
                       key={booking.id}
                       className="p-2 rounded-lg bg-[#FBF7EF] border border-[#E8DCC8] hover:shadow-md hover:border-[#DB9D47] transition-all cursor-pointer flex-shrink-0"
@@ -572,9 +574,9 @@ export function CustomerDashboardOverview({
                 <p className="text-sm">Loading slots...</p>
               </div>
             ) : availableSlots.length > 0 ? (
-              <div
-                className="space-y-2 overflow-y-auto overflow-x-hidden pr-2 scrollbar-thin scrollbar-thumb-[#DB9D47] scrollbar-track-[#FBF7EF]"
-                style={{
+              <div 
+                className="space-y-2 overflow-y-auto overflow-x-hidden pr-2 scrollbar-thin scrollbar-thumb-[#DB9D47] scrollbar-track-[#FBF7EF]" 
+                style={{ 
                   maxHeight: '320px',
                   scrollbarWidth: 'thin',
                   scrollbarColor: '#DB9D47 #FBF7EF'

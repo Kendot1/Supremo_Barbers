@@ -36,7 +36,7 @@ import {
   getFieldError 
 } from "../utils/validation";
 import { validatePassword, getPasswordFeedback } from "../utils/passwordValidator";
-import { logNewDeviceLogin } from "../services/audit-notification.service";
+import { logNewDeviceLogin, logUserRegistration, logUserLogin, logFailedLogin } from "../services/audit-notification.service";
 
 interface LoginPageProps {
   onLogin: (user: any) => void;
@@ -169,11 +169,13 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
     // Test backend connectivity
     const testBackend = async () => {
       try {
-    
+        console.log('🔍 Testing backend connectivity...');
+        console.log('📍 Project ID:', projectId);
+        console.log('🔑 Anon Key:', publicAnonKey?.substring(0, 20) + '...');
         
         // Test health endpoint
         const healthUrl = `https://${projectId}.supabase.co/functions/v1/make-server-70e1fc66/health`;
-     
+        console.log('🌐 Testing:', healthUrl);
         
         const response = await fetch(healthUrl, {
           method: 'GET',
@@ -183,7 +185,7 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
         });
         
         const data = await response.json();
-       
+        console.log('✅ Backend health check:', response.status, data);
       } catch (error) {
         console.error('❌ Backend health check failed:', error);
         console.error('Error details:', {
@@ -245,6 +247,15 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
           localStorage.setItem('rememberedPassword', password);
         }
 
+        // Log barber login to audit logs
+        await logUserLogin(
+          response.user.id,
+          'barber',
+          response.user.name,
+          response.user.email,
+          'password'
+        );
+
         // Show success message and trigger login immediately
         toast.success(`Welcome back, ${response.user.name}!`);
         onLogin(response.user);
@@ -283,6 +294,15 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
             localStorage.removeItem('rememberedEmail');
             localStorage.removeItem('rememberedPassword');
           }
+          // Log trusted device login to audit logs
+          await logUserLogin(
+            response.user.id,
+            response.user.role as 'customer' | 'admin',
+            response.user.name,
+            response.user.email,
+            'trusted_device'
+          );
+
           toast.success(`Welcome back, ${response.user.name}!`, {
             description: 'Trusted device recognised — 2FA skipped.'
           });
@@ -334,7 +354,7 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
       // Store OTP token for verification
       if (otpData.token) {
         sessionStorage.setItem('otp_token', otpData.token);
-       
+        console.log('✅ OTP token stored in sessionStorage');
       } else {
         console.error('❌ No token received from server!', otpData);
       }
@@ -376,6 +396,11 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
             "Network error. Please check your connection and try again.";
         }
       }
+
+      // Log failed login attempt
+      logFailedLogin(email, errorMessage).catch(err => 
+        console.error('Failed to log failed login:', err)
+      );
 
       toast.error(errorMessage, {
         duration: 5000,
@@ -459,6 +484,15 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
         // Clear OTP token (synchronous)
         sessionStorage.removeItem('otp_token');
 
+        // Log OTP login to audit logs (non-blocking)
+        logUserLogin(
+          pendingLoginData.user.id,
+          pendingLoginData.user.role as 'customer' | 'admin',
+          pendingLoginData.user.name,
+          pendingLoginData.user.email,
+          'otp'
+        ).catch(err => console.error('Failed to log login:', err));
+
         // Show success message and trigger login IMMEDIATELY
         toast.success(`Welcome back, ${pendingLoginData.user.name}!`);
         
@@ -539,7 +573,8 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
     }
 
     try {
-    
+      console.log('📧 Sending forgot password request for:', forgotEmail);
+      console.log('🌐 Full URL:', `https://${projectId}.supabase.co/functions/v1/make-server-70e1fc66/api/auth/forgot-password`);
       
       const response = await fetch(
         `https://${projectId}.supabase.co/functions/v1/make-server-70e1fc66/api/auth/forgot-password`,
@@ -553,17 +588,18 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
         }
       );
 
-    
+      console.log('📨 Response status:', response.status);
+      console.log('📨 Response headers:', Object.fromEntries(response.headers.entries()));
       
       const contentType = response.headers.get('content-type');
       let data;
       
       if (contentType && contentType.includes('application/json')) {
         data = await response.json();
-      
+        console.log('📨 Response data:', data);
       } else {
         const text = await response.text();
-       
+        console.log('📨 Response text:', text);
         throw new Error(`Backend returned non-JSON response: ${text.substring(0, 200)}`);
       }
 
@@ -577,7 +613,7 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
       // Store OTP token
       if (data.token) {
         sessionStorage.setItem('forgot_password_token', data.token);
-       
+        console.log('✅ Token stored in sessionStorage');
       }
 
       // Show warning if email failed but OTP was generated
@@ -923,7 +959,7 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
       // Store OTP token for verification
       if (otpData.token) {
         sessionStorage.setItem('otp_token', otpData.token);
-      
+        console.log('✅ OTP token stored in sessionStorage');
       } else {
         console.error('❌ No token received from server!', otpData);
       }
@@ -977,7 +1013,8 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
         return;
       }
 
-    
+      console.log('🔐 Verifying OTP with token:', { email: email.toLowerCase(), otp, hasToken: !!otpToken });
+
       // Verify OTP via backend API
       const verifyResponse = await fetch(
         `https://${projectId}.supabase.co/functions/v1/make-server-70e1fc66/api/auth/verify-otp`,
@@ -1046,6 +1083,14 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
         JSON.stringify(response.user),
       );
       localStorage.setItem("authToken", response.token);
+
+      // Log user registration to audit logs
+      await logUserRegistration(
+        response.user.id,
+        response.user.role as 'customer' | 'admin',
+        response.user.name,
+        response.user.email
+      );
 
       // Show role-specific success message
       const isFirstUser = response.user.role === "admin";
@@ -1221,7 +1266,7 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
                           variant="link"
                           className="h-auto p-0 text-xs text-[#DB9D47] hover:text-[#C08A3C]"
                           onClick={() => {
-                           
+                            console.log('🔐 Opening Forgot Password dialog');
                             setShowForgotPassword(true);
                             setForgotPasswordStep(1);
                             setForgotEmail(email);
@@ -1670,9 +1715,9 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
                                   passwordStrength.strength === 'medium' ? 'text-yellow-600' :
                                   'text-red-600'
                                 }`}>
-                                  {passwordStrength.strength === 'strong' ? ' Strong' :
-                                   passwordStrength.strength === 'medium' ? ' Medium' :
-                                   ' Weak'}
+                                  {passwordStrength.strength === 'strong' ? '✓ Strong' :
+                                   passwordStrength.strength === 'medium' ? '○ Medium' :
+                                   '✗ Weak'}
                                 </span>
                               </div>
                               <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
@@ -2313,9 +2358,9 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
                             resetPasswordStrength.strength === 'medium' ? 'text-yellow-600' :
                             'text-red-600'
                           }`}>
-                            {resetPasswordStrength.strength === 'strong' ? ' Strong' :
-                             resetPasswordStrength.strength === 'medium' ? ' Medium' :
-                             ' Weak'}
+                            {resetPasswordStrength.strength === 'strong' ? '✓ Strong' :
+                             resetPasswordStrength.strength === 'medium' ? '○ Medium' :
+                             '✗ Weak'}
                           </span>
                         </div>
                         <div className="h-2 bg-gray-200 rounded-full overflow-hidden">

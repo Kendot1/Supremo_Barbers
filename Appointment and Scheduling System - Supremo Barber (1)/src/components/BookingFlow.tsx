@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 // Supremo Barber GCash QR Code
 import qrImage from "figma:asset/9e9607467fe5e63f10eba24035950a8a0e4b1e0f.png";
-
 import API from "../services/api.service";
 import {
   Card,
@@ -56,9 +55,11 @@ interface BookingFlowProps {
   user: UserType;
   appointments: Appointment[];
   onAddAppointment: (appointment: Appointment) => void;
-  onBookingComplete: () => void;
+  onBookingComplete: (bookedServiceIds?: string[]) => void;
   preSelectedServiceId?: string | null;
   onClearPreSelectedService?: () => void;
+  preSelectedServiceIds?: string[];
+  onClearPreSelectedServiceIds?: () => void;
   preSelectedSlot?: {
     date: Date;
     time: string;
@@ -208,6 +209,8 @@ export function BookingFlow({
   onBookingComplete,
   preSelectedServiceId,
   onClearPreSelectedService,
+  preSelectedServiceIds,
+  onClearPreSelectedServiceIds,
   preSelectedSlot,
   onClearPreSelectedSlot,
 }: BookingFlowProps) {
@@ -215,6 +218,7 @@ export function BookingFlow({
   const [step, setStep] = useState(1);
   const [selectedService, setSelectedService] =
     useState<Service | null>(null);
+  const [selectedServices, setSelectedServices] = useState<Service[]>([]);
   const [selectedBarber, setSelectedBarber] =
     useState<Barber | null>(null);
   const [selectedDate, setSelectedDate] = useState<
@@ -303,7 +307,10 @@ export function BookingFlow({
       );
       if (serviceToSelect) {
         setSelectedService(serviceToSelect);
-        setStep(2); // Automatically advance to step 2 (Barber selection)
+        // Add to selectedServices array so it shows as selected in the UI
+        setSelectedServices([serviceToSelect]);
+        // Stay on step 1 so user can see the selection
+        setStep(1);
         // Clear the pre-selection after processing
         if (onClearPreSelectedService) {
           onClearPreSelectedService();
@@ -315,6 +322,34 @@ export function BookingFlow({
     services,
     selectedService,
     onClearPreSelectedService,
+  ]);
+
+  // Auto-select multiple services from favorites
+  useEffect(() => {
+    if (
+      preSelectedServiceIds &&
+      preSelectedServiceIds.length > 0 &&
+      services.length > 0 &&
+      selectedServices.length === 0
+    ) {
+      const servicesToSelect = services.filter((s) =>
+        preSelectedServiceIds.includes(String(s.id))
+      );
+      if (servicesToSelect.length > 0) {
+        setSelectedServices(servicesToSelect);
+        // Also set the first one as the main selected service for compatibility
+        setSelectedService(servicesToSelect[0]);
+        // Clear the pre-selection after processing
+        if (onClearPreSelectedServiceIds) {
+          onClearPreSelectedServiceIds();
+        }
+      }
+    }
+  }, [
+    preSelectedServiceIds,
+    services,
+    selectedServices,
+    onClearPreSelectedServiceIds,
   ]);
 
   // Auto-select date and time when slot is pre-selected from dashboard
@@ -499,7 +534,28 @@ export function BookingFlow({
 
   const handleServiceSelect = useCallback((serviceId: string) => {
     const service = services.find((s) => s.id === serviceId);
-    setSelectedService(service || null);
+    if (!service) return;
+
+    // Toggle service in the multi-select list
+    setSelectedServices(prev => {
+      const isAlreadySelected = prev.some(s => s.id === serviceId);
+      if (isAlreadySelected) {
+        // Remove it
+        const updated = prev.filter(s => s.id !== serviceId);
+        // Update main selectedService if needed
+        if (updated.length > 0) {
+          setSelectedService(updated[0]);
+        } else {
+          setSelectedService(null);
+        }
+        return updated;
+      } else {
+        // Add it
+        const updated = [...prev, service];
+        setSelectedService(service); // Set as main service
+        return updated;
+      }
+    });
   }, [services]);
 
   const handleBarberSelect = useCallback((barberId: string) => {
@@ -524,7 +580,7 @@ export function BookingFlow({
 
   const handleConfirmBooking = async () => {
     if (
-      !selectedService ||
+      selectedServices.length === 0 ||
       !selectedBarber ||
       !selectedDate ||
       !selectedTime
@@ -534,52 +590,50 @@ export function BookingFlow({
     setIsSubmittingBooking(true);
     
     try {
-      // Create new appointment with payment proof (status pending until admin approves)
-      const newAppointment: any = {
-        // Don't set ID - let database generate UUID
-        customer_id: user.id,
-        barber_id: selectedBarber.id,
-        service_id: selectedService.id,
-        appointment_date: `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`,
-        appointment_time: selectedTime,
-        total_amount: selectedService.price,
-        down_payment: selectedService.price * 0.5,
-        remaining_amount: selectedService.price * 0.5,
-        status: "pending",
-        payment_status: "pending",
-        notes: "",
-        // Legacy fields for backward compatibility (frontend display)
-        userId: user.id,
-        service: selectedService.name,
-        barber: selectedBarber.name,
-        date: `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`,
-        time: selectedTime,
-        price: selectedService.price,
-        canCancel: true,
-        customerName: user.name,
-        paymentProof:
-          uploadedProofUrl || uploadedProof || undefined,
-        paymentStatus: "pending",
-        downPaymentPaid: true,
-        remainingBalance: selectedService.price * 0.5,
-        rescheduledCount: 0, // Initialize reschedule count
-      };
+      // Calculate total price for all services
+      const totalPrice = selectedServices.reduce((sum, service) => sum + service.price, 0);
+      const totalDownPayment = totalPrice * 0.5;
+      const totalRemaining = totalPrice * 0.5;
 
-      // Create appointment and payment record in parallel for better performance
-      const promises: Promise<any>[] = [
-        onAddAppointment(newAppointment)
-      ];
+      // Create appointments for all selected services
+      const appointmentPromises = selectedServices.map(async (service) => {
+        const newAppointment: any = {
+          // Don't set ID - let database generate UUID
+          customer_id: user.id,
+          barber_id: selectedBarber.id,
+          service_id: service.id,
+          appointment_date: `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`,
+          appointment_time: selectedTime,
+          total_amount: service.price,
+          down_payment: service.price * 0.5,
+          remaining_amount: service.price * 0.5,
+          status: "pending",
+          payment_status: "pending",
+          notes: "",
+          // Legacy fields for backward compatibility (frontend display)
+          userId: user.id,
+          service: service.name,
+          barber: selectedBarber.name,
+          date: `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`,
+          time: selectedTime,
+          price: service.price,
+          canCancel: true,
+          customerName: user.name,
+          paymentProof: uploadedProofUrl || uploadedProof || undefined,
+          paymentStatus: "pending",
+          downPaymentPaid: true,
+          remainingBalance: service.price * 0.5,
+          rescheduledCount: 0, // Initialize reschedule count
+        };
 
-      // Add payment creation to parallel promises if proof exists
-      let appointmentPromise = promises[0];
-      
-      if (uploadedProofUrl) {
-        // Wait for appointment first to get the ID, then create payment
-        appointmentPromise = appointmentPromise.then(async (createdAppointment) => {
+        const createdAppointment = await onAddAppointment(newAppointment);
+
+        // Create payment record if proof exists
+        if (uploadedProofUrl && createdAppointment?.id) {
           try {
             const paymentData = {
               appointment_id: createdAppointment.id,
-              amount: selectedService.price * 0.5,
+              amount: service.price * 0.5,
               payment_type: "downpayment",
               payment_method: "gcash",
               proof_url: uploadedProofUrl,
@@ -590,13 +644,16 @@ export function BookingFlow({
             console.error("Error creating payment record:", paymentError);
             // Don't fail the whole booking if payment record fails
           }
-          return createdAppointment;
-        });
-      }
+        }
 
-      const createdAppointment = await appointmentPromise;
+        return createdAppointment;
+      });
 
-      // Email confirmations handled by backend
+      // Wait for all appointments to be created
+      await Promise.all(appointmentPromises);
+
+      // Collect booked service IDs to remove from favorites
+      const bookedServiceIds = selectedServices.map(s => String(s.id));
 
       // Immediately close dialogs and show success
       setShowConfirmDialog(false);
@@ -605,18 +662,21 @@ export function BookingFlow({
       setIsSubmittingBooking(false);
       
       toast.success(
-        "Booking submitted! Waiting for payment verification by admin.",
+        `${selectedServices.length} service(s) booked! Waiting for payment verification by admin.`,
       );
 
       // Reset form and switch to history tab immediately (no delay)
       setStep(1);
       setSelectedService(null);
+      setSelectedServices([]);
       setSelectedBarber(null);
       setSelectedDate(undefined);
       setSelectedTime("");
       setUploadedProof(null);
       setUploadedProofUrl(null);
-      onBookingComplete();
+      
+      // Pass booked service IDs to parent for favorites removal
+      onBookingComplete(bookedServiceIds);
     } catch (error) {
       console.error("Error confirming booking:", error);
       toast.error(
@@ -627,12 +687,9 @@ export function BookingFlow({
     }
   };
 
-  const downPayment = selectedService
-    ? (selectedService.price * 0.5).toFixed(2)
-    : "0.00";
-  const remainingPayment = selectedService
-    ? (selectedService.price * 0.5).toFixed(2)
-    : "0.00";
+  const totalPrice = selectedServices.reduce((sum, s) => sum + s.price, 0);
+  const downPayment = (totalPrice * 0.5).toFixed(2);
+  const remainingPayment = (totalPrice * 0.5).toFixed(2);
 
   // Generate dates for 1 month from today (30 days)
   const availableDates = Array.from({ length: 30 }, (_, i) => {
@@ -760,10 +817,10 @@ export function BookingFlow({
         <Card className="border-[#E8DCC8]">
           <CardHeader>
             <CardTitle className="text-[#5C4A3A]">
-              Select Service
+              Select Service(s)
             </CardTitle>
             <CardDescription className="text-[#87765E]">
-              Choose the service you'd like to book
+              Choose one or more services for your appointment
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -786,7 +843,7 @@ export function BookingFlow({
                       }
                       className={cn(
                         "border-2 cursor-pointer transition-all hover:shadow-md relative overflow-hidden",
-                        selectedService?.id === service.id
+                        selectedServices.some(s => s.id === service.id)
                           ? "border-[#DB9D47] shadow-lg ring-2 ring-[#DB9D47]/30"
                           : "border-[#E8DCC8] hover:border-[#DB9D47]/50",
                       )}
@@ -800,7 +857,7 @@ export function BookingFlow({
                         </div>
 
                         {/* Selected Checkmark */}
-                        {selectedService?.id === service.id && (
+                        {selectedServices.some(s => s.id === service.id) && (
                           <div className="absolute top-2 right-2 z-10">
                             <div className="bg-[#DB9D47] rounded-full p-1">
                               <CheckCircle2 className="w-4 h-4 text-white" />
@@ -830,7 +887,7 @@ export function BookingFlow({
                           <h3
                             className={cn(
                               "text-sm line-clamp-1",
-                              selectedService?.id === service.id
+                              selectedServices.some(s => s.id === service.id)
                                 ? "text-[#4B3621]"
                                 : "text-[#5C4A3A]",
                             )}
@@ -862,12 +919,47 @@ export function BookingFlow({
                 </div>
               </ScrollArea>
             )}
+            
+            {/* Selected Services Summary */}
+            {selectedServices.length > 0 && (
+              <Card className="border-[#DB9D47] bg-[#FBF7EF]">
+                <CardContent className="pt-4 pb-4">
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium text-[#5C4A3A]">
+                        Selected Services
+                      </span>
+                      <span className="font-medium text-[#5C4A3A]">
+                        {selectedServices.length}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-[#87765E]">
+                        Total Duration
+                      </span>
+                      <span className="font-medium text-[#5C4A3A]">
+                        {selectedServices.reduce((sum, s) => sum + s.duration, 0)} mins
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center pt-2 border-t border-[#E8DCC8]">
+                      <span className="font-medium text-[#5C4A3A]">
+                        Total Price
+                      </span>
+                      <span className="text-lg font-semibold text-[#DB9D47]">
+                        ₱{selectedServices.reduce((sum, s) => sum + s.price, 0)}
+                      </span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            
             <Button
               className="w-full bg-[#DB9D47] hover:bg-[#C58A38] text-white"
-              disabled={!selectedService}
+              disabled={selectedServices.length === 0}
               onClick={() => setStep(2)}
             >
-              Continue
+              Continue {selectedServices.length > 1 ? `with ${selectedServices.length} Services` : ""}
             </Button>
           </CardContent>
         </Card>
@@ -1408,11 +1500,18 @@ export function BookingFlow({
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="bg-[#FBF7EF] border border-[#E8DCC8] p-4 rounded-lg space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-[#87765E]">Service:</span>
-                <span className="text-[#5C4A3A]">
-                  {selectedService?.name}
-                </span>
+              <div className="space-y-1">
+                <span className="text-[#87765E] text-sm">Service{selectedServices.length > 1 ? 's' : ''}:</span>
+                {selectedServices.map((service, index) => (
+                  <div key={service.id} className="flex justify-between text-sm pl-4">
+                    <span className="text-[#5C4A3A]">
+                      {selectedServices.length > 1 && `${index + 1}. `}{service.name}
+                    </span>
+                    <span className="text-[#5C4A3A]">
+                      ₱{service.price}
+                    </span>
+                  </div>
+                ))}
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-[#87765E]">Barber:</span>
@@ -1438,7 +1537,7 @@ export function BookingFlow({
                   Total Price:
                 </span>
                 <span className="text-xl text-[#DB9D47]">
-                  ₱{selectedService?.price}
+                  ₱{totalPrice}
                 </span>
               </div>
             </div>
@@ -1507,11 +1606,18 @@ export function BookingFlow({
           {/* Move content outside AlertDialogDescription to avoid nesting issues */}
           <div className="space-y-4">
             <div className="bg-[#FBF7EF] border border-[#E8DCC8] rounded-lg p-4 space-y-2">
-              <div className="flex justify-between items-center">
-                <span className="text-[#87765E]">Service:</span>
-                <span className="text-[#5C4A3A]">
-                  {selectedService?.name}
-                </span>
+              <div className="space-y-1">
+                <span className="text-[#87765E] text-sm">Service{selectedServices.length > 1 ? 's' : ''}:</span>
+                {selectedServices.map((service, index) => (
+                  <div key={service.id} className="flex justify-between items-center">
+                    <span className="text-[#5C4A3A] text-sm">
+                      {index + 1}. {service.name}
+                    </span>
+                    <span className="text-[#5C4A3A] text-sm">
+                      ₱{service.price}
+                    </span>
+                  </div>
+                ))}
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-[#87765E]">Barber:</span>
@@ -1524,7 +1630,7 @@ export function BookingFlow({
                   Total Price:
                 </span>
                 <span className="text-[#5C4A3A]">
-                  ₱{selectedService?.price}
+                  ₱{totalPrice}
                 </span>
               </div>
               <div className="h-px bg-[#E8DCC8] my-2" />
@@ -1581,9 +1687,9 @@ export function BookingFlow({
         open={showQRPayment}
         onOpenChange={setShowQRPayment}
       >
-        <AlertDialogContent className="border-[#E8DCC8] max-w-md">
+        <AlertDialogContent className="border-[#E8DCC8] max-w-[95vw] sm:max-w-md max-h-[90vh] overflow-y-auto">
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2 text-[#5C4A3A] text-base">
+            <AlertDialogTitle className="flex items-center gap-2 text-[#5C4A3A] text-sm sm:text-base">
               <QrCode className="w-4 h-4 text-[#DB9D47]" />
               Complete Payment
             </AlertDialogTitle>
@@ -1593,31 +1699,32 @@ export function BookingFlow({
             </AlertDialogDescription>
           </AlertDialogHeader>
 
-          <div className="space-y-3">
+          <div className="space-y-2 sm:space-y-3">
             {/* Compact QR Code Section */}
-            <div className="flex flex-col items-center gap-2">
-              <div className="p-2 rounded-lg border border-[#E8DCC8] bg-white">
-                <div className="w-60 h-60 flex items-center justify-center bg-[#FBF7EF]">
+            <div className="flex flex-col items-center gap-1.5 sm:gap-2">
+              <div className="p-1.5 sm:p-2 rounded-lg border border-[#E8DCC8] bg-white">
+                <div className="w-48 h-48 sm:w-60 sm:h-60 flex items-center justify-center bg-[#FBF7EF]">
                   <img
                     src={qrImage}
                     alt="Supremo Barber QR Payment"
+                    className="w-full h-full object-contain"
                   />
                 </div>
               </div>
-              <p className="text-xs text-[#5C4A3A]">
+              <p className="text-xs sm:text-sm text-[#5C4A3A]">
                 Scan to Pay ₱{downPayment}
               </p>
 
               {/* Compact Payment Info */}
-              <div className="border border-[#DB9D47] rounded-lg p-1 w-full bg-[#FFF9F0]">
-                <div className="space-y-1 text-xs">
-                  <p className="text-[#5C4A3A]">
+              <div className="border border-[#DB9D47] rounded-lg p-2 sm:p-3 w-full bg-[#FFF9F0]">
+                <div className="space-y-1 text-xs sm:text-sm">
+                  <p className="text-[#5C4A3A] break-all">
                     <strong>GCash Number:</strong> 0920-4XX-XX31
                   </p>
-                  <p className="text-[#5C4A3A]">
+                  <p className="text-[#5C4A3A] break-all">
                     <strong>Account Name:</strong> JOSHUA A.
                   </p>
-                  <p className="text-[#5C4A3A]">
+                  <p className="text-[#5C4A3A] break-all">
                     <strong>User ID:</strong> •••••••••••X2KDAP
                   </p>
                 </div>
@@ -1626,7 +1733,7 @@ export function BookingFlow({
 
             {/* Compact Upload Section */}
             <div className="space-y-2">
-              <Label className="text-[#5C4A3A] text-xs">
+              <Label className="text-[#5C4A3A] text-xs sm:text-sm">
                 Upload Proof of Payment
               </Label>
 
@@ -1698,22 +1805,22 @@ export function BookingFlow({
                       .getElementById("payment-proof")
                       ?.click()
                   }
-                  className="border-2 border-dashed border-[#E8DCC8] rounded-lg p-4 flex flex-col items-center justify-center cursor-pointer hover:border-[#DB9D47] transition-colors"
+                  className="border-2 border-dashed border-[#E8DCC8] rounded-lg p-3 sm:p-4 flex flex-col items-center justify-center cursor-pointer hover:border-[#DB9D47] transition-colors"
                 >
                   {isUploadingProof ? (
                     <>
-                      <Upload className="w-8 h-8 text-[#DB9D47] mb-2 animate-pulse" />
-                      <p className="text-xs text-[#5C4A3A] mb-0.5">
+                      <Upload className="w-6 h-6 sm:w-8 sm:h-8 text-[#DB9D47] mb-1.5 sm:mb-2 animate-pulse" />
+                      <p className="text-xs sm:text-sm text-[#5C4A3A] mb-0.5 text-center">
                         Uploading to Cloudflare R2...
                       </p>
                     </>
                   ) : (
                     <>
-                      <QrCode className="w-8 h-8 text-[#87765E] mb-2" />
-                      <p className="text-xs text-[#5C4A3A] mb-0.5">
+                      <QrCode className="w-6 h-6 sm:w-8 sm:h-8 text-[#87765E] mb-1.5 sm:mb-2" />
+                      <p className="text-xs sm:text-sm text-[#5C4A3A] mb-0.5 text-center">
                         Click to upload payment screenshot
                       </p>
-                      <p className="text-xs text-[#87765E]">
+                      <p className="text-[10px] sm:text-xs text-[#87765E] text-center">
                         PNG, JPG or JPEG (max. 5MB)
                       </p>
                     </>
@@ -1725,7 +1832,7 @@ export function BookingFlow({
                     <img
                       src={uploadedProof}
                       alt="Payment proof preview"
-                      className="w-full h-40 object-contain bg-[#FBF7EF]"
+                      className="w-full h-32 sm:h-40 object-contain bg-[#FBF7EF]"
                     />
                   </div>
                   <div className="flex gap-2">
@@ -1737,7 +1844,7 @@ export function BookingFlow({
                           .getElementById("payment-proof")
                           ?.click()
                       }
-                      className="flex-1 border-[#DB9D47] text-[#DB9D47] hover:bg-[#DB9D47] hover:text-white text-xs h-8"
+                      className="flex-1 border-[#DB9D47] text-[#DB9D47] hover:bg-[#DB9D47] hover:text-white text-[10px] sm:text-xs h-7 sm:h-8"
                     >
                       Change
                     </Button>
@@ -1748,7 +1855,7 @@ export function BookingFlow({
                         setUploadedProof(null);
                         setUploadedProofUrl(null);
                       }}
-                      className="border-[#E57373] text-[#E57373] hover:bg-[#E57373] hover:text-white text-xs h-8"
+                      className="border-[#E57373] text-[#E57373] hover:bg-[#E57373] hover:text-white text-[10px] sm:text-xs h-7 sm:h-8"
                     >
                       Remove
                     </Button>
@@ -1758,14 +1865,14 @@ export function BookingFlow({
             </div>
 
             {/* Compact Info Alert */}
-            <div className="border border-[#DB9D47] bg-orange-50 rounded-lg p-2">
-              <div className="flex items-start gap-2">
-                <AlertCircle className="w-4 h-4 text-[#DB9D47] flex-shrink-0 mt-0.5" />
-                <div className="text-xs text-[#5C4A3A]">
-                  <p className="mb-1">
-                    <strong>Important:</strong>
+            <div className="border border-[#DB9D47] bg-orange-50 rounded-lg p-2 sm:p-3">
+              <div className="flex items-start gap-1.5 sm:gap-2">
+                <AlertCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#DB9D47] flex-shrink-0 mt-0.5" />
+                <div className="text-[10px] sm:text-xs text-[#5C4A3A]">
+                  <p className="mb-1 font-semibold">
+                    Important:
                   </p>
-                  <ul className="list-disc list-inside space-y-0.5 text-xs">
+                  <ul className="list-disc list-inside space-y-0.5 text-[10px] sm:text-xs">
                     <li>
                       Complete down payment to confirm booking
                     </li>
@@ -1777,14 +1884,14 @@ export function BookingFlow({
             </div>
           </div>
 
-          <AlertDialogFooter className="gap-2">
+          <AlertDialogFooter className="gap-2 flex-col sm:flex-row">
             <AlertDialogCancel
               onClick={() => {
                 setShowQRPayment(false);
                 setUploadedProof(null);
                 setUploadedProofUrl(null);
               }}
-              className="border-[#E8DCC8] text-xs h-9"
+              className="border-[#E8DCC8] text-xs sm:text-sm h-8 sm:h-9 w-full sm:w-auto"
             >
               Cancel
             </AlertDialogCancel>
@@ -1799,7 +1906,7 @@ export function BookingFlow({
                 setShowFinalConfirmation(true);
               }}
               disabled={!uploadedProof}
-              className="bg-[#DB9D47] hover:bg-[#C88A35] text-white text-xs h-9"
+              className="bg-[#DB9D47] hover:bg-[#C88A35] text-white text-xs sm:text-sm h-8 sm:h-9 w-full sm:w-auto"
             >
               <CheckCircle2 className="w-3 h-3 mr-1.5" />
               Submit Proof
@@ -1838,11 +1945,13 @@ export function BookingFlow({
                 <Scissors className="w-5 h-5 text-[#DB9D47] flex-shrink-0 mt-0.5" />
                 <div className="flex-1">
                   <p className="text-xs text-[#87765E]">
-                    Service
+                    Service{selectedServices.length > 1 ? 's' : ''}
                   </p>
-                  <p className="text-[#5C4A3A]">
-                    {selectedService?.name}
-                  </p>
+                  {selectedServices.map((service, index) => (
+                    <p key={service.id} className="text-[#5C4A3A]">
+                      {index + 1}. {service.name} - ₱{service.price}
+                    </p>
+                  ))}
                 </div>
               </div>
 

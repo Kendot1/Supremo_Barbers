@@ -94,6 +94,7 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [authToken, setAuthToken] = useState<string | null>(null);
   const [preSelectedServiceId, setPreSelectedServiceId] = useState<string | null>(null);
+  const [preSelectedServiceIds, setPreSelectedServiceIds] = useState<string[]>([]);
 
   // Load user from localStorage on mount
   useEffect(() => {
@@ -724,6 +725,8 @@ function App() {
             preSelectedServiceId={preSelectedServiceId}
             onClearPreSelectedService={() => setPreSelectedServiceId(null)}
             onSetPreSelectedService={(serviceId) => setPreSelectedServiceId(serviceId)}
+            preSelectedServiceIds={preSelectedServiceIds}
+            onSetPreSelectedServiceIds={(serviceIds) => setPreSelectedServiceIds(serviceIds)}
           />
         </Suspense>
       );

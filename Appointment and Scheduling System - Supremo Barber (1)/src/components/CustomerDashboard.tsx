@@ -1,33 +1,51 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { 
-  Home, 
   Calendar, 
   Clock, 
-  User, 
-  Menu, 
-  CalendarPlus, 
-  ChevronDown, 
   History, 
+  Home,
+  UserCircle,
   Scissors,
   LogOut,
-  UserCircle
+  CalendarPlus,
+  Menu,
+  ChevronDown
 } from 'lucide-react';
-import type { User as UserType, Appointment, Notification } from '../App';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from './ui/sheet';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from './ui/collapsible';
+import { 
+  Sheet, 
+  SheetContent, 
+  SheetDescription, 
+  SheetHeader, 
+  SheetTitle, 
+  SheetTrigger 
+} from './ui/sheet';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from './ui/dropdown-menu';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from './ui/collapsible';
 import { CustomerDashboardOverview } from './CustomerDashboardOverview';
 import { BookingFlow } from './BookingFlow';
-import { CustomerProfile } from './CustomerProfile';
 import { RealTimeSlotAvailability } from './RealTimeSlotAvailability';
 import { CustomerBookingManagement } from './CustomerBookingManagement';
 import { ServicesShowcase } from './ServicesShowcase';
+import { CustomerProfile } from './CustomerProfile';
+import { FavoritesCart } from './FavoritesCart';
 import { NotificationCenter } from './NotificationCenter';
 import { NotificationToast } from './NotificationToast';
 import { Footer } from './Footer';
-import { FavoritesCart } from './FavoritesCart';
+import type { User as UserType, Appointment, Notification } from '../App';
+import API from '../services/api.service';
+import { toast } from 'sonner@2.0.3';
+import { favoriteEvents } from '../utils/favoriteEvents';
 
 interface CustomerDashboardProps {
   user: UserType;
@@ -45,6 +63,8 @@ interface CustomerDashboardProps {
   preSelectedServiceId?: string | null;
   onClearPreSelectedService?: () => void;
   onSetPreSelectedService?: (serviceId: string) => void;
+  preSelectedServiceIds?: string[];
+  onSetPreSelectedServiceIds?: (serviceIds: string[]) => void;
 }
 
 export function CustomerDashboard({ 
@@ -62,7 +82,9 @@ export function CustomerDashboard({
   onAddNotification,
   preSelectedServiceId,
   onClearPreSelectedService,
-  onSetPreSelectedService
+  onSetPreSelectedService,
+  preSelectedServiceIds,
+  onSetPreSelectedServiceIds
 }: CustomerDashboardProps) {
   const [activeTab, setActiveTab] = useState('home');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -154,7 +176,7 @@ export function CustomerDashboard({
             <div className="hidden lg:flex items-center gap-6">
               <button
                 onClick={() => setActiveTab('home')}
-                className={`text-sm transition-all pb-1 border-b-2 ${
+                className={`text-sm transition-all pb-1 border-b-2 cursor-pointer ${
                   activeTab === 'home' 
                     ? 'border-[#DB9D47] text-[#DB9D47]' 
                     : 'border-transparent text-[#87765E] hover:text-[#DB9D47] hover:border-[#DB9D47]'
@@ -167,7 +189,7 @@ export function CustomerDashboard({
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
-                    className={`flex items-center gap-1 text-sm transition-all pb-1 border-b-2 ${
+                    className={`flex items-center gap-1 text-sm transition-all pb-1 border-b-2 cursor-pointer ${
                       activeTab === 'book' || activeTab === 'slots' || activeTab === 'manage'
                         ? 'border-[#DB9D47] text-[#DB9D47]' 
                         : 'border-transparent text-[#87765E] hover:text-[#DB9D47] hover:border-[#DB9D47]'
@@ -204,7 +226,7 @@ export function CustomerDashboard({
 
               <button
                 onClick={() => setActiveTab('services')}
-                className={`text-sm transition-all pb-1 border-b-2 ${
+                className={`text-sm transition-all pb-1 border-b-2 cursor-pointer ${
                   activeTab === 'services' 
                     ? 'border-[#DB9D47] text-[#DB9D47]' 
                     : 'border-transparent text-[#87765E] hover:text-[#DB9D47] hover:border-[#DB9D47]'
@@ -214,7 +236,7 @@ export function CustomerDashboard({
               </button>
               <button
                 onClick={() => setActiveTab('profile')}
-                className={`text-sm transition-all pb-1 border-b-2 ${
+                className={`text-sm transition-all pb-1 border-b-2 cursor-pointer ${
                   activeTab === 'profile'
                     ? 'border-[#DB9D47] text-[#DB9D47]'
                     : 'border-transparent text-[#87765E] hover:text-[#DB9D47] hover:border-[#DB9D47]'
@@ -222,24 +244,30 @@ export function CustomerDashboard({
               >
                 Profile
               </button>
-              <NotificationCenter
-                userId={user.id}
-                userRole="customer"
-              />
               <FavoritesCart
                 userId={user.id}
                 onBookService={(serviceId) => {
                   if (onSetPreSelectedService) {
                     onSetPreSelectedService(serviceId);
+                    setActiveTab('book');
                   }
-                  setActiveTab('book');
                 }}
+                onBookMultipleServices={(serviceIds) => {
+                  if (onSetPreSelectedServiceIds) {
+                    onSetPreSelectedServiceIds(serviceIds);
+                    setActiveTab('book');
+                  }
+                }}
+              />
+              <NotificationCenter
+                userId={user.id}
+                userRole="customer"
               />
               <Button 
                 variant="outline" 
                 size="sm"
                 onClick={onLogout}
-                className="border-[#E8DCC8] text-[#5C4A3A] hover:bg-[#FBF7EF]"
+                className="border-[#E8DCC8] text-[#5C4A3A] hover:bg-[#FBF7EF] cursor-pointer"
               >
                 Logout
               </Button>
@@ -247,18 +275,24 @@ export function CustomerDashboard({
 
             {/* Mobile Navigation - Hamburger Menu */}
             <div className="flex lg:hidden items-center gap-2">
-              <NotificationCenter
-                userId={user.id}
-                userRole="customer"
-              />
               <FavoritesCart
                 userId={user.id}
                 onBookService={(serviceId) => {
                   if (onSetPreSelectedService) {
                     onSetPreSelectedService(serviceId);
+                    setActiveTab('book');
                   }
-                  setActiveTab('book');
                 }}
+                onBookMultipleServices={(serviceIds) => {
+                  if (onSetPreSelectedServiceIds) {
+                    onSetPreSelectedServiceIds(serviceIds);
+                    setActiveTab('book');
+                  }
+                }}
+              />
+              <NotificationCenter
+                userId={user.id}
+                userRole="customer"
               />
               
               {/* Hamburger Menu */}
@@ -464,12 +498,36 @@ export function CustomerDashboard({
               user={user}
               appointments={appointments}
               onAddAppointment={onAddAppointment}
-              onBookingComplete={() => {
+              onBookingComplete={async (bookedServiceIds) => {
                 setActiveTab('manage');
                 setPreSelectedSlot(null);
+                
+                // Remove booked services from favorites
+                if (bookedServiceIds && bookedServiceIds.length > 0) {
+                  try {
+                    // Remove each booked service from favorites
+                    await Promise.all(
+                      bookedServiceIds.map(async (serviceId) => {
+                        await API.favorites.remove(user.id, serviceId);
+                        // Emit event to update UI in real-time
+                        favoriteEvents.removeFavorite(user.id, serviceId);
+                      })
+                    );
+                    toast.success(`${bookedServiceIds.length} service(s) removed from favorites`);
+                  } catch (error) {
+                    console.error('Error removing services from favorites:', error);
+                    // Don't show error to user as booking already succeeded
+                  }
+                }
               }}
               preSelectedServiceId={preSelectedServiceId}
               onClearPreSelectedService={onClearPreSelectedService}
+              preSelectedServiceIds={preSelectedServiceIds}
+              onClearPreSelectedServiceIds={() => {
+                if (onSetPreSelectedServiceIds) {
+                  onSetPreSelectedServiceIds([]);
+                }
+              }}
               preSelectedSlot={preSelectedSlot}
               onClearPreSelectedSlot={() => setPreSelectedSlot(null)}
             />

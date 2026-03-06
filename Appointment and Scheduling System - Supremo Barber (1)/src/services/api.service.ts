@@ -313,6 +313,13 @@ const API = {
     },
     
     changePassword: async (id: string, data: { currentPassword: string; newPassword: string }) => {
+      console.log('🔐 API Service: changePassword called with:', {
+        userId: id,
+        userIdType: typeof id,
+        hasCurrentPassword: !!data.currentPassword,
+        hasNewPassword: !!data.newPassword
+      });
+      
       if (USE_LOCAL_BACKEND) {
         // For local backend, just update the password (simplified)
         return LocalBackend.users.update(id, { password: data.newPassword });
@@ -904,8 +911,15 @@ const API = {
   favorites: {
     getAll: async (userId: string) => {
       try {
-        const data = await apiCall<any[]>(`/favorites?user_id=${userId}`, undefined, false);
-        return toCamelCase(data || []);
+        // Use cache for favorites list (frequently accessed)
+        return cachedAPICall(
+          `favorites:${userId}`,
+          async () => {
+            const data = await apiCall<any[]>(`/favorites?user_id=${userId}`, undefined, false);
+            return toCamelCase(data || []);
+          },
+          2 * 60 * 1000 // Cache for 2 minutes
+        );
       } catch (error) {
         console.error('❌ API: Failed to fetch favorites', error);
         return [];
@@ -921,6 +935,8 @@ const API = {
         },
         false
       );
+      // Invalidate favorites cache for instant re-fetch
+      apiCache.invalidate(`favorites:${userId}`);
       return toCamelCase(result);
     },
 
@@ -932,6 +948,22 @@ const API = {
         },
         false
       );
+    },
+
+    removeMultiple: async (userId: string, serviceIds: string[]) => {
+      // Remove favorites one by one
+      const results = await Promise.all(
+        serviceIds.map(serviceId => 
+          apiCall<{ message: string }>(
+            `/favorites/${userId}/${serviceId}`,
+            {
+              method: 'DELETE',
+            },
+            false
+          )
+        )
+      );
+      return results;
     },
 
     check: async (userId: string, serviceId: string) => {

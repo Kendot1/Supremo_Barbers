@@ -3,7 +3,7 @@
  * Universal notification system that works for Customer, Barber, and Admin roles
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Bell, Check, Trash2, X, Eye, EyeOff, RefreshCw } from 'lucide-react';
 import { Button } from './ui/button';
 import {
@@ -51,7 +51,7 @@ export function createNotification(
     normal: 'system_alert',
     high: 'system_alert',
   };
-
+  
   return {
     id: `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     userId,
@@ -78,51 +78,61 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
-
-  // Fetch notifications
-  const fetchNotifications = async () => {
-    try {
-      setIsLoading(true);
-
-
-      const data = await API.notifications.getByUserId(userId, userRole);
-      const count = await API.notifications.getUnreadCount(userId, userRole);
-
-
-      setNotifications(data);
-      setUnreadCount(count);
-    } catch (error: any) {
-
-      // Don't show error toast on initial load - tables might not exist yet
-      // Only show error if we're refreshing and had notifications before
-      if (notifications.length > 0) {
-        toast.error('Failed to load notifications');
-      }
-
-      // Set empty state
-      setNotifications([]);
-      setUnreadCount(0);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  
+  // Use refs to track fetch function and prevent infinite loops
+  const fetchNotificationsRef = useRef<() => Promise<void>>();
+  const lastFetchParams = useRef<string>('');
 
   // Auto-fetch on mount and when user changes
   useEffect(() => {
-    if (userId) {
-      fetchNotifications();
-
-      // Poll for new notifications every 30 seconds
-      const interval = setInterval(fetchNotifications, 30000);
-      return () => clearInterval(interval);
+    if (!userId) return;
+    
+    // Create a unique key for current params to prevent duplicate fetches
+    const currentParams = `${userId}-${userRole}`;
+    if (lastFetchParams.current === currentParams) {
+      return; // Already fetched for these params
     }
+    
+    lastFetchParams.current = currentParams;
+    
+    const fetchNotifications = async () => {
+      try {
+        setIsLoading(true);
+        
+        const data = await API.notifications.getByUserId(userId, userRole);
+        const count = await API.notifications.getUnreadCount(userId, userRole);
+        
+        // Ensure data is always an array
+        setNotifications(Array.isArray(data) ? data : []);
+        setUnreadCount(typeof count === 'number' ? count : 0);
+      } catch (error: any) {
+        console.error('❌ Error fetching notifications:', error);
+        // Don't show error toast on initial load - tables might not exist yet
+        
+        // Set empty state
+        setNotifications([]);
+        setUnreadCount(0);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    // Store in ref for manual refresh button
+    fetchNotificationsRef.current = fetchNotifications;
+    
+    // Initial fetch only
+    fetchNotifications();
+    
+    // TEMPORARILY DISABLED polling to debug infinite loop
+    // const interval = setInterval(fetchNotifications, 30000);
+    // return () => clearInterval(interval);
   }, [userId, userRole]);
 
   // Mark notification as read
   const handleMarkAsRead = async (notificationId: string) => {
     try {
       await API.notifications.markAsRead(notificationId);
-
+      
       // Update local state
       setNotifications(prev =>
         prev.map(n =>
@@ -130,8 +140,6 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
         )
       );
       setUnreadCount(prev => Math.max(0, prev - 1));
-
-
     } catch (error: any) {
       console.error('❌ Error marking notification as read:', error);
       toast.error('Failed to mark notification as read');
@@ -142,16 +150,15 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
   const handleMarkAllAsRead = async () => {
     try {
       await API.notifications.markAllAsRead(userId, userRole);
-
+      
       // Update local state
       const now = new Date().toISOString();
       setNotifications(prev =>
         prev.map(n => ({ ...n, isRead: true, readAt: now }))
       );
       setUnreadCount(0);
-
+      
       toast.success('All notifications marked as read');
-
     } catch (error: any) {
       console.error('❌ Error marking all as read:', error);
       toast.error('Failed to mark all as read');
@@ -162,12 +169,12 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
   const handleDelete = async (notificationId: string) => {
     try {
       await API.notifications.delete(notificationId);
-
+      
       // Update local state
       setNotifications(prev => prev.filter(n => n.id !== notificationId));
-
+      
       toast.success('Notification deleted');
-
+      console.log('✅ Notification deleted');
     } catch (error: any) {
       console.error('❌ Error deleting notification:', error);
       toast.error('Failed to delete notification');
@@ -189,10 +196,11 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
   };
 
   // Filter notifications
-  const filteredNotifications =
-    filter === 'unread'
+  const filteredNotifications = Array.isArray(notifications)
+    ? filter === 'unread'
       ? notifications.filter(n => !n.isRead)
-      : notifications;
+      : notifications
+    : [];
 
   // Get notification icon color based on type
   const getNotificationColor = (type: string): string => {
@@ -233,7 +241,7 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
         <Button
           variant="ghost"
           size="sm"
-          className="relative hover:bg-[#FBF7EF]"
+          className="relative hover:bg-[#FBF7EF] cursor-pointer"
         >
           <Bell className="w-5 h-5 text-[#5C4A3A]" />
           {unreadCount > 0 && (
@@ -243,7 +251,7 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
           )}
         </Button>
       </DropdownMenuTrigger>
-
+      
       <DropdownMenuContent
         align="end"
         className="w-[380px] max-h-[500px] overflow-hidden flex flex-col"
@@ -257,7 +265,7 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
             <Button
               variant="ghost"
               size="sm"
-              onClick={fetchNotifications}
+              onClick={fetchNotificationsRef.current}
               disabled={isLoading}
               className="h-8 w-8 p-0"
             >
@@ -318,8 +326,9 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
               {filteredNotifications.map((notification) => (
                 <div
                   key={notification.id}
-                  className={`p-4 hover:bg-[#FBF7EF] transition-colors cursor-pointer group relative ${!notification.isRead ? 'bg-blue-50/30' : ''
-                    }`}
+                  className={`p-4 hover:bg-[#FBF7EF] transition-colors cursor-pointer group relative ${
+                    !notification.isRead ? 'bg-blue-50/30' : ''
+                  }`}
                   onClick={() => handleNotificationClick(notification)}
                 >
                   {/* Unread indicator */}

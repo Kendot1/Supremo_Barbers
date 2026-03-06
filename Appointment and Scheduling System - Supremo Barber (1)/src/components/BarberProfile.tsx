@@ -117,16 +117,67 @@ export function BarberProfile({ user, appointments, onUserUpdate }: BarberProfil
     setShowPasswordConfirm(false);
     setPasswordLoading(true);
     try {
-      // Simulate API call to change password
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Debug: Log the user ID being sent
+      console.log('🔐 Attempting password change for user:', {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        userObject: user
+      });
+
+      // WORKAROUND: First verify the user exists in the database
+      console.log('🔍 Verifying user exists in database...');
+      try {
+        const userInDb = await API.users.getById(user.id);
+        console.log('✅ User found in database:', userInDb);
+      } catch (verifyError: any) {
+        console.error('❌ User not found in database:', verifyError);
+        toast.error('Account verification failed', {
+          description: 'Your user account was not found in the database. Please log out and log back in, or contact support.'
+        });
+        setPasswordLoading(false);
+        return;
+      }
+      
+      // Call API to change password
+      const result = await API.users.changePassword(user.id, {
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword,
+      });
+
+      console.log('✅ Password change result:', result);
+
+      // Log password change to audit logs
+      await logPasswordChange(
+        user.id,
+        user.role as 'barber',
+        user.name,
+        user.email,
+        false
+      );
+
       toast.success('Password changed successfully!', {
         description: 'Your new password is now active.'
       });
       setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
-      logPasswordChange(user.name);
-    } catch (error) {
+    } catch (error: any) {
+      console.error('❌ Error changing password:', error);
+      
+      // Better error message handling
+      let errorMsg = 'Please check your current password and try again.';
+      if (error.message) {
+        if (error.message.includes('Current password is incorrect')) {
+          errorMsg = 'Current password is incorrect. Please try again.';
+        } else if (error.message.includes('User not found')) {
+          errorMsg = 'Your account was not found in the database. Please try logging out and back in.';
+        } else {
+          errorMsg = error.message;
+        }
+      }
+      
       toast.error('Failed to change password', {
-        description: 'Please check your current password and try again.'
+        description: errorMsg
       });
     } finally {
       setPasswordLoading(false);

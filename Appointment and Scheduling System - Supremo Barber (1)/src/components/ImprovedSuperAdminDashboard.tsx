@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import {
   Users,
   Calendar,
-  DollarSign,
   LayoutDashboard,
   Settings,
   LogOut,
@@ -27,6 +26,7 @@ import {
   SheetTrigger,
 } from "./ui/sheet";
 import { Button } from "./ui/button";
+import { FaPesoSign } from "react-icons/fa6";
 import {
   NotificationCenter,
   type Notification,
@@ -136,7 +136,7 @@ export function ImprovedSuperAdminDashboard({
     {
       label: "Monthly Revenue",
       value: `₱${monthlyRevenue.toLocaleString()}`,
-      icon: DollarSign,
+      icon: FaPesoSign,
       color: "bg-[#D98555]",
     },
   ];

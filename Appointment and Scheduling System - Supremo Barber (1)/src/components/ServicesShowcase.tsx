@@ -198,7 +198,29 @@ export function ServicesShowcase({
       }
     };
 
+    // Fetch in background without blocking render
     fetchFavorites();
+  }, [userId]);
+
+  // Listen for favorite events from other components (e.g., booking completion)
+  useEffect(() => {
+    if (!userId) return;
+
+    const unsubscribe = favoriteEvents.subscribe((event) => {
+      // Only process events for this user
+      if (event.userId !== userId) return;
+
+      if (event.type === 'added') {
+        setFavoriteServices(prev => {
+          if (prev.includes(event.serviceId)) return prev;
+          return [...prev, event.serviceId];
+        });
+      } else if (event.type === 'removed') {
+        setFavoriteServices(prev => prev.filter(id => id !== event.serviceId));
+      }
+    });
+
+    return () => unsubscribe();
   }, [userId]);
 
   const handleBookService = (e: React.MouseEvent, service: Service) => {
@@ -232,38 +254,38 @@ export function ServicesShowcase({
     // OPTIMISTIC UPDATE: Update UI immediately for instant feedback
     if (isFavorite) {
       setFavoriteServices(prev => prev.filter(id => id !== serviceId));
+      // Emit event IMMEDIATELY for other components to update in real-time
+      favoriteEvents.removeFavorite(userId, serviceId);
+      toast.success("Removed from favorites");
     } else {
       setFavoriteServices(prev => [...prev, serviceId]);
+      // Emit event IMMEDIATELY for other components to update in real-time
+      favoriteEvents.addFavorite(userId, serviceId);
+      toast.success("Added to favorites");
     }
 
-    try {
-      setTogglingFavoriteId(serviceId);
-
-      // Then update database in background
-      if (isFavorite) {
-        await API.favorites.remove(userId, serviceId);
-        // Emit event for other components to update in real-time
-        favoriteEvents.removeFavorite(userId, serviceId);
-        toast.success("Removed from favorites");
-      } else {
-        await API.favorites.add(userId, serviceId);
-        // Emit event for other components to update in real-time
-        favoriteEvents.addFavorite(userId, serviceId);
-        toast.success("Added to favorites");
+    // Update database in background (no await needed for user perception)
+    (async () => {
+      try {
+        if (isFavorite) {
+          await API.favorites.remove(userId, serviceId);
+        } else {
+          await API.favorites.add(userId, serviceId);
+        }
+      } catch (error) {
+        console.error("Error toggling favorite:", error);
+        toast.error("Failed to update favorites");
+        
+        // REVERT optimistic update on error
+        if (isFavorite) {
+          setFavoriteServices(prev => [...prev, serviceId]);
+          favoriteEvents.addFavorite(userId, serviceId);
+        } else {
+          setFavoriteServices(prev => prev.filter(id => id !== serviceId));
+          favoriteEvents.removeFavorite(userId, serviceId);
+        }
       }
-    } catch (error) {
-      console.error("Error toggling favorite:", error);
-      toast.error("Failed to update favorites");
-      
-      // REVERT optimistic update on error
-      if (isFavorite) {
-        setFavoriteServices(prev => [...prev, serviceId]);
-      } else {
-        setFavoriteServices(prev => prev.filter(id => id !== serviceId));
-      }
-    } finally {
-      setTogglingFavoriteId(null);
-    }
+    })();
   };
 
 
