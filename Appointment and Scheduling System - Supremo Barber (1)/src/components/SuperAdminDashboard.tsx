@@ -20,7 +20,6 @@ import {
   Database,
   Activity,
   LogOut,
-  DollarSign,
   Calendar,
   AlertTriangle,
   Clock,
@@ -29,6 +28,7 @@ import {
   Receipt,
   CheckCircle,
 } from "lucide-react";
+import { FaPesoSign } from "react-icons/fa6";
 import { AnalyticsOverview } from "./AnalyticsOverview";
 import { SystemSettings } from "./SystemSettings";
 import { AuditLogs } from "./AuditLogs";
@@ -106,7 +106,7 @@ export function SuperAdminDashboard({
     {
       label: "Monthly Revenue",
       value: `₱${monthlyRevenue.toLocaleString()}`,
-      icon: DollarSign,
+      icon: FaPesoSign,
       color: "text-[#D98555]",
     },
   ];
@@ -230,11 +230,16 @@ export function SuperAdminDashboard({
           </TabsContent>
 
           <TabsContent value="services">
-            <ServicesModule user={user} />
+            <ServicesModule 
+              user={user}
+              onBookService={(serviceId) => {
+                setActiveTab("bookings");
+              }}
+            />
           </TabsContent>
 
           <TabsContent value="bookings">
-            <AppointmentManagement />
+            <AppointmentManagement user={user} />
           </TabsContent>
 
           <TabsContent value="payments">
@@ -242,6 +247,7 @@ export function SuperAdminDashboard({
               appointments={appointments}
               onUpdateAppointment={onUpdateAppointment}
               userRole="admin"
+              currentUser={user ? { id: user.id, name: user.name, email: user.email } : undefined}
             />
           </TabsContent>
 

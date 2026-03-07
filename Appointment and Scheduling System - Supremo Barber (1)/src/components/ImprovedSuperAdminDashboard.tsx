@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import {
   Users,
   Calendar,
-  DollarSign,
   LayoutDashboard,
   Settings,
   LogOut,
@@ -19,6 +18,7 @@ import {
   Activity,
   RefreshCw,
 } from "lucide-react";
+import { FaPesoSign } from "react-icons/fa6";
 import {
   Sheet,
   SheetContent,
@@ -103,13 +103,13 @@ export function ImprovedSuperAdminDashboard({
   // Auto-refresh appointments and users every 30 seconds
   useEffect(() => {
     const refreshInterval = setInterval(async () => {
-      console.log("🔄 Auto-refreshing admin dashboard data...");
+    
 
       // Refresh appointments if callback provided
       if (onRefreshAppointments) {
         try {
           await onRefreshAppointments();
-          console.log("✅ Appointments refreshed");
+        
         } catch (error) {
           console.error("❌ Failed to refresh appointments:", error);
         }
@@ -119,7 +119,7 @@ export function ImprovedSuperAdminDashboard({
       try {
         const data = await API.users.getAll();
         setUsers(data);
-        console.log("✅ Users refreshed");
+    
       } catch (error) {
         console.error("❌ Failed to refresh users:", error);
       }
@@ -132,7 +132,7 @@ export function ImprovedSuperAdminDashboard({
 
   // Manual refresh function
   const handleManualRefresh = async () => {
-    console.log("🔄 Manual refresh triggered...");
+ 
 
     // Refresh appointments
     if (onRefreshAppointments) {
@@ -192,7 +192,7 @@ export function ImprovedSuperAdminDashboard({
     {
       label: "Monthly Revenue",
       value: `₱${monthlyRevenue.toLocaleString()}`,
-      icon: DollarSign,
+      icon: FaPesoSign,
       color: "bg-[#D98555]",
     },
   ];
@@ -251,11 +251,9 @@ export function ImprovedSuperAdminDashboard({
                 {sidebarOpen && (
                   <div>
                     <p className="text-[#F5EDD8]">
-                      Super Admin
-                    </p>
-                    <p className="text-xs text-[#C4B49D]">
                       Supremo Barber
                     </p>
+                    
                   </div>
                 )}
               </div>

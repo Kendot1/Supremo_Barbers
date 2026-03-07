@@ -247,6 +247,7 @@ export function PaymentVerification({
                 try {
                   await API.notifications.create({
                     user_id: apt.userId || apt.customer_id || '',
+                    user_role: 'customer', // Required field for database
                     title: 'Appointment Auto-Cancelled',
                     message: `Your appointment for ${apt.service} on ${parseLocalDate(apt.date).toLocaleDateString()} was automatically cancelled due to unverified payment.`,
                     type: 'booking',
@@ -420,6 +421,44 @@ export function PaymentVerification({
         }
       }
 
+      // Send direct notification to customer FIRST
+      console.log('📧 Sending direct approval notification to customer...');
+      const customerId = selectedAppointment.userId || selectedAppointment.customer_id || '';
+      console.log('🔍 DEBUG - Appointment object:', JSON.stringify(selectedAppointment, null, 2));
+      console.log('🔍 DEBUG - selectedAppointment.userId:', selectedAppointment.userId);
+      console.log('🔍 DEBUG - selectedAppointment.customer_id:', selectedAppointment.customer_id);
+      console.log('🔍 DEBUG - Resolved customerId:', customerId);
+      console.log('🔍 DEBUG - currentUser:', currentUser);
+      
+      if (customerId && currentUser) {
+        try {
+          const notificationPayload = {
+            user_id: customerId,
+            user_role: 'customer', // Required field for database
+            title: '✅ Payment Verified!',
+            message: `Great news! Your payment of ₱${(selectedAppointment.paymentAmount || selectedAppointment.price / 2).toFixed(2)} for ${selectedAppointment.service} on ${parseLocalDate(selectedAppointment.date).toLocaleDateString()} has been verified and approved. Your booking is confirmed!`,
+            type: 'booking',
+            appointment_id: selectedAppointment.id,
+            is_read: false,
+          };
+          console.log('📧 Direct notification payload:', JSON.stringify(notificationPayload, null, 2));
+          console.log('🔑 Attempting API.notifications.create...');
+          const createdNotification = await API.notifications.create(notificationPayload);
+          console.log('✅ Direct approval notification sent successfully to customer:', customerId);
+          console.log('✅ Created notification response:', JSON.stringify(createdNotification, null, 2));
+        } catch (error) {
+          console.error('❌ Failed to send direct approval notification:', error);
+          console.error('❌ Error type:', typeof error);
+          console.error('❌ Error message:', error?.message);
+          console.error('❌ Error stack:', error?.stack);
+          console.error('❌ Full error object:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
+        }
+      } else {
+        console.warn('⚠️ Could not send notification - missing customerId or currentUser');
+        console.warn('⚠️ customerId:', customerId);
+        console.warn('⚠️ currentUser:', currentUser);
+      }
+
       // Update local state with "verified" for UI display (mapped from "paid")
       onUpdateAppointment(selectedAppointment.id, {
         paymentStatus: "verified",
@@ -535,6 +574,30 @@ export function PaymentVerification({
             error,
           );
         }
+      }
+
+      // Send direct notification to customer FIRST
+      console.log('📧 Sending direct rejection notification to customer...');
+      const customerId = selectedAppointment.userId || selectedAppointment.customer_id || '';
+      if (customerId && currentUser) {
+        try {
+          const notificationPayload = {
+            user_id: customerId,
+            user_role: 'customer', // Required field for database
+            title: '❌ Payment Rejected',
+            message: `Your payment proof for ${selectedAppointment.service} on ${parseLocalDate(selectedAppointment.date).toLocaleDateString()} was rejected. Reason: ${rejectionReason}. Please upload a new payment proof to confirm your booking.`,
+            type: 'booking',
+            appointment_id: selectedAppointment.id,
+            is_read: false,
+          };
+          console.log('📧 Direct notification payload:', notificationPayload);
+          await API.notifications.create(notificationPayload);
+          console.log('✅ Direct rejection notification sent successfully to customer:', customerId);
+        } catch (error) {
+          console.error('❌ Failed to send direct rejection notification:', error);
+        }
+      } else {
+        console.warn('⚠️ Could not send notification - missing customerId or currentUser');
       }
 
       // Update local state - show as rejected

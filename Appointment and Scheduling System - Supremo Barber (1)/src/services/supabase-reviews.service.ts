@@ -29,7 +29,7 @@ export const SupabaseReviewsService = {
    * Create a new review
    */
   async create(reviewData: Partial<ReviewData>): Promise<ReviewData> {
-    console.log('📝 Creating review directly in Supabase:', reviewData);
+  
 
     // Prepare data for insertion - only include fields that exist in the database
     const insertData: any = {
@@ -44,7 +44,7 @@ export const SupabaseReviewsService = {
     if (reviewData.appointment_id) insertData.appointment_id = reviewData.appointment_id;
     if (reviewData.service_id) insertData.service_id = reviewData.service_id;
 
-    console.log('📤 Inserting data into reviews table:', insertData);
+
 
     const { data, error } = await supabase
       .from('reviews')
@@ -76,7 +76,7 @@ export const SupabaseReviewsService = {
       throw new Error(`Failed to create review: ${error.message}`);
     }
 
-    console.log('✅ Review created successfully:', data);
+   
     return data;
   },
 
@@ -208,7 +208,7 @@ export const SupabaseReviewsService = {
       throw new Error(`Failed to toggle show_on_landing: ${error.message}`);
     }
 
-    console.log('✅ Toggled show_on_landing for review:', id, 'to', newValue);
+  
     return data;
   },
 
@@ -226,7 +226,7 @@ export const SupabaseReviewsService = {
       throw new Error(`Failed to delete review: ${error.message}`);
     }
 
-    console.log('✅ Review deleted successfully:', id);
+   
   },
 
   /**

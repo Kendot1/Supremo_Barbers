@@ -1,10 +1,10 @@
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { 
-  CreditCard, Scissors, Calendar as CalendarIcon, DollarSign 
+  CreditCard, Scissors, Calendar as CalendarIcon
 } from 'lucide-react';
 import type { Appointment } from '../App';
-
+import { FaPesoSign } from 'react-icons/fa6';
 interface PendingPaymentsListProps {
   appointments: Appointment[];
   onViewAll: () => void;
@@ -75,7 +75,7 @@ export function PendingPaymentsList({
                   </div>
                 </div>
                 <div className="flex items-center gap-1 text-xs md:text-sm text-[#87765E] mt-1">
-                  <DollarSign className="w-3 h-3" />
+                  <FaPesoSign className="w-3 h-3" />
                   <span>₱{appointment.price.toLocaleString()}</span>
                   <span className="text-[#87765E] ml-1">
                     (50% down: ₱{(appointment.price * 0.5).toLocaleString()})

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
-import { Calendar, Clock, MapPin, User, DollarSign, X, XCircle, Star, MessageSquare, Edit, Scissors, QrCode, AlertCircle, CheckCircle, CheckCircle2 } from "lucide-react";
+import { Calendar, Clock, User, X, XCircle, Star, MessageSquare, Edit, Scissors, QrCode, AlertCircle, CheckCircle, CheckCircle2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "./ui/dialog";
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
@@ -15,6 +15,7 @@ import API from "../services/api.service";
 import { SupabaseReviewsService } from "../services/supabase-reviews.service";
 import { PaymentProofUpload, PaymentStatusBadge } from "./PaymentProofUpload";
 import { SupabaseSetupGuide } from "./SupabaseSetupGuide";
+import { FaPesoSign } from "react-icons/fa6";
 
 // Utility function to parse date string without timezone issues
 const parseLocalDate = (dateString: string): Date => {
@@ -77,7 +78,7 @@ export function CustomerBookingManagement({
         // Create a set of reviewed appointment IDs
         const reviewedIds = new Set(customerReviews.map((r: any) => r.appointmentId));
         setReviewedAppointments(reviewedIds);
-        console.log('📝 Customer reviews loaded:', customerReviews.length);
+      
       } catch (error) {
         console.error('Error fetching customer reviews:', error);
       }
@@ -86,30 +87,27 @@ export function CustomerBookingManagement({
     fetchReviews();
   }, [user.id]);
 
-  // Debug: Log appointments data
-  console.log('🔍 CustomerBookingManagement - All appointments:', appointments.length);
-  console.log('🔍 User ID:', user.id);
-  console.log('🔍 User Role:', user.role);
+ 
 
   // Filter appointments for current user
   const userAppointments = useMemo(() => {
     const filtered = appointments.filter(apt => {
-      console.log('🔍 Checking appointment:', apt.id, 'customer_id:', apt.customer_id, 'userId:', apt.userId);
+    
       return apt.userId === user.id || apt.customer_id === user.id;
     });
-    console.log('🔍 Filtered user appointments:', filtered.length);
+  
     return filtered;
   }, [appointments, user.id]);
 
   const upcomingBookings = useMemo(() => {
     const upcoming = userAppointments.filter((b) => b.status === "pending" || b.status === "confirmed" || b.status === "verified");
-    console.log('📅 Upcoming bookings:', upcoming.length, upcoming.map(b => ({ id: b.id, status: b.status, service: b.service })));
+   
     return upcoming;
   }, [userAppointments]);
   
   const pastBookings = useMemo(() => {
     const past = userAppointments.filter((b) => b.status === "completed" || b.status === "cancelled" || b.status === "rejected");
-    console.log('📋 Past bookings:', past.length);
+  
     return past;
   }, [userAppointments]);
 
@@ -255,9 +253,7 @@ export function CustomerBookingManagement({
 
     onUpdateAppointments(updatedAppointments);
     
-    // Send email notification (placeholder)
-    console.log('📧 Email sent to admin and customer about rescheduling');
-    
+  
     toast.success('Appointment rescheduled successfully! Confirmation email sent. (Note: This appointment can no longer be rescheduled)');
     setIsRescheduleDialogOpen(false);
     setSelectedBooking(null);
@@ -294,8 +290,7 @@ export function CustomerBookingManagement({
 
     onUpdateAppointments(updatedAppointments);
     
-    // Send email notification (placeholder)
-    console.log('📧 Email sent to admin and customer about cancellation');
+   
     
     toast.success('Appointment cancelled successfully');
     setIsCancelDialogOpen(false);
@@ -324,11 +319,7 @@ export function CustomerBookingManagement({
 
     onUpdateAppointments(updatedAppointments);
     
-    // In real app, this would save to server
-    console.log('💳 Payment proof submitted for', appointmentId, proofUrl);
-    
-    // Send email notification (placeholder)
-    console.log('📧 Email sent to admin for payment verification');
+  
     
     toast.success('Payment proof submitted! Waiting for admin verification.');
   };
@@ -399,9 +390,9 @@ export function CustomerBookingManagement({
 
     // Create appointment in background
     try {
-      console.log('📅 Creating rebook appointment:', newAppointmentData);
+   
       const createdAppointment = await API.appointments.create(newAppointmentData);
-      console.log('✅ Rebook appointment created:', createdAppointment);
+    
       
       // Add the new appointment to state with the server-generated UUID
       const updatedAppointments = [...appointments, createdAppointment];
@@ -426,13 +417,7 @@ export function CustomerBookingManagement({
     setIsSubmittingReview(true);
 
     try {
-      console.log('📝 Submitting review directly to Supabase:', {
-        appointment_id: selectedBooking.id,
-        customer_id: user.id,
-        barber_id: selectedBooking.barber_id,
-        rating: reviewRating,
-        comment: reviewComment,
-      });
+ 
 
       // Submit review directly to Supabase database using only fields that exist
       const reviewData: any = {
@@ -449,7 +434,7 @@ export function CustomerBookingManagement({
       }
 
       const result = await SupabaseReviewsService.create(reviewData);
-      console.log('✅ Review created successfully in Supabase:', result);
+    
 
       // Add appointment ID to reviewed set
       setReviewedAppointments(prev => new Set([...prev, selectedBooking.id]));
@@ -549,10 +534,7 @@ export function CustomerBookingManagement({
                               {booking.time}
                             </span>
                           </div>
-                          <p className="flex items-center gap-1 text-sm text-[#87765E] mt-2">
-                            <MapPin className="w-4 h-4" />
-                            {booking.location}
-                          </p>
+                          
                           {/* Payment Status Badge */}
                           {booking.paymentProof && booking.paymentStatus && (
                             <div className="mt-2">
@@ -904,7 +886,7 @@ export function CustomerBookingManagement({
                     <span>Barber: {selectedBooking.barber}</span>
                   </div>
                   <div className="flex items-center gap-2 text-[#DB9D47]">
-                    <DollarSign className="w-4 h-4" />
+                    <FaPesoSign className="w-4 h-4" />
                     <span>₱{selectedBooking.price}</span>
                   </div>
                 </div>

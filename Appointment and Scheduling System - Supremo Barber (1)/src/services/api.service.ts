@@ -23,7 +23,7 @@ const EDGE_FUNCTIONS_URL = `${SUPABASE_URL}/functions/v1/make-server-70e1fc66/ap
 const API_BASE_URL = EDGE_FUNCTIONS_URL; // Use Supabase Edge Functions
 
 // Use Supabase backend (set to false to use local backend)
-const USE_LOCAL_BACKEND = false; // Changed to false to use Supabase
+const USE_LOCAL_BACKEND = false; // Using Supabase for all operations including notifications
 
 // Log configuration only in development
 if (process.env.NODE_ENV === 'development') {
@@ -1072,9 +1072,15 @@ const API = {
     getByUserId: async (userId: string, role?: string) => {
       if (USE_LOCAL_BACKEND) return LocalBackend.notifications.getByUserId(userId);
       
+      console.log('📡 API: Fetching notifications for userId:', userId, 'role:', role);
       const query = role ? `?role=${role}` : '';
-      const data = await apiCall<any[]>(`/notifications/user/${userId}${query}`, undefined, false);
-      return toCamelCase(data);
+      const fullUrl = `/notifications/user/${userId}${query}`;
+      console.log('📡 API: Full URL:', fullUrl);
+      const data = await apiCall<any[]>(fullUrl, undefined, false);
+      console.log('📡 API: Raw response data:', data);
+      const camelData = toCamelCase(data);
+      console.log('📡 API: Converted to camelCase:', camelData);
+      return camelData;
     },
     
     getUnreadCount: async (userId: string, role?: string) => {
@@ -1101,11 +1107,19 @@ const API = {
     markAsRead: async (id: string) => {
       if (USE_LOCAL_BACKEND) return LocalBackend.notifications.markAsRead(id);
       
-      console.log('✅ API: Marking notification as read:', id);
+      console.log('✅ [API] Marking notification as read:', id);
+      console.log('📡 [API] Calling endpoint: /notifications/' + id + '/read');
+      console.log('🔑 [API] Method: PATCH');
+      
       const data = await apiCall<any>(`/notifications/${id}/read`, {
         method: 'PATCH',
       }, false);
-      return toCamelCase(data);
+      
+      console.log('📨 [API] Backend response:', data);
+      const result = toCamelCase(data);
+      console.log('📦 [API] Converted to camelCase:', result);
+      
+      return result;
     },
     
     markAllAsRead: async (userId: string, role?: string) => {

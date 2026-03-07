@@ -81,11 +81,11 @@ export function CustomerDashboardOverview({
       apt.userId === user.id || apt.customer_id === user.id,
   );
 
-  // Get upcoming appointments - filter by pending or confirmed status
+  // Get upcoming appointments - filter by verified status only
   const upcomingAppointments = userAppointments
     .filter(
       (apt) =>
-        apt.status === "pending" || apt.status === "confirmed" || apt.status === "verified",
+        apt.status === "verified",
     )
     .sort(
       (a, b) =>

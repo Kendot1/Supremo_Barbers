@@ -5,13 +5,14 @@ import { Badge } from './ui/badge';
 import { toast } from 'sonner@2.0.3';
 import { Footer } from './Footer';
 import { 
-  Calendar, LogOut, Menu, X, DollarSign, Clock, CheckCircle2, TrendingUp,
+  Calendar, LogOut, Menu, X, Clock, CheckCircle2, TrendingUp,
   Scissors, User as UserIcon, FileText, Bell, Star, TrendingDown, Users, Award,
   Coffee, Settings, BarChart3, PieChart, Activity, MessageSquare, 
   Target, Zap, ThumbsUp, Gift, BookOpen, Briefcase, AlertCircle, AlertTriangle,
   Phone, Mail, MapPin, Package, RefreshCw, XCircle, Eye,
   Edit, Trash2, Download, Filter, Search, Calendar as CalendarIcon, Camera, Loader2
 } from 'lucide-react';
+import { FaPesoSign } from 'react-icons/fa6';
 import { 
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, 
   Tooltip, Legend, ResponsiveContainer, PieChart as RePieChart, Pie, Cell,
@@ -347,7 +348,7 @@ export function EnhancedBarberDashboard({
     { 
       label: "Today's Earnings", 
       value: `₱${todayEarnings.toLocaleString()}`, 
-      icon: DollarSign, 
+      icon: FaPesoSign, 
       color: 'bg-[#94A670]',
       trend: earningsTrend !== 0 ? `${earningsTrend > 0 ? '+' : ''}${earningsTrend}%` : 'N/A',
       trendUp: earningsTrend >= 0
@@ -752,7 +753,7 @@ export function EnhancedBarberDashboard({
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
     { id: 'appointments', label: 'My Schedule', icon: Calendar },
     { id: 'bookings', label: 'All Bookings', icon: BookOpen },
-    { id: 'earnings', label: 'Earnings', icon: DollarSign },
+    { id: 'earnings', label: 'Earnings', icon: FaPesoSign },
     { id: 'reviews', label: 'Reviews', icon: Star },
     { id: 'profile', label: 'My Profile', icon: UserIcon },
   ];
@@ -813,14 +814,14 @@ export function EnhancedBarberDashboard({
             <div className="p-4 border-b border-[#6E5A48] flex-shrink-0">
               <div className="flex items-center gap-3">
                 <img 
-                  src="figma:asset/977b2768ef70cae70ca08f72c19d58ae8904def2.png" 
+                  src="https://pub-86f4b5249e5c4021bb05d46908eeb094.r2.dev/supremo-barber/supremoWebLogo.png"
                   alt="Supremo Barber Logo" 
                   className="h-10 w-10 flex-shrink-0"
                 />
                 {sidebarOpen && (
                   <div>
-                    <p className="text-[#F5EDD8]">Barber Pro</p>
-                    <p className="text-xs text-[#C4B49D]">Supremo Barber</p>
+                    <p className="text-[#F5EDD8]">Supremo Barber</p>
+                   
                   </div>
                 )}
               </div>
@@ -938,43 +939,7 @@ export function EnhancedBarberDashboard({
                   ))}
                 </div>
 
-                {/* Quick Actions */}
-                <Card className="border-[#E8DCC8]">
-                  <CardHeader>
-                    <CardTitle className="text-[#5C4A3A] flex items-center gap-2">
-                      <Zap className="w-5 h-5 text-[#DB9D47]" />
-                      Quick Actions
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                      <Button 
-                        variant="outline" 
-                        className="flex flex-col h-auto py-4 border-[#E8DCC8] hover:bg-[#FBF7EF]"
-                        onClick={() => setActiveTab('appointments')}
-                      >
-                        <Calendar className="w-6 h-6 text-[#DB9D47] mb-2" />
-                        <span className="text-sm">View Schedule</span>
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        className="flex flex-col h-auto py-4 border-[#E8DCC8] hover:bg-[#FBF7EF]"
-                        onClick={() => setActiveTab('earnings')}
-                      >
-                        <DollarSign className="w-6 h-6 text-[#94A670] mb-2" />
-                        <span className="text-sm">Check Earnings</span>
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        className="flex flex-col h-auto py-4 border-[#E8DCC8] hover:bg-[#FBF7EF]"
-                        onClick={() => setActiveTab('profile')}
-                      >
-                        <Settings className="w-6 h-6 text-[#B89968] mb-2" />
-                        <span className="text-sm">Settings</span>
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+             
 
                 {/* Today's Schedule & Pending Requests */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
@@ -1041,7 +1006,7 @@ export function EnhancedBarberDashboard({
                       <CardDescription className="text-[#87765E]">Appointments awaiting your response</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <div className={`space-y-2 ${pendingAppointments.length > 5 ? 'max-h-[400px] overflow-y-auto pr-2' : ''}`}>
+                      <div className={`space-y-3 ${pendingAppointments.length > 5 ? 'max-h-[400px] overflow-y-auto pr-2' : ''}`}>
                         {pendingAppointments.length === 0 ? (
                           <div className="text-center py-8 text-[#87765E]">
                             <CheckCircle2 className="w-12 h-12 mx-auto mb-2 opacity-50" />
@@ -1049,7 +1014,7 @@ export function EnhancedBarberDashboard({
                           </div>
                         ) : (
                           pendingAppointments.map((apt) => (
-                            <div key={apt.id} className="p-2.5 bg-orange-50 rounded-lg border border-orange-200">
+                            <div key={apt.id} className="p-3 bg-orange-50 rounded-lg border border-orange-200">
                               <div className="flex items-start justify-between mb-2">
                                 <div className="flex-1 min-w-0">
                                   <p className="text-sm font-medium text-[#5C4A3A] truncate">{apt.customer || apt.customerName || 'Unknown'}</p>
@@ -1060,7 +1025,7 @@ export function EnhancedBarberDashboard({
                                   <p className="text-xs text-[#87765E]">{apt.time}</p>
                                 </div>
                               </div>
-                              <div className="flex gap-2">
+                              <div className="flex gap-3">
                                 <Button 
                                   size="sm" 
                                   className="flex-1 bg-[#94A670] hover:bg-[#7E8F5E] h-8 text-xs"
@@ -1974,7 +1939,7 @@ export function EnhancedBarberDashboard({
               ${activeTab === 'earnings' ? "bg-[#DB9D47] text-white" : "text-[#87765E] hover:bg-[#FBF7EF]"}
             `}
           >
-            <DollarSign className="w-4 h-4 flex-shrink-0" />
+            <FaPesoSign className="w-4 h-4 flex-shrink-0" />
             <span className="text-[8px] whitespace-nowrap truncate max-w-full text-center">
               Earnings
             </span>
@@ -2064,7 +2029,7 @@ export function EnhancedBarberDashboard({
               <div className="p-3 bg-[#FBF7EF] rounded-lg border border-[#E8DCC8]">
                 <Label className="text-[#87765E] text-xs">Price</Label>
                 <div className="flex items-center gap-2 mt-1">
-                  <DollarSign className="w-4 h-4 text-[#DB9D47]" />
+                  <FaPesoSign className="w-4 h-4 text-[#DB9D47]" />
                   <p className="text-[#5C4A3A] font-medium text-lg">₱{selectedAppointment.price.toLocaleString()}</p>
                 </div>
               </div>

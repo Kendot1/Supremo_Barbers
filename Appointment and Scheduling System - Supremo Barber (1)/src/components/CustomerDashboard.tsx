@@ -115,12 +115,10 @@ export function CustomerDashboard({
     [appointments, user.id]
   );
 
-  // Count upcoming bookings (all non-completed/cancelled appointments)
+  // Count upcoming bookings (only verified appointments)
   const upcomingCount = useMemo(() => 
     userAppointments.filter(apt => 
-      apt.status === 'pending' || 
-      apt.status === 'confirmed' || 
-      apt.status === 'upcoming'
+      apt.status === 'verified'
     ).length,
     [userAppointments]
   );
@@ -169,7 +167,7 @@ export function CustomerDashboard({
               />
               <div>
                 <span className="text-base sm:text-xl text-[#5C4A3A]">Supremo Barber</span>
-                <p className="text-xs text-[#87765E] hidden sm:block">Welcome, {user.name}</p>
+                
               </div>
             </div>
 
@@ -338,7 +336,7 @@ export function CustomerDashboard({
                   <SheetHeader>
                     <SheetTitle className="text-[#5C4A3A] flex items-center gap-2">
                       <img 
-                        src="https://pub-86f4b5249e5c4021bb05d46908eeb094.r2.dev/supremo-barber/supremoWebLogo.png" 
+                        src="https://pub-86f4b5249e5c4021bb05d46908eeb094.r2.dev/supremo-barber/supremoWebLogo.png"
                         alt="Supremo Barber Logo" 
                         className="h-8 w-8"
                       />

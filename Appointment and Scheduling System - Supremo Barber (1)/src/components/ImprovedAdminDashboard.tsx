@@ -1,30 +1,23 @@
-import { useState } from 'react';
-import { Card, CardContent } from './ui/card';
-import { Button } from './ui/button';
-import {
-  Calendar, Users, Settings, LogOut, Menu, X, TrendingUp, DollarSign,
-  Scissors, Clock, CheckCircle2, UserCog
-} from 'lucide-react';
-import { AppointmentManagement } from './AppointmentManagement';
-import { BarberScheduleManager } from './BarberScheduleManager';
-import { ServiceManagement } from './ServiceManagement';
+import { AdminToolsPage } from './AdminToolsPage';
 import { ReportsAnalytics } from './ReportsAnalytics';
-import { LoyaltyConfiguration } from './LoyaltyConfiguration';
-import type { User, Appointment } from '../App';
+import { LocalBackendBanner } from './LocalBackendBanner';
 
-interface AdminDashboardProps {
-  user: User;
-  onLogout: () => void;
-  appointments?: Appointment[];
-}
+// Mock data for demonstration
+const mockServices = [
+  { id: '1', name: 'Haircut', price: 150 },
+  { id: '2', name: 'Beard Trim', price: 100 },
+  { id: '3', name: 'Shave', price: 80 },
+  { id: '4', name: 'Hair Styling', price: 200 },
+  { id: '5', name: 'Hair Coloring', price: 300 },
+];
 
-export function ImprovedAdminDashboard({ user, onLogout, appointments = [] }: AdminDashboardProps) {
+export function ImprovedAdminDashboard() {
   const [activeTab, setActiveTab] = useState('appointments');
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   // Calculate stats from real data
   const today = new Date().toISOString().split('T')[0];
-
+  
   const todayBookings = appointments.filter(apt => apt.date === today);
   const pendingApprovals = appointments.filter(apt => apt.status === 'pending').length;
   const completedToday = todayBookings.filter(apt => apt.status === 'completed');
@@ -56,9 +49,9 @@ export function ImprovedAdminDashboard({ user, onLogout, appointments = [] }: Ad
           {/* Logo */}
           <div className="p-4 border-b border-[#796653]">
             <div className="flex items-center gap-3">
-              <img
-                src="https://pub-86f4b5249e5c4021bb05d46908eeb094.r2.dev/supremo-barber/supremoWebLogo.png"
-                alt="Supremo Barber Logo"
+              <img 
+                src="figma:asset/977b2768ef70cae70ca08f72c19d58ae8904def2.png" 
+                alt="Supremo Barber Logo" 
                 className="h-10 w-10 flex-shrink-0"
               />
               {sidebarOpen && (
@@ -78,8 +71,8 @@ export function ImprovedAdminDashboard({ user, onLogout, appointments = [] }: Ad
                 onClick={() => setActiveTab(item.id)}
                 className={`
                   w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all
-                  ${activeTab === item.id
-                    ? 'bg-[#DB9D47] text-white'
+                  ${activeTab === item.id 
+                    ? 'bg-[#DB9D47] text-white' 
                     : 'text-[#C4B494] hover:bg-[#6E5A48] hover:text-[#F5EDD8]'
                   }
                 `}
@@ -133,6 +126,8 @@ export function ImprovedAdminDashboard({ user, onLogout, appointments = [] }: Ad
 
         {/* Content Area */}
         <div className="p-6">
+          <LocalBackendBanner />
+          
           {activeTab === 'appointments' && (
             <div className="space-y-6">
               {/* Stats Grid */}
@@ -154,7 +149,7 @@ export function ImprovedAdminDashboard({ user, onLogout, appointments = [] }: Ad
                 ))}
               </div>
 
-              <AppointmentManagement />
+              <AppointmentManagement user={user} />
             </div>
           )}
 

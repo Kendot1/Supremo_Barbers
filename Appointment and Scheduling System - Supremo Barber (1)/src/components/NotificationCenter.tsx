@@ -141,37 +141,94 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
     // Set up Supabase real-time subscription for notifications
     console.log('🔌 NotificationCenter: Setting up real-time subscription...');
     
-    const channel = supabase
-      .channel(`notifications-${userId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${userId}`, // Use snake_case for database column
-        },
-        async (payload) => {
-          console.log('🔔 NotificationCenter: Real-time update received!');
-          console.log('📦 NotificationCenter: Payload:', payload);
-          
-          // Refetch notifications when any change occurs
-          await fetchNotifications();
-        }
-      )
-      .subscribe((status) => {
-        console.log('📡 NotificationCenter: Subscription status:', status);
-        if (status === 'SUBSCRIBED') {
-          console.log('✅ NotificationCenter: Successfully subscribed to real-time updates');
-        } else if (status === 'CHANNEL_ERROR') {
-          console.error('❌ NotificationCenter: Subscription error');
-        }
-      });
+    // For admin users, we need to listen to both personal notifications AND broadcast notifications
+    // Broadcast notifications typically have user_id = 'super-admin', 'broadcast', or 'all-admins'
+    const setupSubscriptions = () => {
+      if (userRole === 'admin') {
+        console.log('👑 NotificationCenter: Setting up ADMIN subscriptions (personal + broadcast)');
+        
+        // Subscription 1: Personal notifications for this admin user
+        const personalChannel = supabase
+          .channel(`notifications-personal-${userId}`)
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'notifications',
+              filter: `user_id=eq.${userId}`,
+            },
+            async (payload) => {
+              console.log('🔔 NotificationCenter: Personal notification update received!');
+              console.log('📦 NotificationCenter: Payload:', payload);
+              await fetchNotifications();
+            }
+          )
+          .subscribe((status) => {
+            console.log('📡 NotificationCenter: Personal subscription status:', status);
+          });
+        
+        // Subscription 2: Broadcast notifications for all admins
+        const broadcastChannel = supabase
+          .channel(`notifications-broadcast-admin`)
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'notifications',
+              filter: `user_id=in.(super-admin,broadcast,all-admins)`,
+            },
+            async (payload) => {
+              console.log('📢 NotificationCenter: Broadcast notification update received!');
+              console.log('📦 NotificationCenter: Payload:', payload);
+              await fetchNotifications();
+            }
+          )
+          .subscribe((status) => {
+            console.log('📡 NotificationCenter: Broadcast subscription status:', status);
+          });
+        
+        return [personalChannel, broadcastChannel];
+      } else {
+        // For customer and barber users, only listen to their personal notifications
+        console.log('👤 NotificationCenter: Setting up USER subscription (personal only)');
+        
+        const channel = supabase
+          .channel(`notifications-${userId}`)
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'notifications',
+              filter: `user_id=eq.${userId}`,
+            },
+            async (payload) => {
+              console.log('🔔 NotificationCenter: Real-time update received!');
+              console.log('📦 NotificationCenter: Payload:', payload);
+              await fetchNotifications();
+            }
+          )
+          .subscribe((status) => {
+            console.log('📡 NotificationCenter: Subscription status:', status);
+            if (status === 'SUBSCRIBED') {
+              console.log('✅ NotificationCenter: Successfully subscribed to real-time updates');
+            } else if (status === 'CHANNEL_ERROR') {
+              console.error('❌ NotificationCenter: Subscription error');
+            }
+          });
+        
+        return [channel];
+      }
+    };
     
-    // Cleanup subscription on unmount
+    const channels = setupSubscriptions();
+    
+    // Cleanup subscriptions on unmount
     return () => {
-      console.log('🔌 NotificationCenter: Cleaning up subscription');
-      supabase.removeChannel(channel);
+      console.log('🔌 NotificationCenter: Cleaning up subscriptions');
+      channels.forEach(channel => supabase.removeChannel(channel));
     };
   }, [userId, userRole]);
 
@@ -180,6 +237,9 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
     // Optimistically update UI first
     const notificationToMark = notifications.find(n => n.id === notificationId);
     if (!notificationToMark || notificationToMark.isRead) return; // Already read or doesn't exist
+    
+    console.log('🔵 [NotificationCenter] Marking notification as read:', notificationId);
+    console.log('📋 [NotificationCenter] Notification before:', notificationToMark);
     
     // Update local state immediately
     setNotifications(prev =>
@@ -191,10 +251,12 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
     
     // Then sync with backend (silently fail if backend has issues)
     try {
-      await API.notifications.markAsRead(notificationId);
-      console.log('✅ Notification marked as read in backend');
+      const result = await API.notifications.markAsRead(notificationId);
+      console.log('✅ [NotificationCenter] Backend response:', result);
+      console.log('✅ [NotificationCenter] Notification marked as read in backend');
     } catch (error: any) {
-      console.error('❌ Error marking notification as read in backend:', error);
+      console.error('❌ [NotificationCenter] Error marking notification as read in backend:', error);
+      console.error('❌ [NotificationCenter] Error details:', JSON.stringify(error, null, 2));
       // Don't show error to user - UI is already updated
       // Backend will sync later when connection is restored
     }

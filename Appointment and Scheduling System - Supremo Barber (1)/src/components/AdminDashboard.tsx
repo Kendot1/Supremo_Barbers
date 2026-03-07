@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Button } from './ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import {
-  Calendar, Users, Settings, LogOut, TrendingUp, DollarSign,
+  Calendar, Users, Settings, LogOut, TrendingUp,
   Scissors, Clock, CheckCircle2, XCircle
 } from 'lucide-react';
 import { AppointmentManagement } from './AppointmentManagement';
@@ -12,6 +12,7 @@ import { ServiceManagement } from './ServiceManagement';
 import { ReportsAnalytics } from './ReportsAnalytics';
 import { LoyaltyConfiguration } from './LoyaltyConfiguration';
 import type { User, Appointment } from '../App';
+import { FaPesoSign } from 'react-icons/fa6';
 
 interface AdminDashboardProps {
   user: User;
@@ -34,7 +35,7 @@ export function AdminDashboard({ user, onLogout, appointments = [] }: AdminDashb
     { label: "Today's Bookings", value: todayBookings.length.toString(), icon: Calendar, color: 'text-[#DB9D47]' },
     { label: 'Pending Approvals', value: pendingApprovals.toString(), icon: Clock, color: 'text-[#D98555]' },
     { label: 'Completed Today', value: completedToday.length.toString(), icon: CheckCircle2, color: 'text-[#94A670]' },
-    { label: "Today's Revenue", value: `₱${todayRevenue.toLocaleString()}`, icon: DollarSign, color: 'text-[#B89968]' },
+    { label: "Today's Revenue", value: `₱${todayRevenue.toLocaleString()}`, icon: FaPesoSign, color: 'text-[#B89968]' },
   ];
 
   return (
@@ -106,7 +107,7 @@ export function AdminDashboard({ user, onLogout, appointments = [] }: AdminDashb
           </TabsList>
 
           <TabsContent value="appointments">
-            <AppointmentManagement user={user} />
+            <AppointmentManagement />
           </TabsContent>
 
           <TabsContent value="barbers">

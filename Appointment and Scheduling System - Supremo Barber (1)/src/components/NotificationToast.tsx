@@ -5,13 +5,13 @@ import {
   CheckCircle2,
   XCircle,
   AlertCircle,
-  DollarSign,
   Calendar,
   Clock,
   Star,
   Settings,
 } from 'lucide-react';
 import type { Notification } from './NotificationCenter';
+import { FaPesoSign } from 'react-icons/fa6';
 
 interface NotificationToastProps {
   notifications: Notification[];
@@ -40,7 +40,7 @@ export function NotificationToast({ notifications, userId }: NotificationToastPr
     const getIcon = () => {
       switch (notification.type) {
         case 'payment':
-          return DollarSign;
+          return FaPesoSign;
         case 'booking':
           return Calendar;
         case 'cancellation':
