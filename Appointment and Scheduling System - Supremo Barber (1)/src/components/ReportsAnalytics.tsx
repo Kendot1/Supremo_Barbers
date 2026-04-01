@@ -6,13 +6,14 @@ import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, 
   Tooltip, Legend, ResponsiveContainer 
 } from 'recharts';
-import { TrendingUp, DollarSign, Users, Calendar, Download, FileText, FileSpreadsheet } from 'lucide-react';
+import { TrendingUp, Users, Calendar, Download, FileText, FileSpreadsheet } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
 import { Button } from './ui/button';
 import { toast } from 'sonner';
 import { exportToCSV } from './utils/exportUtils';
 import API from '../services/api.service';
 import type { Appointment } from '../App';
+import { FaPesoSign } from 'react-icons/fa6';
 
 interface ReportsAnalyticsProps {
   appointments?: Appointment[];
@@ -97,7 +98,7 @@ export function ReportsAnalytics({ appointments: propAppointments }: ReportsAnal
       weeklyData: weekly,
       monthlyData: monthly,
       stats: [
-        { label: 'Total Revenue', value: `₱${totalRevenue.toLocaleString()}`, icon: DollarSign, color: 'text-green-600' },
+        { label: 'Total Revenue', value: `₱${totalRevenue.toLocaleString()}`, icon: FaPesoSign, color: 'text-green-600' },
         { label: 'Total Bookings', value: totalBookings.toString(), icon: Calendar, color: 'text-blue-600' },
         { label: 'Active Customers', value: uniqueCustomers.toString(), icon: Users, color: 'text-purple-600' },
         { label: 'Avg. Booking Value', value: `₱${avgBookingValue}`, icon: TrendingUp, color: 'text-orange-600' },

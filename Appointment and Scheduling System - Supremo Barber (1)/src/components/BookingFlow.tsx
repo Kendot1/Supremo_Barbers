@@ -873,7 +873,7 @@ export function BookingFlow({
                               alt={service.name}
                               className="w-full h-full object-cover"
                               onError={() => {
-                                console.log('❌ Service image failed to load:', service.imageUrl);
+                              
                                 setFailedServiceImages(prev => new Set(prev).add(service.id));
                               }}
                             />
@@ -1022,7 +1022,7 @@ export function BookingFlow({
                               alt={barber.name}
                               className="w-full h-full object-cover"
                               onError={(e) => {
-                                console.log('❌ Barber avatar failed to load:', barber.avatarUrl);
+                             
                                 // Replace with fallback image
                                 e.currentTarget.src = 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&h=400&fit=crop';
                               }}
@@ -1104,7 +1104,7 @@ export function BookingFlow({
                             alt={barber.name}
                             className="w-full h-full object-cover"
                             onError={(e) => {
-                              console.log('❌ Barber avatar failed to load:', barber.avatarUrl);
+                            
                               // Replace with fallback image
                               e.currentTarget.src = 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&h=400&fit=crop';
                             }}
@@ -1777,10 +1777,7 @@ export function BookingFlow({
                       toast.success(
                         "Payment proof uploaded successfully!",
                       );
-                      console.log(
-                        "✅ Payment proof uploaded to R2:",
-                        result.url,
-                      );
+                
                     } catch (error) {
                       console.error(
                         "❌ Error uploading payment proof:",

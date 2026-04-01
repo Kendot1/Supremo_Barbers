@@ -215,12 +215,7 @@ export function CustomerDashboardOverview({
         setIsCancelling(false);
         return;
       }
-      
-      console.log('🚀 Cancelling appointment:', {
-        userId: user.id,
-        appointmentId,
-        API_cancel_exists: typeof API.appointments?.cancel
-      });
+   
       
       // Try using the cancel endpoint, fallback to update if not available
       try {
@@ -233,7 +228,7 @@ export function CustomerDashboardOverview({
           );
         } else {
           // Fallback: Use update endpoint
-          console.log('⚠️ Using fallback update method');
+       
           await API.appointments.update(appointmentId, {
             status: 'cancelled',
             cancellationReason: 'Cancelled by customer',

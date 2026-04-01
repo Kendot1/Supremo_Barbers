@@ -1,10 +1,11 @@
 import { useState, useEffect, lazy, Suspense, useCallback, useMemo } from "react";
 import { Toaster } from "./components/ui/sonner";
 import { toast } from "sonner";
-import { createNotification, type Notification } from "./components/NotificationCenter";
+import { createNotification, Notification } from "./components/NotificationCenter";
 import API from "./services/api.service";
 import { logUserLogin, logUserLogout, logAppointmentCreated } from "./services/audit-notification.service";
 import { LoadingFallback } from "./components/LoadingFallback";
+import { AIChatbot } from "./components/AIChatbot";
 import "./utils/clearTokens"; // Load debug helper
 
 // Lazy load heavy components for code splitting
@@ -671,6 +672,7 @@ function App() {
               onNavigateToPrivacy={() => setCurrentView("privacy")}
             />
           </Suspense>
+          <AIChatbot currentUser={currentUser} />
           <Toaster />
         </>
       );
@@ -682,6 +684,7 @@ function App() {
           <Suspense fallback={<LoadingFallback />}>
             <TermsAndConditions onBack={() => setCurrentView("landingpage")} />
           </Suspense>
+          <AIChatbot currentUser={currentUser} />
           <Toaster />
         </>
       );
@@ -693,6 +696,7 @@ function App() {
           <Suspense fallback={<LoadingFallback />}>
             <PrivacyPolicy onBack={() => setCurrentView("landingpage")} />
           </Suspense>
+          <AIChatbot currentUser={currentUser} />
           <Toaster />
         </>
       );
@@ -709,6 +713,7 @@ function App() {
             }
           />
         </Suspense>
+        <AIChatbot currentUser={currentUser} />
         <Toaster />
       </>
     );
@@ -799,6 +804,7 @@ function App() {
   return (
     <>
       {renderDashboard()}
+      <AIChatbot currentUser={currentUser} />
       <Toaster />
     </>
   );

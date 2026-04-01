@@ -88,15 +88,15 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
   // Fetch notifications and set up real-time subscription
   useEffect(() => {
     if (!userId) {
-      console.log('⚠️ NotificationCenter: No userId provided');
+    
       return;
     }
     
-    console.log('🔔 NotificationCenter: Setting up for userId:', userId, 'role:', userRole);
+  
     
     const fetchNotifications = async () => {
       if (isFetchingRef.current) {
-        console.log('⏳ NotificationCenter: Already fetching, skipping...');
+       
         return;
       }
       
@@ -104,20 +104,18 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
         isFetchingRef.current = true;
         setIsLoading(true);
         
-        console.log('📡 NotificationCenter: Fetching notifications for userId:', userId, 'role:', userRole);
+    
         const data = await API.notifications.getByUserId(userId, userRole);
         const count = await API.notifications.getUnreadCount(userId, userRole);
         
-        console.log('✅ NotificationCenter: Fetched', data?.length || 0, 'notifications');
-        console.log('📊 NotificationCenter: Notification data:', data);
-        console.log('🔢 NotificationCenter: Unread count:', count);
+     
         
         // Ensure data is always an array
         const notificationsArray = Array.isArray(data) ? data : [];
         setNotifications(notificationsArray);
         setUnreadCount(typeof count === 'number' ? count : 0);
         
-        console.log('💾 NotificationCenter: State updated with', notificationsArray.length, 'notifications');
+     
       } catch (error: any) {
         console.error('❌ NotificationCenter: Error fetching notifications:', error);
         console.error('❌ NotificationCenter: Error details:', error.message, error.stack);
@@ -135,17 +133,16 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
     fetchNotificationsRef.current = fetchNotifications;
     
     // Initial fetch
-    console.log('🚀 NotificationCenter: Starting initial fetch...');
+ 
     fetchNotifications();
     
-    // Set up Supabase real-time subscription for notifications
-    console.log('🔌 NotificationCenter: Setting up real-time subscription...');
+  
     
     // For admin users, we need to listen to both personal notifications AND broadcast notifications
     // Broadcast notifications typically have user_id = 'super-admin', 'broadcast', or 'all-admins'
     const setupSubscriptions = () => {
       if (userRole === 'admin') {
-        console.log('👑 NotificationCenter: Setting up ADMIN subscriptions (personal + broadcast)');
+     
         
         // Subscription 1: Personal notifications for this admin user
         const personalChannel = supabase
@@ -159,13 +156,12 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
               filter: `user_id=eq.${userId}`,
             },
             async (payload) => {
-              console.log('🔔 NotificationCenter: Personal notification update received!');
-              console.log('📦 NotificationCenter: Payload:', payload);
+           
               await fetchNotifications();
             }
           )
           .subscribe((status) => {
-            console.log('📡 NotificationCenter: Personal subscription status:', status);
+          
           });
         
         // Subscription 2: Broadcast notifications for all admins
@@ -180,19 +176,18 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
               filter: `user_id=in.(super-admin,broadcast,all-admins)`,
             },
             async (payload) => {
-              console.log('📢 NotificationCenter: Broadcast notification update received!');
-              console.log('📦 NotificationCenter: Payload:', payload);
+            
               await fetchNotifications();
             }
           )
           .subscribe((status) => {
-            console.log('📡 NotificationCenter: Broadcast subscription status:', status);
+           
           });
         
         return [personalChannel, broadcastChannel];
       } else {
         // For customer and barber users, only listen to their personal notifications
-        console.log('👤 NotificationCenter: Setting up USER subscription (personal only)');
+       
         
         const channel = supabase
           .channel(`notifications-${userId}`)
@@ -205,15 +200,14 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
               filter: `user_id=eq.${userId}`,
             },
             async (payload) => {
-              console.log('🔔 NotificationCenter: Real-time update received!');
-              console.log('📦 NotificationCenter: Payload:', payload);
+            
               await fetchNotifications();
             }
           )
           .subscribe((status) => {
-            console.log('📡 NotificationCenter: Subscription status:', status);
+          
             if (status === 'SUBSCRIBED') {
-              console.log('✅ NotificationCenter: Successfully subscribed to real-time updates');
+           
             } else if (status === 'CHANNEL_ERROR') {
               console.error('❌ NotificationCenter: Subscription error');
             }
@@ -227,7 +221,7 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
     
     // Cleanup subscriptions on unmount
     return () => {
-      console.log('🔌 NotificationCenter: Cleaning up subscriptions');
+   
       channels.forEach(channel => supabase.removeChannel(channel));
     };
   }, [userId, userRole]);
@@ -238,8 +232,7 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
     const notificationToMark = notifications.find(n => n.id === notificationId);
     if (!notificationToMark || notificationToMark.isRead) return; // Already read or doesn't exist
     
-    console.log('🔵 [NotificationCenter] Marking notification as read:', notificationId);
-    console.log('📋 [NotificationCenter] Notification before:', notificationToMark);
+   
     
     // Update local state immediately
     setNotifications(prev =>
@@ -252,8 +245,7 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
     // Then sync with backend (silently fail if backend has issues)
     try {
       const result = await API.notifications.markAsRead(notificationId);
-      console.log('✅ [NotificationCenter] Backend response:', result);
-      console.log('✅ [NotificationCenter] Notification marked as read in backend');
+      
     } catch (error: any) {
       console.error('❌ [NotificationCenter] Error marking notification as read in backend:', error);
       console.error('❌ [NotificationCenter] Error details:', JSON.stringify(error, null, 2));
@@ -278,7 +270,7 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
     try {
       await API.notifications.markAllAsRead(userId, userRole);
       toast.success('All notifications marked as read');
-      console.log('✅ All notifications marked as read in backend');
+    
     } catch (error: any) {
       console.error('❌ Error marking all as read in backend:', error);
       // UI is already updated, just show a generic success message
@@ -295,7 +287,7 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
       setNotifications(prev => prev.filter(n => n.id !== notificationId));
       
       toast.success('Notification deleted');
-      console.log('✅ Notification deleted');
+     
     } catch (error: any) {
       console.error('❌ Error deleting notification:', error);
       toast.error('Failed to delete notification');

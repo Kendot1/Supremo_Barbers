@@ -225,7 +225,7 @@ export function PaymentVerification({
           
           // If appointment date has passed
           if (aptDate < today) {
-            console.log('⏰ Auto-cancelling expired appointment:', apt.id, 'for', apt.customerName);
+          
             
             try {
               // Update appointment to cancelled
@@ -393,17 +393,13 @@ export function PaymentVerification({
         status: "verified", // Set to "verified" when payment is approved
       };
 
-      console.log('🚀 Approving payment - Update payload:', updatePayload);
-      console.log('🚀 Appointment ID:', selectedAppointment.id);
+    
 
       const updatedAppointment = await API.appointments.update(
         selectedAppointment.id,
         updatePayload,
       );
 
-      console.log('✅ Payment approved - Updated appointment:', updatedAppointment);
-      console.log('✅ New status:', updatedAppointment.status);
-      console.log('✅ New payment_status:', updatedAppointment.payment_status);
 
       // Update payment record if it exists - only update verified_by and verified_at
       if (selectedAppointment.payment?.id) {
@@ -421,14 +417,9 @@ export function PaymentVerification({
         }
       }
 
-      // Send direct notification to customer FIRST
-      console.log('📧 Sending direct approval notification to customer...');
+    
       const customerId = selectedAppointment.userId || selectedAppointment.customer_id || '';
-      console.log('🔍 DEBUG - Appointment object:', JSON.stringify(selectedAppointment, null, 2));
-      console.log('🔍 DEBUG - selectedAppointment.userId:', selectedAppointment.userId);
-      console.log('🔍 DEBUG - selectedAppointment.customer_id:', selectedAppointment.customer_id);
-      console.log('🔍 DEBUG - Resolved customerId:', customerId);
-      console.log('🔍 DEBUG - currentUser:', currentUser);
+   
       
       if (customerId && currentUser) {
         try {
@@ -441,11 +432,9 @@ export function PaymentVerification({
             appointment_id: selectedAppointment.id,
             is_read: false,
           };
-          console.log('📧 Direct notification payload:', JSON.stringify(notificationPayload, null, 2));
-          console.log('🔑 Attempting API.notifications.create...');
+    
           const createdNotification = await API.notifications.create(notificationPayload);
-          console.log('✅ Direct approval notification sent successfully to customer:', customerId);
-          console.log('✅ Created notification response:', JSON.stringify(createdNotification, null, 2));
+        
         } catch (error) {
           console.error('❌ Failed to send direct approval notification:', error);
           console.error('❌ Error type:', typeof error);
@@ -477,7 +466,7 @@ export function PaymentVerification({
       );
 
       // Create audit log and notification for customer using the new audit service
-      console.log('📧 Sending approval notification to customer...');
+   
       if (currentUser) {
         await logPaymentVerification(
           currentUser.id,
@@ -504,7 +493,7 @@ export function PaymentVerification({
               selectedAppointment.price / 2,
           }
         );
-        console.log('✅ Approval notification sent successfully');
+       
       }
 
       // Trigger appointment refresh in parent component FIRST and wait for it
@@ -552,9 +541,6 @@ export function PaymentVerification({
         },
       );
 
-      console.log('❌ Payment rejected - Updated appointment:', updatedAppointment);
-      console.log('❌ New status:', updatedAppointment.status);
-      console.log('❌ New payment_status:', updatedAppointment.payment_status);
 
       // Update payment record if it exists
       if (selectedAppointment.payment?.id) {
@@ -577,7 +563,7 @@ export function PaymentVerification({
       }
 
       // Send direct notification to customer FIRST
-      console.log('📧 Sending direct rejection notification to customer...');
+   
       const customerId = selectedAppointment.userId || selectedAppointment.customer_id || '';
       if (customerId && currentUser) {
         try {
@@ -590,9 +576,9 @@ export function PaymentVerification({
             appointment_id: selectedAppointment.id,
             is_read: false,
           };
-          console.log('📧 Direct notification payload:', notificationPayload);
+     
           await API.notifications.create(notificationPayload);
-          console.log('✅ Direct rejection notification sent successfully to customer:', customerId);
+      
         } catch (error) {
           console.error('❌ Failed to send direct rejection notification:', error);
         }
@@ -619,7 +605,7 @@ export function PaymentVerification({
       );
 
       // Create audit log and notification for customer using the new audit service
-      console.log('📧 Sending rejection notification to customer...');
+  
       if (currentUser) {
         await logPaymentVerification(
           currentUser.id,
@@ -647,7 +633,7 @@ export function PaymentVerification({
           },
           rejectionReason
         );
-        console.log('✅ Rejection notification sent successfully');
+    
       }
 
       // Trigger appointment refresh in parent component FIRST and wait for it

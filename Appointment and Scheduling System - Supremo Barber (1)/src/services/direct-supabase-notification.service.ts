@@ -35,7 +35,7 @@ export async function getAllAdminIds(): Promise<string[]> {
     }
 
     const adminIds = data?.map((user: any) => user.id) || [];
-    console.log('✅ Found admin users:', adminIds.length);
+   
     return adminIds;
   } catch (error) {
     console.error('❌ Error fetching admin users:', error);
@@ -51,19 +51,18 @@ export async function createDirectNotification(
   notificationData: DirectNotificationData
 ): Promise<any> {
   try {
-    console.log('📤 DIRECT SUPABASE: Creating notification');
-    console.log('📤 DIRECT SUPABASE: Data:', JSON.stringify(notificationData, null, 2));
+   
 
     // If sending to 'admin', get all admin user IDs
     let targetUserIds: string[] = [];
     if (notificationData.user_id === 'admin') {
-      console.log('📤 DIRECT SUPABASE: Sending to ALL admins...');
+     
       targetUserIds = await getAllAdminIds();
       if (targetUserIds.length === 0) {
         console.warn('⚠️ DIRECT SUPABASE: No admin users found!');
         return null;
       }
-      console.log(`📤 DIRECT SUPABASE: Sending to ${targetUserIds.length} admin(s)`);
+    
     } else {
       targetUserIds = [notificationData.user_id];
     }
@@ -95,8 +94,7 @@ export async function createDirectNotification(
       throw error;
     }
 
-    console.log('✅ DIRECT SUPABASE: Notification(s) created successfully!');
-    console.log(`✅ DIRECT SUPABASE: Created ${data?.length || 0} notification(s)`);
+   
 
     return data;
   } catch (error: any) {
@@ -129,8 +127,7 @@ export async function createDirectAuditLog(auditData: {
   user_agent?: string;
 }): Promise<any> {
   try {
-    console.log('📤 DIRECT SUPABASE: Creating audit log');
-    console.log('📤 DIRECT SUPABASE: Data:', JSON.stringify(auditData, null, 2));
+  
 
     // Insert into Supabase audit_logs table
     const { data, error } = await supabase
@@ -158,7 +155,7 @@ export async function createDirectAuditLog(auditData: {
       throw error;
     }
 
-    console.log('✅ DIRECT SUPABASE: Audit log created successfully!');
+ 
     return data;
   } catch (error: any) {
     console.error('❌ DIRECT SUPABASE: Failed to create audit log:', error);
@@ -171,8 +168,7 @@ export async function createDirectAuditLog(auditData: {
  */
 export async function testSupabaseConnection(): Promise<boolean> {
   try {
-    console.log('🧪 Testing Supabase connection...');
-    console.log('🧪 Supabase URL:', supabase?.supabaseUrl);
+ 
     
     // Try to query the notifications table
     const { data, error } = await supabase
@@ -188,7 +184,7 @@ export async function testSupabaseConnection(): Promise<boolean> {
       return false;
     }
     
-    console.log('✅ Supabase connection test PASSED!');
+   
     return true;
   } catch (error: any) {
     console.error('❌ Supabase connection test ERROR:', error);

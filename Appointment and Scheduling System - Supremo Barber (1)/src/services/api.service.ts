@@ -25,16 +25,7 @@ const API_BASE_URL = EDGE_FUNCTIONS_URL; // Use Supabase Edge Functions
 // Use Supabase backend (set to false to use local backend)
 const USE_LOCAL_BACKEND = false; // Using Supabase for all operations including notifications
 
-// Log configuration only in development
-if (process.env.NODE_ENV === 'development') {
-  console.log('🚀 API Service initialized');
-  if (USE_LOCAL_BACKEND) {
-    console.log('📦 Using Local Backend (localStorage)');
-  } else {
-    console.log('📍 API Base URL:', API_BASE_URL);
-    console.log('✅ Connected to Supabase Edge Functions');
-  }
-}
+
 
 // Get auth token from localStorage
 function getAuthToken(): string | null {
@@ -313,12 +304,7 @@ const API = {
     },
     
     changePassword: async (id: string, data: { currentPassword: string; newPassword: string }) => {
-      console.log('🔐 API Service: changePassword called with:', {
-        userId: id,
-        userIdType: typeof id,
-        hasCurrentPassword: !!data.currentPassword,
-        hasNewPassword: !!data.newPassword
-      });
+    
       
       if (USE_LOCAL_BACKEND) {
         // For local backend, just update the password (simplified)
@@ -719,9 +705,9 @@ const API = {
   // ==================== REVIEWS ====================
   reviews: {
     testConnection: async () => {
-      console.log('🧪 API: Testing backend connection');
+    
       const data = await apiCall<any>('/reviews/debug/test-connection', undefined, false);
-      console.log('✅ API: Test connection result:', data);
+   
       return data;
     },
     
@@ -996,9 +982,7 @@ const API = {
         // For anonymous/public requests, use the anon key
         headers['Authorization'] = `Bearer ${publicAnonKey}`;
       }
-      
-      console.log('🚀 API Service: Uploading image to:', `${API_BASE_URL}/upload-image`);
-      console.log('📋 FormData contents:', Array.from(formData.entries()));
+    
       
       const response = await fetch(`${API_BASE_URL}/upload-image`, {
         method: 'POST',
@@ -1006,9 +990,7 @@ const API = {
         body: formData,
       });
 
-      console.log('📡 Response status:', response.status, response.statusText);
-      console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
-
+   
       if (!response.ok) {
         let errorMessage = 'Image upload failed';
         try {
@@ -1024,12 +1006,12 @@ const API = {
       }
 
       const responseText = await response.text();
-      console.log('📦 Raw response text:', responseText);
+   
       
       let json;
       try {
         json = JSON.parse(responseText);
-        console.log('📦 Parsed JSON response:', json);
+       
       } catch (parseError) {
         console.error('❌ Failed to parse response as JSON:', parseError);
         throw new Error('Invalid response format from server');
@@ -1037,7 +1019,7 @@ const API = {
       
       // If response has the standardized format { success, data }, extract data
       if (json && typeof json === 'object' && 'success' in json && 'data' in json) {
-        console.log('✅ Extracting data from standardized response:', json.data);
+      
         const data = json.data;
         // Normalize the URL to always be the public R2 CDN URL
         if (data && data.url) data.url = normalizeR2Url(data.url);
@@ -1046,7 +1028,7 @@ const API = {
       
       // Check if response has url directly
       if (json && typeof json === 'object' && 'url' in json) {
-        console.log('✅ Response has url field:', json.url);
+       
         json.url = normalizeR2Url(json.url);
         return json;
       }
@@ -1072,21 +1054,21 @@ const API = {
     getByUserId: async (userId: string, role?: string) => {
       if (USE_LOCAL_BACKEND) return LocalBackend.notifications.getByUserId(userId);
       
-      console.log('📡 API: Fetching notifications for userId:', userId, 'role:', role);
+    
       const query = role ? `?role=${role}` : '';
       const fullUrl = `/notifications/user/${userId}${query}`;
-      console.log('📡 API: Full URL:', fullUrl);
+    
       const data = await apiCall<any[]>(fullUrl, undefined, false);
-      console.log('📡 API: Raw response data:', data);
+    
       const camelData = toCamelCase(data);
-      console.log('📡 API: Converted to camelCase:', camelData);
+   
       return camelData;
     },
     
     getUnreadCount: async (userId: string, role?: string) => {
       if (USE_LOCAL_BACKEND) return LocalBackend.notifications.getUnreadCount(userId);
       
-      console.log('🔢 API: Fetching unread count for user:', userId);
+     
       const query = role ? `?role=${role}` : '';
       const result = await apiCall<{ count: number }>(`/notifications/user/${userId}/unread-count${query}`, undefined, false);
       return result.count;
@@ -1095,7 +1077,7 @@ const API = {
     create: async (notification: any) => {
       if (USE_LOCAL_BACKEND) return LocalBackend.notifications.create(notification);
       
-      console.log('📝 API: Creating notification');
+     
       const snakeData = toSnakeCase(notification);
       const data = await apiCall<any>('/notifications', {
         method: 'POST',
@@ -1107,25 +1089,21 @@ const API = {
     markAsRead: async (id: string) => {
       if (USE_LOCAL_BACKEND) return LocalBackend.notifications.markAsRead(id);
       
-      console.log('✅ [API] Marking notification as read:', id);
-      console.log('📡 [API] Calling endpoint: /notifications/' + id + '/read');
-      console.log('🔑 [API] Method: PATCH');
+   
       
       const data = await apiCall<any>(`/notifications/${id}/read`, {
         method: 'PATCH',
       }, false);
       
-      console.log('📨 [API] Backend response:', data);
+   
       const result = toCamelCase(data);
-      console.log('📦 [API] Converted to camelCase:', result);
-      
+   
       return result;
     },
     
     markAllAsRead: async (userId: string, role?: string) => {
       if (USE_LOCAL_BACKEND) return LocalBackend.notifications.markAllAsRead(userId);
-      
-      console.log('✅ API: Marking all notifications as read for user:', userId);
+   
       const query = role ? `?role=${role}` : '';
       await apiCall<void>(`/notifications/user/${userId}/read-all${query}`, {
         method: 'PATCH',
@@ -1135,7 +1113,7 @@ const API = {
     delete: async (id: string) => {
       if (USE_LOCAL_BACKEND) return LocalBackend.notifications.delete(id);
       
-      console.log('🗑️ API: Deleting notification:', id);
+   
       await apiCall<void>(`/notifications/${id}`, {
         method: 'DELETE',
       }, false);
@@ -1147,7 +1125,7 @@ const API = {
     getAll: async (limit?: number, action?: string, userId?: string) => {
       if (USE_LOCAL_BACKEND) return LocalBackend.auditLogs.getAll();
       
-      console.log('🔍 API: Fetching all audit logs');
+    
       const params = new URLSearchParams();
       if (limit) params.append('limit', limit.toString());
       if (action) params.append('action', action);
@@ -1161,7 +1139,7 @@ const API = {
     getByUserId: async (userId: string, limit?: number) => {
       if (USE_LOCAL_BACKEND) return LocalBackend.auditLogs.getByUserId(userId);
       
-      console.log('🔍 API: Fetching audit logs for user:', userId);
+     
       const query = limit ? `?limit=${limit}` : '';
       const data = await apiCall<any[]>(`/audit-logs/user/${userId}${query}`, undefined, false);
       return toCamelCase(data);
@@ -1170,7 +1148,7 @@ const API = {
     getByEntity: async (entityType: string, entityId: string, limit?: number) => {
       if (USE_LOCAL_BACKEND) return LocalBackend.auditLogs.getByEntity(entityType, entityId);
       
-      console.log('🔍 API: Fetching audit logs for entity:', entityType, entityId);
+    
       const query = limit ? `?limit=${limit}` : '';
       const data = await apiCall<any[]>(`/audit-logs/entity/${entityType}/${entityId}${query}`, undefined, false);
       return toCamelCase(data);
@@ -1179,7 +1157,7 @@ const API = {
     create: async (log: any) => {
       if (USE_LOCAL_BACKEND) return LocalBackend.auditLogs.create(log);
       
-      console.log('📝 API: Creating audit log');
+   
       const snakeData = toSnakeCase(log);
       const data = await apiCall<any>('/audit-logs', {
         method: 'POST',
@@ -1191,7 +1169,7 @@ const API = {
     getStatistics: async () => {
       if (USE_LOCAL_BACKEND) return LocalBackend.auditLogs.getStatistics();
       
-      console.log('📊 API: Fetching audit log statistics');
+   
       const data = await apiCall<any>('/audit-logs/statistics', undefined, false);
       return toCamelCase(data);
     },

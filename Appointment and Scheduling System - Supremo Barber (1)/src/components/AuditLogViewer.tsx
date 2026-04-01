@@ -69,14 +69,14 @@ export function AuditLogViewer() {
   const fetchLogs = async () => {
     try {
       setIsLoading(true);
-      console.log('📊 Fetching audit logs...');
+    
       
       const [logsData, statsData] = await Promise.all([
         API.auditLogs.getAll(limit),
         API.auditLogs.getStatistics(),
       ]);
       
-      console.log('✅ Fetched', logsData.length, 'audit logs');
+     
       setLogs(logsData);
       setStatistics(statsData);
       

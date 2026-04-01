@@ -10,7 +10,6 @@ import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import {
   Clock,
-  DollarSign,
   Scissors,
   Star,
   Loader2,

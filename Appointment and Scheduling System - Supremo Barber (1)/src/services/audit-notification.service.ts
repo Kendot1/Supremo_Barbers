@@ -66,7 +66,7 @@ export async function createAuditLog(data: AuditLogData): Promise<void> {
  */
 export async function createNotification(data: NotificationData): Promise<void> {
   try {
-    console.log('📤 Creating notification:', data);
+   
     
     // Try direct Supabase first to ensure it reaches the database
     try {
@@ -81,7 +81,7 @@ export async function createNotification(data: NotificationData): Promise<void> 
         action_url: data.actionUrl,
         action_label: data.actionLabel,
       });
-      console.log('✅ Notification sent via direct Supabase');
+    
     } catch (directError) {
       console.error('⚠️ Direct Supabase notification failed, trying API fallback:', directError);
       
@@ -98,7 +98,7 @@ export async function createNotification(data: NotificationData): Promise<void> 
         actionLabel: data.actionLabel,
         isRead: false,
       });
-      console.log('✅ Notification sent via API fallback');
+    
     }
   } catch (error) {
     console.error('❌ Failed to create notification:', error);
@@ -285,7 +285,7 @@ export async function logPaymentVerification(
     : `Your payment proof for ${appointmentDetails.service} was rejected. ${reason ? `Reason: ${reason}.` : ''} Please upload a new payment proof to confirm your booking.`;
 
   // Use direct Supabase method to ensure notification is saved to database
-  console.log('🚀 Using DIRECT SUPABASE to create customer notification...');
+ 
   try {
     await createDirectNotification({
       user_id: appointmentDetails.customerId,
@@ -298,7 +298,7 @@ export async function logPaymentVerification(
       action_url: `/appointments?highlight=${appointmentId}`,
       action_label: status === 'approved' ? 'View Booking' : 'Resubmit Payment',
     });
-    console.log('✅ Direct Supabase notification sent successfully!');
+   
   } catch (error) {
     console.error('❌ Direct Supabase notification failed:', error);
     // Don't throw - try local backend as fallback

@@ -295,7 +295,6 @@ export function LandingPage({
           setIsCalculatingDistance(false);
         },
         (error) => {
-         
           alert(
             "Unable to get your location. Please enable location services and try again.",
           );
@@ -325,19 +324,20 @@ export function LandingPage({
 
     const scroll = () => {
       if (scrollContainer) {
-        const maxScroll = scrollContainer.scrollWidth / 2; // Half because we duplicate
+        const cardWidth = 384 + 24; // Card width (384px for sm:w-96) + gap (24px)
+        const maxScroll = cardWidth * testimonials.length; // Full width of original set
 
-        if (scrollContainer.scrollLeft >= maxScroll) {
-          // Reset to beginning for infinite loop
-          scrollContainer.scrollLeft = 0;
+        if (scrollContainer.scrollLeft >= maxScroll - 10) {
+          // Near the end, reset to beginning smoothly
+          scrollContainer.scrollLeft = 1;
         } else {
           // Smooth continuous scroll
-          scrollContainer.scrollLeft += 1;
+          scrollContainer.scrollLeft += 1.5;
         }
       }
     };
 
-    const intervalId = setInterval(scroll, 30); // Smooth scroll speed
+    const intervalId = setInterval(scroll, 20); // Smooth scroll speed (faster)
 
     return () => clearInterval(intervalId);
   }, [testimonials.length, isTestimonialsPaused]);
@@ -413,8 +413,6 @@ export function LandingPage({
           (r: Review) => r.showOnLanding === true,
         );
         setTestimonials(landingReviews);
-
-       
       } catch (error) {
         console.error(
           "Error fetching reviews for landing page:",
@@ -659,7 +657,6 @@ export function LandingPage({
                       Contact
                     </a>
                     <div className="border-t border-slate-200 pt-4 mt-2 space-y-3">
-                      
                       <Button
                         onClick={() => {
                           onLogin();
@@ -1080,7 +1077,8 @@ export function LandingPage({
                     <ImageWithFallback
                       src={
                         normalizeR2Url(
-                          services[currentServiceIndex].imageUrl,
+                          services[currentServiceIndex]
+                            .imageUrl,
                         ) ||
                         "https://images.unsplash.com/photo-1621605815971-fbc98d665033?w=400&h=400&fit=crop"
                       }
@@ -1204,8 +1202,13 @@ export function LandingPage({
                         {testimonial.customerAvatar ? (
                           <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full mb-4 shadow-lg overflow-hidden ring-4 ring-[#DB9D47]/20">
                             <ImageWithFallback
-                              src={normalizeR2Url(testimonial.customerAvatar)}
-                              alt={testimonial.customerName || "Customer"}
+                              src={normalizeR2Url(
+                                testimonial.customerAvatar,
+                              )}
+                              alt={
+                                testimonial.customerName ||
+                                "Customer"
+                              }
                               className="w-full h-full object-cover"
                             />
                           </div>

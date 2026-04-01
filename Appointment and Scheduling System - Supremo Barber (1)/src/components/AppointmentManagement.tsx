@@ -179,7 +179,7 @@ export function AppointmentManagement({ user }: AppointmentManagementProps = {})
               time: appointment.time,
             }
           );
-          console.log('✅ Customer notified of appointment approval');
+       
         } catch (error) {
           console.error('❌ Failed to send notification:', error);
           // Don't fail the operation if notification fails
@@ -229,7 +229,7 @@ export function AppointmentManagement({ user }: AppointmentManagementProps = {})
               time: appointment.time,
             }
           );
-          console.log('✅ Customer notified of appointment cancellation');
+     
         } catch (error) {
           console.error('❌ Failed to send notification:', error);
           // Don't fail the operation if notification fails
@@ -279,7 +279,7 @@ export function AppointmentManagement({ user }: AppointmentManagementProps = {})
               time: appointment.time,
             }
           );
-          console.log('✅ Customer notified of appointment completion');
+       
         } catch (error) {
           console.error('❌ Failed to send notification:', error);
           // Don't fail the operation if notification fails

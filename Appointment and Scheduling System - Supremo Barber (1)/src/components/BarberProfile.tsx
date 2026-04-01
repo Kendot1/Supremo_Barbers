@@ -5,8 +5,9 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
-import { User, Mail, Phone, Save, Calendar, DollarSign, Star, Scissors, Clock, Loader2, AlertTriangle, Camera, Upload } from 'lucide-react';
+import { User, Mail, Phone, Save, Calendar, Star, Scissors, Clock, Loader2, AlertTriangle, Camera, Upload } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
+import { FaPesoSign } from 'react-icons/fa6';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -57,7 +58,7 @@ export function BarberProfile({ user, appointments, onUserUpdate }: BarberProfil
 
   // Update profile state when user prop changes (e.g., after avatar upload)
   useEffect(() => {
-    console.log('👤 User prop changed, updating profile state with:', user);
+  
     setProfile(prev => ({
       ...prev,
       name: user.name,
@@ -118,19 +119,11 @@ export function BarberProfile({ user, appointments, onUserUpdate }: BarberProfil
     setPasswordLoading(true);
     try {
       // Debug: Log the user ID being sent
-      console.log('🔐 Attempting password change for user:', {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        userObject: user
-      });
-
-      // WORKAROUND: First verify the user exists in the database
-      console.log('🔍 Verifying user exists in database...');
+    
+      
       try {
         const userInDb = await API.users.getById(user.id);
-        console.log('✅ User found in database:', userInDb);
+       
       } catch (verifyError: any) {
         console.error('❌ User not found in database:', verifyError);
         toast.error('Account verification failed', {
@@ -146,7 +139,7 @@ export function BarberProfile({ user, appointments, onUserUpdate }: BarberProfil
         newPassword: passwordData.newPassword,
       });
 
-      console.log('✅ Password change result:', result);
+   
 
       // Log password change to audit logs
       await logPasswordChange(
@@ -217,25 +210,23 @@ export function BarberProfile({ user, appointments, onUserUpdate }: BarberProfil
       uploadFormData.append('file', file);
       uploadFormData.append('type', 'avatar'); // Specify upload type for proper folder organization
 
-      console.log('📤 Uploading avatar to Cloudflare R2...');
+    
       const response = await API.uploadImage(uploadFormData);
-      console.log('✅ Upload response:', response);
+    
       
       // Validate response
       if (!response || !response.url) {
         console.error('❌ Invalid response from upload API:', response);
         throw new Error('Upload failed: No URL returned from server');
       }
-      
-      console.log('🖼️ Avatar URL received:', response.url);
+    
       
       // Set the R2 URL in profile data
       setProfile({ ...profile, avatarUrl: response.url });
       
-      // Update user in database
-      console.log('💾 Updating user in database with avatarUrl:', response.url);
+    
       const updatedUser = await API.users.update(user.id, { avatarUrl: response.url });
-      console.log('✅ Database update response:', updatedUser);
+    
       
       // Update localStorage
       const storedUser = localStorage.getItem('currentUser');
@@ -243,12 +234,12 @@ export function BarberProfile({ user, appointments, onUserUpdate }: BarberProfil
         const parsedUser = JSON.parse(storedUser);
         parsedUser.avatarUrl = response.url;
         localStorage.setItem('currentUser', JSON.stringify(parsedUser));
-        console.log('💾 Updated localStorage with new avatarUrl');
+    
       }
       
       // Update parent component's user state
       if (onUserUpdate) {
-        console.log('🔄 Calling onUserUpdate with new avatarUrl');
+     
         onUserUpdate({ ...user, avatarUrl: response.url });
       }
       
@@ -310,7 +301,7 @@ export function BarberProfile({ user, appointments, onUserUpdate }: BarberProfil
         <Card className="border-[#E8DCC8]">
           <CardContent className="pt-6">
             <div className="flex items-center gap-3 mb-2">
-              <DollarSign className="w-5 h-5 text-[#D98555]" />
+              <FaPesoSign className="w-5 h-5 text-[#D98555]" />
               <p className="text-sm text-[#87765E]">Total Earnings</p>
             </div>
             <p className="text-2xl text-[#5C4A3A]">₱{totalEarnings.toLocaleString()}</p>

@@ -28,7 +28,7 @@ export function AnalyticsOverview({ onNavigateToPaymentVerification, onNavigateT
         setIsLoading(true);
         const data = await API.appointments.getAll();
         setAppointments(data);
-        console.log('[AnalyticsOverview] Appointments data refreshed:', data.length, 'appointments');
+        
       } catch (error) {
         console.error('[AnalyticsOverview] Error fetching appointments:', error);
         // Silently handle - backend might not be running
@@ -40,7 +40,7 @@ export function AnalyticsOverview({ onNavigateToPaymentVerification, onNavigateT
     fetchAppointments();
 
     // Set up Supabase real-time subscription for instant updates
-    console.log('[AnalyticsOverview] Setting up real-time subscription for appointments...');
+  
     const appointmentsChannel = supabase
       .channel('analytics-appointments-changes')
       .on(
@@ -51,18 +51,18 @@ export function AnalyticsOverview({ onNavigateToPaymentVerification, onNavigateT
           table: 'appointments'
         },
         (payload) => {
-          console.log('[AnalyticsOverview] Real-time appointment change detected:', payload.eventType, payload);
+        
           // Refresh data whenever there's a change
           fetchAppointments();
         }
       )
       .subscribe((status) => {
-        console.log('[AnalyticsOverview] Subscription status:', status);
+      
       });
 
     // Cleanup subscription on unmount
     return () => {
-      console.log('[AnalyticsOverview] Cleaning up real-time subscription');
+   
       supabase.removeChannel(appointmentsChannel);
     };
   }, []);
