@@ -18,8 +18,11 @@ import {
   CardContent,
 } from "./ui/card";
 import { toast } from "sonner";
-import { User as UserType } from "../App";
-import { projectId, publicAnonKey } from "../utils/supabase/info.tsx";
+import { User as UserType, Appointment } from "../App";
+import {
+  projectId,
+  publicAnonKey,
+} from "../utils/supabase/info.tsx";
 
 interface Message {
   id: string;
@@ -30,9 +33,10 @@ interface Message {
 
 interface AIChatbotProps {
   currentUser: UserType | null;
+  appointments?: Appointment[];
 }
 
-export function AIChatbot({ currentUser }: AIChatbotProps) {
+export function AIChatbot({ currentUser, appointments }: AIChatbotProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState("");
@@ -135,6 +139,43 @@ How can I assist you today?`;
     setIsTyping(true);
 
     try {
+      // Prepare user context data for AI
+      const userContext: any = {
+        userId: currentUser?.id,
+        userName: currentUser?.name,
+        userEmail: currentUser?.email,
+        userRole: currentUser?.role || "guest",
+      };
+
+      // Add appointments data if available
+      if (appointments && appointments.length > 0) {
+        // Filter appointments for current user based on role
+        let userAppointments = appointments;
+        
+        if (currentUser?.role === 'customer') {
+          userAppointments = appointments.filter(apt => 
+            apt.userId === currentUser.id || apt.customerId === currentUser.id || apt.customer_id === currentUser.id
+          );
+        } else if (currentUser?.role === 'barber') {
+          userAppointments = appointments.filter(apt => 
+            apt.barberId === currentUser.id || apt.barber_id === currentUser.id
+          );
+        }
+
+        // Format appointments for AI context (only include relevant fields)
+        userContext.appointments = userAppointments.map(apt => ({
+          id: apt.id,
+          service: apt.service || apt.service_name,
+          barber: apt.barber || apt.barber_name,
+          customer: apt.customerName || apt.customer_name || apt.customer,
+          date: apt.date || apt.appointment_date,
+          time: apt.time || apt.appointment_time,
+          status: apt.status,
+          price: apt.price || apt.total_amount,
+          paymentStatus: apt.paymentStatus || apt.payment_status,
+        }));
+      }
+
       // Call AI backend endpoint using full Supabase Functions URL
       const response = await fetch(
         `https://${projectId}.supabase.co/functions/v1/make-server-70e1fc66/api/ai-chat`,
@@ -146,17 +187,22 @@ How can I assist you today?`;
           },
           body: JSON.stringify({
             message: inputMessage.trim(),
-            userId: currentUser?.id,
-            userRole: currentUser?.role || "guest",
+            userContext: userContext,
             conversationHistory: messages.slice(-10), // Last 10 messages for context
           }),
-        }
+        },
       );
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error("❌ AI API Error:", response.status, errorText);
-        throw new Error(`Failed to get AI response: ${response.status}`);
+        console.error(
+          "❌ AI API Error:",
+          response.status,
+          errorText,
+        );
+        throw new Error(
+          `Failed to get AI response: ${response.status}`,
+        );
       }
 
       const data = await response.json();
@@ -240,16 +286,18 @@ How can I assist you today?`;
 
       {/* Chat Window */}
       {isOpen && (
-       <div
-        className="
-            fixed bottom-4 right-4
-            w-[calc(100vw-2rem)] sm:w-[370px]
-            h-[calc(100vh-2rem)] sm:h-[600px]
-            max-h-[90vh]
-            shadow-2xl
-            animate-in slide-in-from-bottom-5 duration-300
-        "
-        style={{ zIndex: 40 }}
+        <div
+          className="
+                fixed bottom-4 right-4
+                w-[90vw] sm:w-[400px] md:w-[420px] lg:w-[450px]
+                h-[85vh] sm:h-[600px]
+                max-h-[90vh]
+                shadow-2xl
+                animate-in slide-in-from-bottom-5 duration-300
+            "
+          style={{
+            zIndex: 40,
+          }}
         >
           <Card className="border-2 border-[#DB9D47] bg-white overflow-hidden h-full flex flex-col">
             {/* Header */}
@@ -258,24 +306,22 @@ How can I assist you today?`;
                 <div className="flex items-center gap-3">
                   <div className="relative">
                     <div className="relative w-10 h-10">
-                    {/* Avatar */}
-                    <div className="w-full h-full bg-white rounded-full flex items-center justify-center overflow-hidden">
+                      {/* Avatar */}
+                      <div className="w-full h-full bg-white rounded-full flex items-center justify-center overflow-hidden">
                         <img
-                        src="https://pub-86f4b5249e5c4021bb05d46908eeb094.r2.dev/supremo-barber/supremoWebLogo.png"
-                        alt="Bot Logo"
-                        className="w-full h-full object-cover"
+                          src="https://pub-86f4b5249e5c4021bb05d46908eeb094.r2.dev/supremo-barber/supremoWebLogo.png"
+                          alt="Bot Logo"
+                          className="w-full h-full object-cover"
                         />
-                    </div>
+                      </div>
 
-                    {/* Status Badge */}
-                    <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
+                      {/* Status Badge */}
+                      <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
                     </div>
-                    
                   </div>
                   <div>
                     <CardTitle className="text-white text-base font-bold flex items-center gap-2">
                       AI Assistant
-                     
                     </CardTitle>
                     <p className="text-xs text-white/90">
                       Supremo Barber Support
@@ -344,12 +390,7 @@ How can I assist you today?`;
                       </p>
                     </div>
 
-                    {/* User Avatar - Only show for user */}
-                    {message.role === "user" && (
-                      <div className="w-8 h-8 rounded-full bg-[#5C4A3A] flex items-center justify-center flex-shrink-0">
-                        <User className="w-4 h-4 text-white" />
-                      </div>
-                    )}
+                   
                   </div>
                 ))}
 
@@ -358,10 +399,10 @@ How can I assist you today?`;
                   <div className="flex gap-2 justify-start">
                     <div className="w-8 h-8 rounded-full bg-[#ffffff] flex items-center justify-center shadow-md">
                       <img
-                          src="https://pub-86f4b5249e5c4021bb05d46908eeb094.r2.dev/supremo-barber/supremoWebLogo.png"
-                          alt="Bot Logo"
-                          className="w-8 h-8 object-cover"
-                        />
+                        src="https://pub-86f4b5249e5c4021bb05d46908eeb094.r2.dev/supremo-barber/supremoWebLogo.png"
+                        alt="Bot Logo"
+                        className="w-8 h-8 object-cover"
+                      />
                     </div>
                     <div className="max-w-[75%] bg-[#FFF8E7] border-2 border-[#DB9D47] rounded-2xl p-3 shadow-sm flex items-center gap-1">
                       <div

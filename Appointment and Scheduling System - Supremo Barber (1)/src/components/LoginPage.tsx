@@ -74,6 +74,7 @@ function PasswordInput({ className, ...props }: React.ComponentPropsWithoutRef<t
 
 export function LoginPage({ onLogin, onBack }: LoginPageProps) {
   const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -86,6 +87,7 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [forgotPasswordStep, setForgotPasswordStep] = useState(1); // 1 = email, 2 = OTP, 3 = new password
   const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotDisplayEmail, setForgotDisplayEmail] = useState(""); // Email to display in UI
   const [forgotOtp, setForgotOtp] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmNewPassword, setConfirmNewPassword] = useState("");
@@ -110,6 +112,10 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
   // Email duplicate checking state
   const [isCheckingEmail, setIsCheckingEmail] = useState(false);
   const [emailExists, setEmailExists] = useState(false);
+  
+  // Username duplicate checking state
+  const [isCheckingUsername, setIsCheckingUsername] = useState(false);
+  const [usernameExists, setUsernameExists] = useState(false);
   
   // Password strength validation state
   const [passwordStrength, setPasswordStrength] = useState<ReturnType<typeof validatePassword> | null>(null);
@@ -157,11 +163,11 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
 
   // Remember Me: Load saved credentials on component mount
   useEffect(() => {
-    const savedEmail = localStorage.getItem('rememberedEmail');
+    const savedUsername = localStorage.getItem('rememberedUsername');
     const savedPassword = localStorage.getItem('rememberedPassword');
     
-    if (savedEmail && savedPassword) {
-      setEmail(savedEmail);
+    if (savedUsername && savedPassword) {
+      setUsername(savedUsername);
       setPassword(savedPassword);
       setRememberMe(true);
     }
@@ -169,10 +175,14 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
     // Test backend connectivity
     const testBackend = async () => {
       try {
-      
+        console.log('🔍 Testing backend connectivity...');
+        console.log('📍 Project ID:', projectId);
+        console.log('🔑 Anon Key:', publicAnonKey?.substring(0, 20) + '...');
+        
         // Test health endpoint
         const healthUrl = `https://${projectId}.supabase.co/functions/v1/make-server-70e1fc66/health`;
-     
+        console.log('🌐 Testing:', healthUrl);
+        
         const response = await fetch(healthUrl, {
           method: 'GET',
           headers: {
@@ -181,7 +191,7 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
         });
         
         const data = await response.json();
-      
+        console.log('✅ Backend health check:', response.status, data);
       } catch (error) {
         console.error('❌ Backend health check failed:', error);
         console.error('Error details:', {
@@ -206,20 +216,24 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
     // Clear previous errors
     setErrors([]);
 
-    // Validate form
-    const validation = validateLoginForm(email, password);
-    setErrors(validation.errors);
+    // Validate username and password
+    if (!username.trim()) {
+      setErrors([{ field: "username", message: "Username is required" }]);
+      toast.error("Please enter your username");
+      return;
+    }
 
-    if (!validation.isValid) {
-      toast.error("Please fix the errors in the form");
+    if (!password) {
+      setErrors([{ field: "password", message: "Password is required" }]);
+      toast.error("Please enter your password");
       return;
     }
 
     setIsLoading(true);
 
     try {
-      // Call API to login (verify credentials first)
-      const response = await API.auth.login(email, password);
+      // Call API to login with username (verify credentials first)
+      const response = await API.auth.loginWithUsername(username, password);
 
       // Check if response is valid
       if (!response || !response.user || !response.token) {
@@ -229,6 +243,13 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
       // Store login data temporarily
       setPendingLoginData(response);
 
+      // CRITICAL FIX: Store user's actual email for OTP sending
+      // When login is username-based, the email state variable is empty
+      // We must set it to the user's actual email from the response
+      if (response.user.email) {
+        setEmail(response.user.email);
+      }
+
       // Check if user is a barber - skip OTP for barbers
       if (response.user.role === 'barber') {
         // Barbers login directly without OTP
@@ -237,9 +258,9 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
         localStorage.setItem('currentUser', JSON.stringify(response.user));
         localStorage.setItem('loginTime', Date.now().toString());
 
-        // Save to Remember Me if enabled
+        // Save to Remember Me if enabled (save username, not email)
         if (rememberMe) {
-          localStorage.setItem('rememberedEmail', email);
+          localStorage.setItem('rememberedUsername', username);
           localStorage.setItem('rememberedPassword', password);
         }
 
@@ -262,7 +283,7 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
       // Customers who previously completed 2FA on this device skip it next time.
       // Admins ALWAYS go through 2FA — no device trust for admin accounts.
       if (response.user.role === 'customer') {
-        const trustedKey = `trusted_device_${email.toLowerCase()}`;
+        const trustedKey = `trusted_device_${response.user.email.toLowerCase()}`;
         const trustedTs  = localStorage.getItem(`${trustedKey}_ts`);
         const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
 
@@ -284,10 +305,10 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
           localStorage.setItem('currentUser', JSON.stringify(response.user));
           localStorage.setItem('loginTime', Date.now().toString());
           if (rememberMe) {
-            localStorage.setItem('rememberedEmail', email);
+            localStorage.setItem('rememberedUsername', username);
             localStorage.setItem('rememberedPassword', password);
           } else {
-            localStorage.removeItem('rememberedEmail');
+            localStorage.removeItem('rememberedUsername');
             localStorage.removeItem('rememberedPassword');
           }
           // Log trusted device login to audit logs
@@ -314,7 +335,7 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
         logNewDeviceLogin(
           response.user.id,
           response.user.name,
-          email.toLowerCase(),
+          response.user.email.toLowerCase(),
           {
             userAgent: navigator.userAgent.slice(0, 150),
             time: new Date().toLocaleString('en-PH', { timeZone: 'Asia/Manila' }),
@@ -333,7 +354,7 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
             'Authorization': `Bearer ${publicAnonKey}`,
           },
           body: JSON.stringify({
-            email: email.toLowerCase(),
+            email: response.user.email.toLowerCase(), // Use email from response, not state
             purpose: 'login'
           })
         }
@@ -350,13 +371,13 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
       // Store OTP token for verification
       if (otpData.token) {
         sessionStorage.setItem('otp_token', otpData.token);
-     
+        console.log('✅ OTP token stored in sessionStorage');
       } else {
         console.error('❌ No token received from server!', otpData);
       }
 
       setLoginOtpSent(true);
-      toast.success(`Verification code sent to ${email}!`, {
+      toast.success(`Verification code sent to ${response.user.email}!`, {
         description: "Check your email inbox and spam folder"
       });
 
@@ -366,40 +387,67 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
 
       // Move to OTP verification step
       setLoginStep(2);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Login error:", error);
 
       // Handle different error types
-      let errorMessage = "Invalid email or password";
+      let errorMessage = "Invalid username or password";
+      let errorDuration = 5000;
 
       if (error instanceof Error) {
         errorMessage = error.message;
+      }
 
-        // Provide helpful hints for common errors
-        if (
-          errorMessage.includes("Invalid email or password")
-        ) {
-          errorMessage =
-            "Invalid email or password. Please check your credentials and try again.";
+      // Parse error response for structured error info
+      if (error?.code) {
+        if (error.code === "account_locked") {
+          errorMessage = error.message || "Your account is temporarily locked due to multiple failed login attempts.";
+          errorDuration = 10000; // Show longer for important security message
+          
+          // Show remaining time if available
+          if (error.locked_until) {
+            const lockedUntil = new Date(error.locked_until);
+            const now = new Date();
+            const minutesRemaining = Math.ceil((lockedUntil.getTime() - now.getTime()) / 60000);
+            
+            if (minutesRemaining > 0) {
+              errorMessage = `🔒 Account locked for ${minutesRemaining} minute(s). Too many failed attempts.`;
+            }
+          }
+        } else if (error.code === "invalid_credentials") {
+          // Show remaining attempts if provided
+          if (error.remaining_attempts !== undefined) {
+            const attempts = error.remaining_attempts;
+            if (attempts === 0) {
+              errorMessage = "Invalid username or password. This is your last attempt before account lockout.";
+            } else if (attempts === 1) {
+              errorMessage = `Invalid username or password. You have 1 attempt remaining.`;
+            } else {
+              errorMessage = `Invalid username or password. You have ${attempts} attempts remaining.`;
+            }
+            errorDuration = 7000; // Show longer to ensure user sees warning
+          } else {
+            errorMessage = "Invalid username or password. Please check your credentials and try again.";
+          }
+        } else if (error.code === "user_not_found") {
+          errorMessage = "No account found with this username. Please register first.";
         } else if (errorMessage.includes("inactive")) {
-          errorMessage =
-            "Your account is inactive. Please contact the administrator.";
-        } else if (
-          errorMessage.includes("network") ||
-          errorMessage.includes("fetch")
-        ) {
-          errorMessage =
-            "Network error. Please check your connection and try again.";
+          errorMessage = "Your account is inactive. Please contact the administrator.";
         }
+      } else if (
+        errorMessage.includes("network") ||
+        errorMessage.includes("fetch")
+      ) {
+        errorMessage = "Network error. Please check your connection and try again.";
       }
 
       // Log failed login attempt
-      logFailedLogin(email, errorMessage).catch(err => 
+      logFailedLogin(email || username, errorMessage).catch(err => 
         console.error('Failed to log failed login:', err)
       );
 
       toast.error(errorMessage, {
-        duration: 5000,
+        duration: errorDuration,
       });
 
       // Clear password field on error
@@ -457,10 +505,11 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
         // Store auth data in localStorage (synchronous - instant)
         localStorage.setItem("currentUser", JSON.stringify(pendingLoginData.user));
         localStorage.setItem("authToken", pendingLoginData.token);
+        localStorage.setItem("loginTime", Date.now().toString());
 
         // Mark device as trusted for customers (admins are NEVER trusted)
         if (pendingLoginData.user.role === 'customer') {
-          const trustedKey = `trusted_device_${email.toLowerCase()}`;
+          const trustedKey = `trusted_device_${pendingLoginData.user.email.toLowerCase()}`;
           localStorage.setItem(trustedKey, 'true');
           localStorage.setItem(`${trustedKey}_ts`, Date.now().toString());
           toast.info('This device is now trusted — you won\'t need 2FA next time.', {
@@ -470,10 +519,10 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
 
         // Handle Remember Me (synchronous)
         if (rememberMe) {
-          localStorage.setItem('rememberedEmail', email);
+          localStorage.setItem('rememberedUsername', username);
           localStorage.setItem('rememberedPassword', password);
         } else {
-          localStorage.removeItem('rememberedEmail');
+          localStorage.removeItem('rememberedUsername');
           localStorage.removeItem('rememberedPassword');
         }
 
@@ -510,6 +559,15 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
     setIsLoading(true);
     
     try {
+      // Get email from pendingLoginData (set during login)
+      const userEmail = pendingLoginData?.user?.email || email;
+      
+      if (!userEmail) {
+        toast.error("Email not found. Please try logging in again.");
+        setIsLoading(false);
+        return;
+      }
+      
       // Resend OTP via backend API
       const otpResponse = await fetch(
         `https://${projectId}.supabase.co/functions/v1/make-server-70e1fc66/api/auth/send-otp`,
@@ -520,7 +578,7 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
             'Authorization': `Bearer ${publicAnonKey}`,
           },
           body: JSON.stringify({
-            email: email.toLowerCase(),
+            email: userEmail.toLowerCase(),
             purpose: 'login'
           })
         }
@@ -556,20 +614,29 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
 
   // ==================== FORGOT PASSWORD HANDLERS ====================
   
-  // Step 1: Send OTP to email
+  // Step 1: Send OTP to email or username
   const handleForgotPasswordSendOTP = async () => {
     setIsLoading(true);
     setErrors([]);
 
-    // Validate email
-    if (!forgotEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(forgotEmail)) {
-      setErrors([{ field: "forgotEmail", message: "Please enter a valid email address" }]);
+    // Validate input (can be email or username)
+    if (!forgotEmail || forgotEmail.trim().length === 0) {
+      setErrors([{ field: "forgotEmail", message: "Please enter your username or email address" }]);
       setIsLoading(false);
       return;
     }
 
     try {
-   
+      console.log('📧 Sending forgot password request for:', forgotEmail);
+      console.log('🌐 Full URL:', `https://${projectId}.supabase.co/functions/v1/make-server-70e1fc66/api/auth/forgot-password`);
+      
+      // Detect if input is email or username
+      const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(forgotEmail);
+      const requestBody = isEmail 
+        ? { email: forgotEmail.toLowerCase() }
+        : { username: forgotEmail.toLowerCase() };
+      
+      console.log('📝 Request body:', requestBody);
       
       const response = await fetch(
         `https://${projectId}.supabase.co/functions/v1/make-server-70e1fc66/api/auth/forgot-password`,
@@ -579,21 +646,22 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${publicAnonKey}`,
           },
-          body: JSON.stringify({ email: forgotEmail.toLowerCase() })
+          body: JSON.stringify(requestBody)
         }
       );
 
-  
+      console.log('📨 Response status:', response.status);
+      console.log('📨 Response headers:', Object.fromEntries(response.headers.entries()));
       
       const contentType = response.headers.get('content-type');
       let data;
       
       if (contentType && contentType.includes('application/json')) {
         data = await response.json();
-       
+        console.log('📨 Response data:', data);
       } else {
         const text = await response.text();
-    
+        console.log('📨 Response text:', text);
         throw new Error(`Backend returned non-JSON response: ${text.substring(0, 200)}`);
       }
 
@@ -607,7 +675,16 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
       // Store OTP token
       if (data.token) {
         sessionStorage.setItem('forgot_password_token', data.token);
-      
+        console.log('✅ Token stored in sessionStorage');
+      }
+
+      // Store the display email from backend response
+      if (data.displayEmail) {
+        setForgotDisplayEmail(data.displayEmail);
+        console.log('✅ Display email set:', data.displayEmail);
+      } else {
+        // Fallback to input if backend doesn't return displayEmail
+        setForgotDisplayEmail(forgotEmail);
       }
 
       // Show warning if email failed but OTP was generated
@@ -661,7 +738,7 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
             'Authorization': `Bearer ${publicAnonKey}`,
           },
           body: JSON.stringify({
-            email: forgotEmail.toLowerCase(),
+            email: (forgotDisplayEmail || forgotEmail).toLowerCase(),
             otp: forgotOtp,
             token
           })
@@ -840,6 +917,39 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
     }
   };
 
+  // Check if username already exists in database
+  const checkUsernameExists = async (usernameToCheck: string) => {
+    if (!usernameToCheck || usernameToCheck.length < 3) {
+      return;
+    }
+
+    setIsCheckingUsername(true);
+    
+    try {
+      const response = await API.auth.checkUsernameExists(usernameToCheck.toLowerCase());
+      
+      if (response.exists) {
+        setUsernameExists(true);
+        setErrors([
+          {
+            field: "username",
+            message: "This username is already taken. Please choose another.",
+          },
+        ]);
+      } else {
+        setUsernameExists(false);
+        // Clear username error if it was previously set
+        setErrors(errors.filter((e) => e.field !== "username"));
+      }
+    } catch (error) {
+      console.error("Error checking username:", error);
+      // Don't block registration if check fails
+      setUsernameExists(false);
+    } finally {
+      setIsCheckingUsername(false);
+    }
+  };
+
   // Step 1: Basic Information Validation
   const handleStep1Next = async () => {
     // Clear previous errors
@@ -919,6 +1029,50 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
     
     setIsCheckingEmail(false);
 
+    // Check if username is valid and not taken
+    if (!username || username.length < 3) {
+      setErrors([
+        {
+          field: "username",
+          message: "Username must be at least 3 characters",
+        },
+      ]);
+      toast.error("Username must be at least 3 characters");
+      setIsLoading(false);
+      return;
+    }
+
+    // Check if username already exists
+    setIsCheckingUsername(true);
+    
+    try {
+      const usernameCheckResponse = await API.auth.checkUsernameExists(username.toLowerCase());
+      
+      if (usernameCheckResponse.exists) {
+        setUsernameExists(true);
+        setErrors([
+          {
+            field: "username",
+            message: "This username is already taken. Please choose another.",
+          },
+        ]);
+        toast.error("This username is already taken. Please choose another.");
+        setIsLoading(false);
+        setIsCheckingUsername(false);
+        return;
+      }
+      
+      setUsernameExists(false);
+    } catch (error) {
+      console.error("Error checking username:", error);
+      toast.error("Failed to verify username. Please try again.");
+      setIsLoading(false);
+      setIsCheckingUsername(false);
+      return;
+    }
+    
+    setIsCheckingUsername(false);
+
     try {
       // Send OTP via backend API
       const otpResponse = await fetch(
@@ -953,7 +1107,7 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
       // Store OTP token for verification
       if (otpData.token) {
         sessionStorage.setItem('otp_token', otpData.token);
-       
+        console.log('✅ OTP token stored in sessionStorage');
       } else {
         console.error('❌ No token received from server!', otpData);
       }
@@ -1007,7 +1161,7 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
         return;
       }
 
-     
+      console.log('🔐 Verifying OTP with token:', { email: email.toLowerCase(), otp, hasToken: !!otpToken });
 
       // Verify OTP via backend API
       const verifyResponse = await fetch(
@@ -1066,6 +1220,7 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
       const response = await API.auth.register({
         name,
         email,
+        username,
         password,
         phone,
         role: "customer",
@@ -1226,29 +1381,29 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
                     className="space-y-4"
                   >
                     <div className="space-y-2">
-                      <Label htmlFor="email">Email</Label>
+                      <Label htmlFor="username">Username</Label>
                       <Input
-                        id="email"
-                        type="email"
-                        placeholder="your@email.com"
-                        value={email}
+                        id="username"
+                        type="text"
+                        placeholder="your_username"
+                        value={username}
                         onChange={(e) => {
-                          setEmail(e.target.value);
+                          setUsername(e.target.value);
                           setErrors(
                             errors.filter(
-                              (e) => e.field !== "email",
+                              (e) => e.field !== "username",
                             ),
                           );
                         }}
                         className={
-                          getFieldError(errors, "email")
+                          getFieldError(errors, "username")
                             ? "border-red-500"
                             : ""
                         }
                       />
-                      {getFieldError(errors, "email") && (
+                      {getFieldError(errors, "username") && (
                         <p className="text-sm text-red-500">
-                          {getFieldError(errors, "email")}
+                          {getFieldError(errors, "username")}
                         </p>
                       )}
                     </div>
@@ -1260,7 +1415,7 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
                           variant="link"
                           className="h-auto p-0 text-xs text-[#DB9D47] hover:text-[#C08A3C]"
                           onClick={() => {
-                            
+                            console.log('🔐 Opening Forgot Password dialog');
                             setShowForgotPassword(true);
                             setForgotPasswordStep(1);
                             setForgotEmail(email);
@@ -1597,6 +1752,70 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
                         {getFieldError(errors, "email") && (
                           <p className="text-sm text-red-500">
                             {getFieldError(errors, "email")}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Label htmlFor="reg-username">
+                            Username
+                          </Label>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Info className="w-4 h-4 text-gray-400 cursor-help" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="text-xs">
+                                3-20 characters, letters, numbers, underscore, and hyphen only
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
+                        <div className="relative">
+                          <Input
+                            id="reg-username"
+                            type="text"
+                            placeholder="your_username"
+                            value={username}
+                            onChange={(e) => {
+                              const value = e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, '');
+                              setUsername(value);
+                              setUsernameExists(false);
+                              setErrors(
+                                errors.filter(
+                                  (e) => e.field !== "username",
+                                ),
+                              );
+                            }}
+                            onBlur={(e) => {
+                              if (e.target.value.trim() && e.target.value.length >= 3) {
+                                checkUsernameExists(e.target.value.trim());
+                              }
+                            }}
+                            maxLength={20}
+                            className={
+                              getFieldError(errors, "username")
+                                ? "border-red-500"
+                                : ""
+                            }
+                            disabled={isCheckingUsername}
+                          />
+                          {isCheckingUsername && (
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                              <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                            </div>
+                          )}
+                        </div>
+                        {isCheckingUsername && (
+                          <p className="text-xs text-gray-500 flex items-center gap-1">
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                            Checking if username is available...
+                          </p>
+                        )}
+                        {getFieldError(errors, "username") && (
+                          <p className="text-sm text-red-500">
+                            {getFieldError(errors, "username")}
                           </p>
                         )}
                       </div>
@@ -2192,15 +2411,15 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
           </DialogHeader>
 
           <div className="space-y-4 py-4">
-            {/* Step 1: Email Input */}
+            {/* Step 1: Username or Email Input */}
             {forgotPasswordStep === 1 && (
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="forgot-email">Email Address</Label>
+                  <Label htmlFor="forgot-email">Username or Email Address</Label>
                   <Input
                     id="forgot-email"
-                    type="email"
-                    placeholder="your@email.com"
+                    type="text"
+                    placeholder="username or email@example.com"
                     value={forgotEmail}
                     onChange={(e) => {
                       setForgotEmail(e.target.value);
@@ -2245,7 +2464,7 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
                     We've sent a 6-digit code to
                   </p>
                   <p className="text-sm font-medium text-gray-900 break-all px-2">
-                    {forgotEmail}
+                    {forgotDisplayEmail || forgotEmail}
                   </p>
                   <p className="text-xs text-gray-500 mt-2">
                     Code expires in <span className="font-semibold text-[#DB9D47]">10 minutes</span>

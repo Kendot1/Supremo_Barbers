@@ -1,4 +1,4 @@
-import { useState, useEffect, lazy, Suspense, useCallback, useMemo } from "react";
+import { useState, useEffect, lazy, Suspense, useCallback, useMemo, startTransition } from "react";
 import { Toaster } from "./components/ui/sonner";
 import { toast } from "sonner";
 import { createNotification, Notification } from "./components/NotificationCenter";
@@ -29,12 +29,15 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  username: string;
   role: UserRole;
   phone?: string;
   isActive?: boolean;
   avatarUrl?: string;
   bio?: string;
   createdAt?: string;
+  emailVerified?: boolean;
+  pendingEmail?: string;
 }
 
 export interface Appointment {
@@ -662,14 +665,14 @@ function App() {
         <>
           <Suspense fallback={<LoadingFallback />}>
             <LandingPage
-              onGetStarted={() => setCurrentView("register")}
-              onLogin={() => setCurrentView("login")}
+              onGetStarted={() => startTransition(() => setCurrentView("register"))}
+              onLogin={() => startTransition(() => setCurrentView("login"))}
               onServiceClick={(serviceId) => {
                 setPreSelectedServiceId(serviceId);
-                setCurrentView("register");
+                startTransition(() => setCurrentView("register"));
               }}
-              onNavigateToTerms={() => setCurrentView("terms")}
-              onNavigateToPrivacy={() => setCurrentView("privacy")}
+              onNavigateToTerms={() => startTransition(() => setCurrentView("terms"))}
+              onNavigateToPrivacy={() => startTransition(() => setCurrentView("privacy"))}
             />
           </Suspense>
           <AIChatbot currentUser={currentUser} />
@@ -682,7 +685,7 @@ function App() {
       return (
         <>
           <Suspense fallback={<LoadingFallback />}>
-            <TermsAndConditions onBack={() => setCurrentView("landingpage")} />
+            <TermsAndConditions onBack={() => startTransition(() => setCurrentView("landingpage"))} />
           </Suspense>
           <AIChatbot currentUser={currentUser} />
           <Toaster />
@@ -694,7 +697,7 @@ function App() {
       return (
         <>
           <Suspense fallback={<LoadingFallback />}>
-            <PrivacyPolicy onBack={() => setCurrentView("landingpage")} />
+            <PrivacyPolicy onBack={() => startTransition(() => setCurrentView("landingpage"))} />
           </Suspense>
           <AIChatbot currentUser={currentUser} />
           <Toaster />
@@ -707,7 +710,7 @@ function App() {
         <Suspense fallback={<LoadingFallback />}>
           <LoginPage
             onLogin={handleLogin}
-            onBack={() => setCurrentView("landingpage")}
+            onBack={() => startTransition(() => setCurrentView("landingpage"))}
             defaultTab={
               currentView === "register" ? "register" : "login"
             }
@@ -804,7 +807,7 @@ function App() {
   return (
     <>
       {renderDashboard()}
-      <AIChatbot currentUser={currentUser} />
+      <AIChatbot currentUser={currentUser} appointments={appointments} />
       <Toaster />
     </>
   );
