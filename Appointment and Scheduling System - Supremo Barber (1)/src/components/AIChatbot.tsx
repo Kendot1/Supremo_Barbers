@@ -1,15 +1,30 @@
 import { useState, useEffect, useRef } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { MessageCircle, Send, X, Loader2, User } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "./ui/card";
+import {
+  MessageCircle,
+  Send,
+  X,
+  Loader2,
+  User,
+} from "lucide-react";
 import { toast } from "sonner";
 import { User as UserType, Appointment } from "../App";
 import {
   projectId,
   publicAnonKey,
 } from "../utils/supabase/info.tsx";
-import { rateLimiter, getUserRateLimitKey, formatRetryAfter } from "../utils/rateLimiter";
+import {
+  rateLimiter,
+  getUserRateLimitKey,
+  formatRetryAfter,
+} from "../utils/rateLimiter";
 
 interface Message {
   id: string;
@@ -117,34 +132,37 @@ How can I assist you today?`;
     if (!inputMessage.trim() || isLoading) return;
 
     // Check rate limit
-    const rateLimitKey = getUserRateLimitKey('ai:chat', currentUser?.id);
+    const rateLimitKey = getUserRateLimitKey(
+      "ai:chat",
+      currentUser?.id,
+    );
     const rateLimit = rateLimiter.isAllowed(rateLimitKey);
-    
+
     if (!rateLimit.allowed) {
-      let errorTitle = 'Rate Limit Exceeded';
-      let errorMessage = '';
-      let chatMessage = '';
-      
-      if (rateLimit.reason === 'burst_detected') {
-        errorTitle = '🚨 Burst Detection - Slow Down!';
+      let errorTitle = "Rate Limit Exceeded";
+      let errorMessage = "";
+      let chatMessage = "";
+
+      if (rateLimit.reason === "burst_detected") {
+        errorTitle = "🚨 Burst Detection - Slow Down!";
         errorMessage = `You're sending messages too quickly! Please wait ${formatRetryAfter(rateLimit.retryAfter || 120)} before continuing.`;
         chatMessage = `⚠️ **Burst Detection Alert!**\n\nYou've sent ${5} messages in rapid succession (within 30 seconds). This looks like automated behavior.\n\n🛡️ **Your account has been temporarily limited for ${formatRetryAfter(rateLimit.retryAfter || 120)}.**\n\nPlease wait before sending another message. This protection helps ensure fair usage for all users and prevents system abuse.\n\nThank you for your understanding! 🙏`;
       } else {
-        errorMessage = rateLimit.retryAfter 
+        errorMessage = rateLimit.retryAfter
           ? `Please wait ${formatRetryAfter(rateLimit.retryAfter)} before sending another message.`
-          : 'Too many requests. Please try again later.';
+          : "Too many requests. Please try again later.";
         chatMessage = `⚠️ Rate limit exceeded. ${errorMessage}\n\nThis helps us ensure fair usage for all users. Thank you for your understanding!`;
       }
-      
+
       toast.error(errorTitle, {
         description: errorMessage,
         duration: 5000,
       });
-      
+
       // Show rate limit message in chat
       const rateLimitMessage: Message = {
         id: Date.now().toString(),
-        role: 'assistant',
+        role: "assistant",
         content: chatMessage,
         timestamp: new Date(),
       };
@@ -295,13 +313,22 @@ How can I assist you today?`;
     toast.success("Chat cleared");
   };
 
+  // Function to clean markdown formatting from AI messages
+  const cleanMessageContent = (content: string): string => {
+    return content
+      .replace(/\*\*(.+?)\*\*/g, "$1") // Remove bold (**text**)
+      .replace(/\*(.+?)\*/g, "$1") // Remove italic (*text*)
+      .replace(/\_\_(.+?)\_\_/g, "$1") // Remove bold (__text__)
+      .replace(/\_(.+?)\_/g, "$1") // Remove italic (_text_)
+      .replace(/\~\~(.+?)\~\~/g, "$1") // Remove strikethrough (~~text~~)
+      .replace(/\`(.+?)\`/g, "$1"); // Remove inline code (`text`)
+  };
+
   return (
     <>
       {/* Floating Chat Button */}
       {!isOpen && (
-        <div
-          className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50"
-        >
+        <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50">
           <Button
             onClick={() => setIsOpen(true)}
             className="h-12 w-12 sm:h-14 sm:w-14 rounded-full bg-[#DB9D47] hover:bg-[#C88D3F] text-white shadow-lg hover:shadow-xl transition-all duration-300 group relative"
@@ -323,17 +350,23 @@ How can I assist you today?`;
             onClick={() => setIsOpen(false)}
             aria-hidden="true"
           />
-          
+
           {/* Chat Container */}
-         <div
+          <div
             className="fixed bottom-4 right-4
-             w-[90%] max-w-[400px] sm:w-[400px] md:w-[420px] lg:w-[450px]
-             h-[500px] sm:h-[600px] sm:max-h-[calc(100vh-2rem)]
-             shadow-2xl
-             animate-in slide-in-from-bottom-5 duration-300
-             z-50"
+                      w-[90%] max-w-[400px] sm:w-[400px] md:w-[420px] lg:w-[450px]
+                      h-[500px] sm:h-[600px] sm:max-h-[calc(100vh-2rem)]
+                      
+                      animate-in slide-in-from-bottom-5 duration-300
+                      z-50"
           >
-            <Card className="border-0 sm:border-2 sm:border-[#DB9D47] bg-white overflow-hidden h-full flex flex-col sm:rounded-2xl rounded-t-3xl">
+            <Card className="
+              border-2 border-[#DB9D47]
+              bg-white
+              h-full flex flex-col
+              rounded-2xl
+              overflow-hidden
+            ">
               {/* Header */}
               <CardHeader className="bg-[#DB9D47] text-white p-3 sm:p-4 flex-shrink-0">
                 <div className="flex items-center justify-between">
@@ -375,11 +408,12 @@ How can I assist you today?`;
 
               {/* Messages Area */}
               <CardContent className="p-0 flex-1 flex flex-col overflow-hidden">
-                <div className="flex-1 overflow-y-auto p-3 sm:p-4 bg-white space-y-3 sm:space-y-4">
+                {/* Messages Container - scrollable area with max height */}
+                <div className="flex-1 overflow-y-auto p-3 sm:p-4 bg-white space-y-3 sm:space-y-4 min-h-0">
                   {messages.map((message) => (
                     <div
                       key={message.id}
-                      className={`flex gap-2 items-start ${
+                      className={`flex items-start gap-2 w-full min-w-0  ${
                         message.role === "user"
                           ? "justify-end"
                           : "justify-start"
@@ -398,14 +432,25 @@ How can I assist you today?`;
 
                       {/* Message Bubble */}
                       <div
-                        className={`max-w-[70%] sm:max-w-[75%] rounded-2xl px-3 py-2 sm:px-4 sm:py-3 shadow-md "bg-white border border-[#E8DCC8] text-[#2D2D2D]"
-                        }`}
+                        className={`
+                          max-w-[75%] sm:max-w-[70%]
+                          w-fit min-w-0
+                          px-3 py-2 sm:px-4 sm:py-2.5
+                          rounded-2xl shadow-md
+                          break-words whitespace-pre-wrap
+
+                          ${
+                            message.role === "user"
+                              ? "bg-[#DB9D47] text-white self-end"
+                              : "bg-white border border-[#E8DCC8] text-[#2D2D2D] self-start"
+                          }
+                        `}
                       >
                         <p className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap break-words">
-                          {message.content}
+                          {cleanMessageContent(message.content)}
                         </p>
                         <p
-                          className={`text-[9px] sm:text-[10px] mt-1.5 sm:mt-2 ${
+                          className={`text-[10px] sm:text-[12px] mt-1.5 sm:mt-2 ${
                             message.role === "user"
                               ? "text-white/70"
                               : "text-[#87765E]"
@@ -420,7 +465,6 @@ How can I assist you today?`;
                           )}
                         </p>
                       </div>
-
                     </div>
                   ))}
 
@@ -454,8 +498,8 @@ How can I assist you today?`;
                   <div ref={messagesEndRef} />
                 </div>
 
-                {/* Quick Actions */}
-                <div className="px-4 py-2 bg-white border-t border-[#E8DCC8]">
+                {/* Quick Actions - Fixed at bottom */}
+                <div className="flex-shrink-0 px-4 py-2 bg-white border-t border-[#E8DCC8]">
                   <div className="flex gap-2 overflow-x-auto pb-2">
                     <QuickActionButton
                       onClick={() =>
@@ -488,8 +532,8 @@ How can I assist you today?`;
                   </div>
                 </div>
 
-                {/* Input Area */}
-                <div className="p-4 bg-white border-t border-[#E8DCC8]">
+                {/* Input Area - Fixed at bottom */}
+                <div className="flex-shrink-0 p-4 bg-white border-t border-[#E8DCC8]">
                   <div className="flex gap-2">
                     <Input
                       ref={inputRef}
@@ -504,7 +548,9 @@ How can I assist you today?`;
                     />
                     <Button
                       onClick={handleSendMessage}
-                      disabled={!inputMessage.trim() || isLoading}
+                      disabled={
+                        !inputMessage.trim() || isLoading
+                      }
                       className="bg-[#DB9D47] hover:bg-[#C88D3F] text-white px-4"
                     >
                       {isLoading ? (
@@ -515,7 +561,8 @@ How can I assist you today?`;
                     </Button>
                   </div>
                   <p className="text-xs text-[#87765E] mt-2 text-center">
-                    Powered by AI • May occasionally make mistakes
+                    Powered by AI • May occasionally make
+                    mistakes
                   </p>
                 </div>
               </CardContent>
