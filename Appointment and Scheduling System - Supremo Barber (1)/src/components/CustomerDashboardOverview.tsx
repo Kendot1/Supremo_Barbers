@@ -31,11 +31,14 @@ import {
   Receipt,
   XCircle,
   X,
+  Heart,
+  Loader2,
 } from "lucide-react";
 import { ImageWithFallback } from "./fallback/ImageWithFallback";
 import type { User, Appointment } from "../App";
 import API from "../services/api.service";
 import { toast } from "sonner@2.0.3";
+import { favoriteEvents } from "../utils/favoriteEvents";
 
 interface CustomerDashboardOverviewProps {
   user: User;
@@ -43,6 +46,7 @@ interface CustomerDashboardOverviewProps {
   onNavigate: (tab: string) => void;
   onUpdateAppointments?: (appointments: Appointment[]) => void;
   onSelectSlot?: (date: Date, time: string, barberName: string) => void;
+  onSetPreSelectedService?: (serviceId: string) => void;
 }
 
 interface Service {
@@ -62,6 +66,7 @@ export function CustomerDashboardOverview({
   onNavigate,
   onUpdateAppointments,
   onSelectSlot,
+  onSetPreSelectedService,
 }: CustomerDashboardOverviewProps) {
   const [availableSlots, setAvailableSlots] = useState<any[]>(
     [],
@@ -74,6 +79,93 @@ export function CustomerDashboardOverview({
     useState<Appointment | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [favoriteServices, setFavoriteServices] = useState<string[]>([]);
+
+  // Fetch user's favorite services from API
+  useEffect(() => {
+    const fetchFavorites = async () => {
+      if (!user.id) return;
+      
+      try {
+        const favorites = await API.favorites.getAll(user.id);
+        const favoriteIds = favorites.map((f: any) => f.serviceId);
+        setFavoriteServices(favoriteIds);
+      } catch (error) {
+        console.error("Error fetching favorites:", error);
+      }
+    };
+
+    fetchFavorites();
+  }, [user.id]);
+
+  // Listen for favorite events from other components
+  useEffect(() => {
+    if (!user.id) return;
+
+    const unsubscribe = favoriteEvents.subscribe((event) => {
+      // Only process events for this user
+      if (event.userId !== user.id) return;
+
+      if (event.type === 'added') {
+        setFavoriteServices(prev => {
+          if (prev.includes(event.serviceId)) return prev;
+          return [...prev, event.serviceId];
+        });
+      } else if (event.type === 'removed') {
+        setFavoriteServices(prev => prev.filter(id => id !== event.serviceId));
+      }
+    });
+
+    return () => unsubscribe();
+  }, [user.id]);
+
+  // Toggle favorite with API integration
+  const toggleFavorite = async (serviceId: string, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent card click
+    
+    if (!user.id) {
+      toast.error("Please login to add favorites");
+      return;
+    }
+
+    const isFavorite = favoriteServices.includes(serviceId);
+    
+    // OPTIMISTIC UPDATE: Update UI immediately for instant feedback
+    if (isFavorite) {
+      setFavoriteServices(prev => prev.filter(id => id !== serviceId));
+      // Emit event IMMEDIATELY for other components to update in real-time
+      favoriteEvents.removeFavorite(user.id, serviceId);
+      toast.success("Removed from favorites");
+    } else {
+      setFavoriteServices(prev => [...prev, serviceId]);
+      // Emit event IMMEDIATELY for other components to update in real-time
+      favoriteEvents.addFavorite(user.id, serviceId);
+      toast.success("Added to favorites");
+    }
+
+    // Update database in background (no await needed for user perception)
+    (async () => {
+      try {
+        if (isFavorite) {
+          await API.favorites.remove(user.id, serviceId);
+        } else {
+          await API.favorites.add(user.id, serviceId);
+        }
+      } catch (error) {
+        console.error("Error toggling favorite:", error);
+        toast.error("Failed to update favorites");
+        
+        // REVERT optimistic update on error
+        if (isFavorite) {
+          setFavoriteServices(prev => [...prev, serviceId]);
+          favoriteEvents.addFavorite(user.id, serviceId);
+        } else {
+          setFavoriteServices(prev => prev.filter(id => id !== serviceId));
+          favoriteEvents.removeFavorite(user.id, serviceId);
+        }
+      }
+    })();
+  };
 
   // Filter appointments for current user
   const userAppointments = appointments.filter(
@@ -215,7 +307,12 @@ export function CustomerDashboardOverview({
         setIsCancelling(false);
         return;
       }
-   
+      
+      console.log('🚀 Cancelling appointment:', {
+        userId: user.id,
+        appointmentId,
+        API_cancel_exists: typeof API.appointments?.cancel
+      });
       
       // Try using the cancel endpoint, fallback to update if not available
       try {
@@ -228,7 +325,7 @@ export function CustomerDashboardOverview({
           );
         } else {
           // Fallback: Use update endpoint
-       
+          console.log('⚠️ Using fallback update method');
           await API.appointments.update(appointmentId, {
             status: 'cancelled',
             cancellationReason: 'Cancelled by customer',
@@ -675,40 +772,62 @@ export function CustomerDashboardOverview({
               {services.slice(0, 6).map((service) => (
                 <div
                   key={service.id || service._id}
-                  className="cursor-pointer"
-                  onClick={() => onNavigate("book")}
                 >
-                  <Card className="hover:shadow-lg transition-shadow overflow-hidden border-[#E8DCC8] h-full">
-                    <div className="relative h-44 overflow-hidden">
+                  <Card className="relative transition-all overflow-hidden hover:shadow-md border-2 border-[#E8DCC8] hover:border-[#DB9D47]/40 cursor-pointer group">
+                    <div className="relative h-48 overflow-hidden">
                       <ImageWithFallback
                         src={
                           service.imageUrl ||
                           "https://images.unsplash.com/photo-1621605815971-fbc98d665033?w=400&h=400&fit=crop"
                         }
                         alt={service.name}
-                        className="w-full h-full object-cover"
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                       />
+                      {/* Favorite Icon */}
+                      <button
+                        onClick={(e) => toggleFavorite(service.id || service._id, e)}
+                        className="absolute top-3 right-3 p-2 rounded-full bg-white shadow-md hover:shadow-lg transition-all hover:scale-110 z-10 cursor-pointer"
+                        aria-label="Add to favorites"
+                      >
+                        <Heart
+                          className={`w-5 h-5 transition-colors ${
+                            favoriteServices.includes(service.id || service._id)
+                              ? "text-red-500 fill-current"
+                                : "text-[#87765E] hover:text-[#DB9D47]"
+                          }`}
+                        />
+                      </button>
                     </div>
-                    <CardContent className="p-4">
-                      <div className="mb-3">
-                        <h3 className="text-lg text-[#5C4A3A] mb-1.5">
-                          {service.name}
-                        </h3>
-                        <p className="text-xs text-[#87765E] mb-3 line-clamp-2 leading-relaxed">
-                          {service.description}
-                        </p>
+                    <CardContent className="pt-4 pb-4">
+                      <h3 className="text-lg text-[#5C4A3A] mb-2 group-hover:text-[#DB9D47] transition-colors">
+                        {service.name}
+                      </h3>
+                      <p className="text-sm text-[#87765E] mb-3 line-clamp-2">
+                        {service.description}
+                      </p>
+                      
+                      <div className="flex items-center justify-between mb-3 pb-3 border-b border-[#E8DCC8]">
+                        <span className="flex items-center gap-1 text-sm text-[#87765E]">
+                          <Clock className="w-4 h-4" />
+                          {service.duration} mins
+                        </span>
+                        <span className="text-lg text-[#DB9D47] font-semibold">
+                          ₱{service.price}
+                        </span>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1.5 text-xs text-[#87765E]">
-                          <Clock className="w-3.5 h-3.5" />
-                          <span>{service.duration} min</span>
-                        </div>
-                        <div className="text-[#DB9D47]">
-                          <span className="text-base">
-                            ₱{service.price}
-                          </span>
-                        </div>
-                      </div>
+                      
+                      <Button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (onSetPreSelectedService) {
+                            onSetPreSelectedService(service.id || service._id);
+                          }
+                          onNavigate("book");
+                        }}
+                        className="w-full bg-[#DB9D47] hover:bg-[#C88A35] text-white cursor-pointer transition-all hover:shadow-md"
+                      >
+                        Book Now
+                      </Button>
                     </CardContent>
                   </Card>
                 </div>

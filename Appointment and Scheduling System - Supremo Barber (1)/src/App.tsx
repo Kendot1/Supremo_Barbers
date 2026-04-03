@@ -6,6 +6,8 @@ import API from "./services/api.service";
 import { logUserLogin, logUserLogout, logAppointmentCreated } from "./services/audit-notification.service";
 import { LoadingFallback } from "./components/LoadingFallback";
 import { AIChatbot } from "./components/AIChatbot";
+import { RateLimitProvider } from "./contexts/RateLimitContext";
+import { AppWithRateLimit } from "./components/AppWithRateLimit";
 import "./utils/clearTokens"; // Load debug helper
 
 // Lazy load heavy components for code splitting
@@ -85,8 +87,6 @@ export interface Appointment {
   notes?: string;
   created_at?: string;
 }
-
-export type { Notification };
 
 type View = "landingpage" | "login" | "register" | "terms" | "privacy";
 
@@ -805,11 +805,13 @@ function App() {
   };
 
   return (
-    <>
-      {renderDashboard()}
-      <AIChatbot currentUser={currentUser} appointments={appointments} />
-      <Toaster />
-    </>
+    <RateLimitProvider>
+      <AppWithRateLimit>
+        {renderDashboard()}
+        <AIChatbot currentUser={currentUser} appointments={appointments} />
+        <Toaster />
+      </AppWithRateLimit>
+    </RateLimitProvider>
   );
 }
 

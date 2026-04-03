@@ -224,11 +224,7 @@ export function ImprovedSuperAdminDashboard({
 
   return (
     <div className="min-h-screen bg-[#FFFDF8] flex flex-col">
-      {/* Notification Toast System */}
-      <NotificationToast
-        notifications={notifications}
-        userId={user.id}
-      />
+      
 
       <div className="flex flex-1">
         {/* Sidebar - Hidden on mobile, visible on desktop */}

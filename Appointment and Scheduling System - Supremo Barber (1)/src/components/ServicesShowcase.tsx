@@ -10,6 +10,7 @@ import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import {
   Clock,
+  DollarSign,
   Scissors,
   Star,
   Loader2,
@@ -325,7 +326,7 @@ export function ServicesShowcase({
               return (
                 <Card
                   key={serviceId}
-                  className="relative transition-all overflow-hidden hover:shadow-md border-2 border-[#E8DCC8] hover:border-[#DB9D47]/40"
+                  className="relative transition-all overflow-hidden hover:shadow-md border-2 border-[#E8DCC8] hover:border-[#DB9D47]/40 cursor-pointer group"
                 >
                   <div className="relative h-48 overflow-hidden">
                     <img
@@ -335,7 +336,7 @@ export function ServicesShowcase({
                         "https://images.unsplash.com/photo-1503951914875-452162b0f3f1"
                       }
                       alt={service.name}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                     />
                     
                     {/* Available Badge */}
@@ -348,7 +349,7 @@ export function ServicesShowcase({
                       <button
                         onClick={(e) => handleToggleFavorite(e, serviceId)}
                         disabled={isToggling}
-                        className="absolute top-3 right-3 bg-white rounded-full p-2 shadow-md hover:shadow-lg transition-all disabled:opacity-50 z-10"
+                        className="absolute top-3 right-3 bg-white rounded-full p-2 shadow-md hover:shadow-lg transition-all hover:scale-110 disabled:opacity-50 z-10 cursor-pointer"
                       >
                         {isToggling ? (
                           <Loader2 className="w-5 h-5 text-[#DB9D47] animate-spin" />
@@ -357,7 +358,7 @@ export function ServicesShowcase({
                             className={`w-5 h-5 transition-colors ${
                               isFavorite
                                 ? "text-red-500 fill-current"
-                                : "text-[#87765E]"
+                                : "text-[#87765E] hover:text-[#DB9D47]"
                             }`}
                           />
                         )}
@@ -374,7 +375,7 @@ export function ServicesShowcase({
                   </div>
                   
                   <CardContent className="pt-4 pb-4">
-                    <h3 className="text-lg text-[#5C4A3A] mb-2">
+                    <h3 className="text-lg text-[#5C4A3A] mb-2 group-hover:text-[#DB9D47] transition-colors">
                       {service.name}
                     </h3>
                     <p className="text-sm text-[#87765E] mb-3 line-clamp-2">
@@ -386,13 +387,13 @@ export function ServicesShowcase({
                         <Clock className="w-4 h-4" />
                         {service.duration} mins
                       </span>
-                      <span className="text-lg text-[#DB9D47]">
+                      <span className="text-lg text-[#DB9D47] font-semibold">
                         ₱{service.price}
                       </span>
                     </div>
                     
                     <Button
-                      className="w-full bg-[#DB9D47] hover:bg-[#C88A35] text-white"
+                      className="w-full bg-[#DB9D47] hover:bg-[#C88A35] text-white cursor-pointer transition-all hover:shadow-md"
                       onClick={(e) => handleBookService(e, service)}
                     >
                       Book Now

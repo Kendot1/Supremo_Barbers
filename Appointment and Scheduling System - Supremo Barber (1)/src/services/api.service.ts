@@ -14,6 +14,8 @@ import { projectId, publicAnonKey } from '../utils/supabase/info';
 import { LocalBackend } from './local-backend.service';
 import { cachedAPICall, apiCache } from '../utils/apiCache';
 import { normalizeR2Url } from '../utils/avatarUrl';
+import { rateLimiter, getUserRateLimitKey, formatRetryAfter } from '../utils/rateLimiter';
+import { rateLimitEvents } from '../utils/rateLimitEvents';
 
 // Supabase Configuration
 const SUPABASE_URL = `https://${projectId}.supabase.co`;
@@ -117,6 +119,23 @@ function toCamelCase(obj: any): any {
   return camelCaseObj;
 }
 
+// Helper to determine endpoint type from URL for rate limiting
+function getEndpointType(url: string): string {
+  if (url.includes("/ai-chat")) return "ai:chat";
+  if (url.includes("/auth/login")) return "auth:login";
+  if (url.includes("/auth/register")) return "auth:register";
+  if (url.includes("/auth/send-otp")) return "auth:otp";
+  if (url.includes("/auth/verify-otp")) return "auth:otp";
+  if (url.includes("/auth/forgot-password")) return "auth:otp";
+  if (url.includes("/auth/reset-password")) return "auth:otp";
+  if (url.includes("/booking")) return "booking:create";
+  if (url.includes("/payment")) return "payment:upload";
+  if (url.includes("/send-inquiry")) return "contact:send";
+  
+  // Default to general API rate limit
+  return "api:general";
+}
+
 // Helper function for API calls
 async function apiCall<T>(
   endpoint: string,
@@ -124,6 +143,42 @@ async function apiCall<T>(
   requiresAuth: boolean = false
 ): Promise<T> {
   try {
+    // ============ RATE LIMITING CHECK ============
+    // Get user ID from localStorage for rate limiting
+    let userId: string | undefined;
+    try {
+      const storedUser = localStorage.getItem('currentUser');
+      if (storedUser) {
+        const user = JSON.parse(storedUser);
+        userId = user.id;
+      }
+    } catch (e) {
+      // Ignore errors reading user ID
+    }
+
+    // Check rate limit before making request
+    const endpointType = getEndpointType(endpoint);
+    const rateLimitKey = getUserRateLimitKey(endpointType, userId);
+    const rateLimit = rateLimiter.isAllowed(rateLimitKey);
+
+    if (!rateLimit.allowed) {
+      console.warn('🚫 Rate limit exceeded for:', endpointType);
+      
+      // Emit rate limit event to show modal
+      rateLimitEvents.emit({
+        reason: rateLimit.reason || "rate_limit",
+        retryAfter: rateLimit.retryAfter || 60,
+        endpoint: endpointType,
+      });
+
+      // Throw error to stop the API call
+      const error = new Error(
+        `Rate limit exceeded. Please try again in ${formatRetryAfter(rateLimit.retryAfter || 60)}.`
+      );
+      throw error;
+    }
+    // ============================================
+
     const token = getAuthToken();
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
@@ -144,6 +199,30 @@ async function apiCall<T>(
       ...options,
       headers,
     });
+
+    // ============ CHECK SERVER RATE LIMIT RESPONSE ============
+    if (response.status === 429) {
+      let retryAfter = 60;
+      let reason: "burst_detected" | "rate_limit" | "blocked" = "rate_limit";
+      
+      try {
+        const data = await response.json();
+        retryAfter = data.retryAfter || retryAfter;
+        reason = data.reason || reason;
+      } catch {
+        // Ignore JSON parse errors
+      }
+
+      // Emit rate limit event
+      rateLimitEvents.emit({
+        reason,
+        retryAfter,
+        endpoint: endpointType,
+      });
+
+      throw new Error(`Too many requests. Please try again in ${formatRetryAfter(retryAfter)}.`);
+    }
+    // =========================================================
 
     if (!response.ok) {
       // Try to parse error response
@@ -360,6 +439,27 @@ const API = {
       }
       return apiCall<{ message: string }>(
         `/users/${id}/change-password`,
+        {
+          method: 'POST',
+          body: JSON.stringify(data),
+        },
+        false
+      );
+    },
+    
+    changeEmail: async (id: string, data: { newEmail: string; password: string }) => {
+      console.log('📧 API Service: changeEmail called with:', {
+        userId: id,
+        newEmail: data.newEmail,
+        hasPassword: !!data.password
+      });
+      
+      if (USE_LOCAL_BACKEND) {
+        // For local backend, just update the email (simplified)
+        return LocalBackend.users.update(id, { email: data.newEmail });
+      }
+      return apiCall<{ message: string; newEmail: string }>(
+        `/users/${id}/change-email`,
         {
           method: 'POST',
           body: JSON.stringify(data),

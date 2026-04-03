@@ -87,6 +87,9 @@ export function CustomerProfile({
     confirmPassword: "",
   });
 
+  // Password for profile changes (used when email changes)
+  const [profilePassword, setProfilePassword] = useState("");
+
   // Security & Devices state
   const [signOutAllLoading, setSignOutAllLoading] =
     useState(false);
@@ -178,52 +181,231 @@ export function CustomerProfile({
       phone: user.phone || "",
       avatarUrl: user.avatarUrl || "",
     }));
-  }, [user]);
+  }, [user.name, user.email, user.phone, user.avatarUrl]); // Only update when specific fields change
 
   const handleSaveProfile = async () => {
     setShowProfileConfirm(false);
     setLoading(true);
+    
     try {
-      // Update user in database
-      await API.users.update(user.id, {
-        name: profile.name,
-        email: profile.email,
-        phone: profile.phone,
-      });
-
-      // Log profile update to audit logs
-      const changes = [];
-      if (profile.name !== user.name) changes.push("name");
-      if (profile.email !== user.email) changes.push("email");
-      if (profile.phone !== user.phone) changes.push("phone");
-
-      if (changes.length > 0) {
-        await logProfileUpdate(
-          user.id,
-          user.role as "customer",
-          user.name,
-          user.email,
-          changes,
-        );
+      console.log('🔍 DEBUG - Full user object:', user);
+      console.log('🔍 DEBUG - User ID:', user.id);
+      console.log('🔍 DEBUG - User ID type:', typeof user.id);
+      console.log('🔍 DEBUG - User email:', user.email);
+      console.log('🔍 DEBUG - localStorage currentUser:', localStorage.getItem('currentUser'));
+      
+      // First, verify the user exists in the database
+      try {
+        console.log('🔍 DEBUG - Attempting to fetch user with ID:', user.id);
+        const existingUser = await API.users.getById(user.id);
+        console.log('✅ DEBUG - User found in database:', existingUser);
+      } catch (verifyError: any) {
+        console.error('❌ DEBUG - User verification failed:', verifyError);
+        console.error('❌ DEBUG - Error details:', {
+          message: verifyError.message,
+          status: verifyError.status,
+          stack: verifyError.stack
+        });
+        
+        // If user doesn't exist, show helpful error
+        if (verifyError.message?.includes('User not found') || verifyError.message?.includes('404')) {
+          toast.error('Account sync issue detected', {
+            description: `Your account (ID: ${user.id.substring(0, 8)}...) needs to be re-synced. Please log out and log back in.`,
+            duration: 10000
+          });
+          setLoading(false);
+          setProfilePassword("");
+          return;
+        }
+        
+        // Re-throw other errors
+        throw verifyError;
       }
-
-      toast.success("Profile updated successfully!", {
-        description:
-          "Your personal information has been saved.",
-      });
-      if (onUserUpdate) {
-        onUserUpdate({
-          ...user,
+      
+      const emailChanged = profile.email.toLowerCase() !== user.email.toLowerCase();
+      
+      // If email changed, use changeEmail API with password
+      if (emailChanged) {
+        if (!profilePassword) {
+          toast.error("Password required", {
+            description: "Please enter your password to change your email address."
+          });
+          setLoading(false);
+          return;
+        }
+        
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(profile.email)) {
+          toast.error("Invalid email format");
+          setLoading(false);
+          setProfilePassword("");
+          return;
+        }
+        
+        // TEMPORARY WORKAROUND: Try changeEmail first, if it fails use regular update
+        try {
+          // Call change email API
+          const result = await API.users.changeEmail(user.id, {
+            newEmail: profile.email,
+            password: profilePassword,
+          });
+          
+          // Update other fields separately if they changed
+          if (profile.name !== user.name || profile.phone !== user.phone) {
+            try {
+              await API.users.update(user.id, {
+                name: profile.name,
+                phone: profile.phone,
+              });
+            } catch (updateError) {
+              console.error("Error updating name/phone:", updateError);
+              // Continue anyway, email was changed successfully
+            }
+          }
+          
+          toast.success("Profile updated successfully!", {
+            description: `Your email has been changed to ${result.newEmail}`
+          });
+          
+          // Log the changes (don't fail if logging fails)
+          const changes = [];
+          if (emailChanged) changes.push("email");
+          if (profile.name !== user.name) changes.push("name");
+          if (profile.phone !== user.phone) changes.push("phone");
+          
+          if (changes.length > 0) {
+            try {
+              await logProfileUpdate(
+                user.id,
+                user.role as "customer",
+                user.name,
+                user.email,
+                changes
+              );
+            } catch (logError) {
+              console.error("Error logging profile update:", logError);
+              // Don't fail the whole operation if logging fails
+            }
+          }
+          
+          if (onUserUpdate) {
+            onUserUpdate({
+              ...user,
+              name: profile.name,
+              email: result.newEmail,
+              phone: profile.phone,
+            });
+          }
+          
+          // Clear password
+          setProfilePassword("");
+          
+        } catch (emailChangeError: any) {
+          console.error("Change email API failed, trying regular update:", emailChangeError);
+          
+          // Check for duplicate email error
+          if (emailChangeError.message?.includes('duplicate key') || 
+              emailChangeError.message?.includes('users_email_key') ||
+              emailChangeError.message?.includes('already registered') ||
+              emailChangeError.message?.includes('email is already in use')) {
+            toast.error("Email already in use", {
+              description: "This email address is already registered to another account. Please use a different email."
+            });
+            setLoading(false);
+            setProfilePassword("");
+            return;
+          }
+          
+       
+          
+          await API.users.update(user.id, {
+            name: profile.name,
+            email: profile.email,
+            phone: profile.phone,
+          });
+          
+          const changes = [];
+          if (emailChanged) changes.push("email");
+          if (profile.name !== user.name) changes.push("name");
+          if (profile.phone !== user.phone) changes.push("phone");
+          
+          if (changes.length > 0) {
+            try {
+              await logProfileUpdate(
+                user.id,
+                user.role as "customer",
+                user.name,
+                user.email,
+                changes
+              );
+            } catch (logError) {
+              console.error("Error logging profile update:", logError);
+            }
+          }
+          
+          toast.success("Profile updated successfully!", {
+            description: "Your personal information has been saved."
+          });
+          
+          if (onUserUpdate) {
+            onUserUpdate({
+              ...user,
+              name: profile.name,
+              email: profile.email,
+              phone: profile.phone,
+            });
+          }
+          
+          setProfilePassword("");
+        }
+        
+      } else {
+        // No email change, use regular update
+        await API.users.update(user.id, {
           name: profile.name,
           email: profile.email,
           phone: profile.phone,
         });
+        
+        const changes = [];
+        if (profile.name !== user.name) changes.push("name");
+        if (profile.phone !== user.phone) changes.push("phone");
+        
+        if (changes.length > 0) {
+          try {
+            await logProfileUpdate(
+              user.id,
+              user.role as "customer",
+              user.name,
+              user.email,
+              changes
+            );
+          } catch (logError) {
+            console.error("Error logging profile update:", logError);
+            // Don't fail the whole operation if logging fails
+          }
+        }
+        
+        toast.success("Profile updated successfully!", {
+          description: "Your personal information has been saved."
+        });
+        
+        if (onUserUpdate) {
+          onUserUpdate({
+            ...user,
+            name: profile.name,
+            email: profile.email,
+            phone: profile.phone,
+          });
+        }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating profile:", error);
       toast.error("Failed to update profile", {
-        description: "Please try again later.",
+        description: error.message || "Please try again later."
       });
+      setProfilePassword(""); // Clear password on error too
     } finally {
       setLoading(false);
     }
@@ -495,8 +677,13 @@ export function CustomerProfile({
                   id="email"
                   type="email"
                   value={profile.email}
-                  disabled
-                  className="pl-9 border-[#E8DCC8] bg-gray-50 cursor-not-allowed opacity-60"
+                  onChange={(e) =>
+                    setProfile({
+                      ...profile,
+                      email: e.target.value,
+                    })
+                  }
+                  className="pl-9 border-[#E8DCC8] focus:border-[#DB9D47] focus:ring-[#DB9D47]"
                 />
               </div>
             </div>
@@ -648,6 +835,48 @@ export function CustomerProfile({
         </CardContent>
       </Card>
 
+      {/* Account Statistics */}
+      <Card className="border-[#E8DCC8]">
+        <CardHeader>
+          <CardTitle className="text-[#5C4A3A]">
+            Account Statistics
+          </CardTitle>
+          <CardDescription className="text-[#87765E]">
+            Your activity summary
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="p-4 bg-[#FBF7EF] rounded-lg border border-[#E8DCC8]">
+              <div className="flex items-center gap-3 mb-2">
+                <Calendar className="w-5 h-5 text-[#DB9D47]" />
+                <p className="text-sm text-[#87765E]">
+                  Total Visits
+                </p>
+              </div>
+              <p className="text-2xl text-[#5C4A3A]">12</p>
+            </div>
+            <div className="p-4 bg-[#FBF7EF] rounded-lg border border-[#E8DCC8]">
+              <div className="flex items-center gap-3 mb-2">
+                <FaPesoSign className="w-5 h-5 text-[#94A670]" />
+                <p className="text-sm text-[#87765E]">
+                  Amount Spent
+                </p>
+              </div>
+              <p className="text-2xl text-[#5C4A3A]">₱2,700</p>
+            </div>
+            <div className="p-4 bg-[#FBF7EF] rounded-lg border border-[#E8DCC8]">
+              <div className="flex items-center gap-3 mb-2">
+                <Award className="w-5 h-5 text-[#D98555]" />
+                <p className="text-sm text-[#87765E]">
+                  Member Status
+                </p>
+              </div>
+              <p className="text-2xl text-[#5C4A3A]">Active</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Security & Devices */}
       <Card className="border-[#E8DCC8]">
@@ -794,7 +1023,10 @@ export function CustomerProfile({
       {/* Profile Confirmation Dialog */}
       <AlertDialog
         open={showProfileConfirm}
-        onOpenChange={setShowProfileConfirm}
+        onOpenChange={(open) => {
+          setShowProfileConfirm(open);
+          if (!open) setProfilePassword(""); // Clear password when closing
+        }}
       >
         <AlertDialogContent className="border-[#E8DCC8]">
           <AlertDialogHeader>
@@ -802,10 +1034,40 @@ export function CustomerProfile({
               <Save className="w-5 h-5 text-[#DB9D47]" />
               Confirm Profile Changes
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-[#87765E]">
-              Are you sure you want to save these changes to
-              your profile? This will update your personal
-              information.
+            <AlertDialogDescription className="text-[#87765E] space-y-3">
+              {profile.email.toLowerCase() !== user.email.toLowerCase() ? (
+                <>
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-md">
+                    <div className="flex items-start gap-2">
+                     
+                      <div className="text-sm text-amber-900">
+                       
+                        <p>
+                          <span className="font-medium">Current:</span> {user.email}
+                        </p>
+                        <p>
+                          <span className="font-medium">New:</span> {profile.email}
+                        </p>
+                       
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                   
+                    <PasswordInput
+                      id="profilePassword"
+                      value={profilePassword}
+                      onChange={(value) => setProfilePassword(value)}
+                      placeholder="Enter your password"
+                      showStrength={false}
+                      className="border-[#E8DCC8] focus:border-[#DB9D47] focus:ring-[#DB9D47]"
+                    />
+                  </div>
+                </>
+              ) : (
+                <p>Are you sure you want to save these changes to your profile? This will update your personal information.</p>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -1,28 +1,15 @@
-import { useState, useRef, useEffect } from "react";
-import {
-  MessageCircle,
-  X,
-  Send,
-  Bot,
-  User,
-  Loader2,
-  Sparkles,
-  Scissors,
-} from "lucide-react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-} from "./ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { MessageCircle, Send, X, Loader2, User } from "lucide-react";
 import { toast } from "sonner";
 import { User as UserType, Appointment } from "../App";
 import {
   projectId,
   publicAnonKey,
 } from "../utils/supabase/info.tsx";
+import { rateLimiter, getUserRateLimitKey, formatRetryAfter } from "../utils/rateLimiter";
 
 interface Message {
   id: string;
@@ -36,7 +23,10 @@ interface AIChatbotProps {
   appointments?: Appointment[];
 }
 
-export function AIChatbot({ currentUser, appointments }: AIChatbotProps) {
+export function AIChatbot({
+  currentUser,
+  appointments,
+}: AIChatbotProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState("");
@@ -126,6 +116,42 @@ How can I assist you today?`;
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || isLoading) return;
 
+    // Check rate limit
+    const rateLimitKey = getUserRateLimitKey('ai:chat', currentUser?.id);
+    const rateLimit = rateLimiter.isAllowed(rateLimitKey);
+    
+    if (!rateLimit.allowed) {
+      let errorTitle = 'Rate Limit Exceeded';
+      let errorMessage = '';
+      let chatMessage = '';
+      
+      if (rateLimit.reason === 'burst_detected') {
+        errorTitle = '🚨 Burst Detection - Slow Down!';
+        errorMessage = `You're sending messages too quickly! Please wait ${formatRetryAfter(rateLimit.retryAfter || 120)} before continuing.`;
+        chatMessage = `⚠️ **Burst Detection Alert!**\n\nYou've sent ${5} messages in rapid succession (within 30 seconds). This looks like automated behavior.\n\n🛡️ **Your account has been temporarily limited for ${formatRetryAfter(rateLimit.retryAfter || 120)}.**\n\nPlease wait before sending another message. This protection helps ensure fair usage for all users and prevents system abuse.\n\nThank you for your understanding! 🙏`;
+      } else {
+        errorMessage = rateLimit.retryAfter 
+          ? `Please wait ${formatRetryAfter(rateLimit.retryAfter)} before sending another message.`
+          : 'Too many requests. Please try again later.';
+        chatMessage = `⚠️ Rate limit exceeded. ${errorMessage}\n\nThis helps us ensure fair usage for all users. Thank you for your understanding!`;
+      }
+      
+      toast.error(errorTitle, {
+        description: errorMessage,
+        duration: 5000,
+      });
+      
+      // Show rate limit message in chat
+      const rateLimitMessage: Message = {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: chatMessage,
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, rateLimitMessage]);
+      return;
+    }
+
     const userMessage: Message = {
       id: Date.now().toString(),
       role: "user",
@@ -151,29 +177,40 @@ How can I assist you today?`;
       if (appointments && appointments.length > 0) {
         // Filter appointments for current user based on role
         let userAppointments = appointments;
-        
-        if (currentUser?.role === 'customer') {
-          userAppointments = appointments.filter(apt => 
-            apt.userId === currentUser.id || apt.customerId === currentUser.id || apt.customer_id === currentUser.id
+
+        if (currentUser?.role === "customer") {
+          userAppointments = appointments.filter(
+            (apt) =>
+              apt.userId === currentUser.id ||
+              apt.customerId === currentUser.id ||
+              apt.customer_id === currentUser.id,
           );
-        } else if (currentUser?.role === 'barber') {
-          userAppointments = appointments.filter(apt => 
-            apt.barberId === currentUser.id || apt.barber_id === currentUser.id
+        } else if (currentUser?.role === "barber") {
+          userAppointments = appointments.filter(
+            (apt) =>
+              apt.barberId === currentUser.id ||
+              apt.barber_id === currentUser.id,
           );
         }
 
         // Format appointments for AI context (only include relevant fields)
-        userContext.appointments = userAppointments.map(apt => ({
-          id: apt.id,
-          service: apt.service || apt.service_name,
-          barber: apt.barber || apt.barber_name,
-          customer: apt.customerName || apt.customer_name || apt.customer,
-          date: apt.date || apt.appointment_date,
-          time: apt.time || apt.appointment_time,
-          status: apt.status,
-          price: apt.price || apt.total_amount,
-          paymentStatus: apt.paymentStatus || apt.payment_status,
-        }));
+        userContext.appointments = userAppointments.map(
+          (apt) => ({
+            id: apt.id,
+            service: apt.service || apt.service_name,
+            barber: apt.barber || apt.barber_name,
+            customer:
+              apt.customerName ||
+              apt.customer_name ||
+              apt.customer,
+            date: apt.date || apt.appointment_date,
+            time: apt.time || apt.appointment_time,
+            status: apt.status,
+            price: apt.price || apt.total_amount,
+            paymentStatus:
+              apt.paymentStatus || apt.payment_status,
+          }),
+        );
       }
 
       // Call AI backend endpoint using full Supabase Functions URL
@@ -263,21 +300,14 @@ How can I assist you today?`;
       {/* Floating Chat Button */}
       {!isOpen && (
         <div
-          className="fixed bottom-6 right-6"
-          style={{
-            position: "fixed",
-            bottom: "1.5rem",
-            right: "1.5rem",
-            left: "auto",
-            zIndex: 40, // Changed from 9999 to 40 to avoid overlay
-          }}
+          className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50"
         >
           <Button
             onClick={() => setIsOpen(true)}
-            className="h-14 w-14 rounded-full bg-[#DB9D47] hover:bg-[#C88D3F] text-white shadow-lg hover:shadow-xl transition-all duration-300 group relative"
+            className="h-12 w-12 sm:h-14 sm:w-14 rounded-full bg-[#DB9D47] hover:bg-[#C88D3F] text-white shadow-lg hover:shadow-xl transition-all duration-300 group relative"
             aria-label="Open AI Chat"
           >
-            <MessageCircle className="w-6 h-6 group-hover:scale-110 transition-transform" />
+            <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6 group-hover:scale-110 transition-transform" />
             {/* Green notification badge with CSS animation */}
             <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white animate-pulse" />
           </Button>
@@ -286,211 +316,212 @@ How can I assist you today?`;
 
       {/* Chat Window */}
       {isOpen && (
-        <div
-          className="
-                fixed bottom-4 right-4
-                w-[90vw] sm:w-[400px] md:w-[420px] lg:w-[450px]
-                h-[85vh] sm:h-[600px]
-                max-h-[90vh]
-                shadow-2xl
-                animate-in slide-in-from-bottom-5 duration-300
-            "
-          style={{
-            zIndex: 40,
-          }}
-        >
-          <Card className="border-2 border-[#DB9D47] bg-white overflow-hidden h-full flex flex-col">
-            {/* Header */}
-            <CardHeader className="bg-[#DB9D47] text-white p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="relative">
-                    <div className="relative w-10 h-10">
-                      {/* Avatar */}
-                      <div className="w-full h-full bg-white rounded-full flex items-center justify-center overflow-hidden">
-                        <img
-                          src="https://pub-86f4b5249e5c4021bb05d46908eeb094.r2.dev/supremo-barber/supremoWebLogo.png"
-                          alt="Bot Logo"
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
+        <>
+          {/* Backdrop/Overlay for mobile */}
+          <div
+            className="fixed inset-0 bg-black/50 z-40 sm:hidden"
+            onClick={() => setIsOpen(false)}
+            aria-hidden="true"
+          />
+          
+          {/* Chat Container */}
+         <div
+            className="fixed bottom-4 right-4
+             w-[90%] max-w-[400px] sm:w-[400px] md:w-[420px] lg:w-[450px]
+             h-[500px] sm:h-[600px] sm:max-h-[calc(100vh-2rem)]
+             shadow-2xl
+             animate-in slide-in-from-bottom-5 duration-300
+             z-50"
+          >
+            <Card className="border-0 sm:border-2 sm:border-[#DB9D47] bg-white overflow-hidden h-full flex flex-col sm:rounded-2xl rounded-t-3xl">
+              {/* Header */}
+              <CardHeader className="bg-[#DB9D47] text-white p-3 sm:p-4 flex-shrink-0">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 sm:gap-3">
+                    <div className="relative">
+                      <div className="relative w-9 h-9 sm:w-10 sm:h-10">
+                        {/* Avatar */}
+                        <div className="w-full h-full bg-white rounded-full flex items-center justify-center overflow-hidden">
+                          <img
+                            src="https://pub-86f4b5249e5c4021bb05d46908eeb094.r2.dev/supremo-barber/supremoWebLogo.png"
+                            alt="Bot Logo"
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
 
-                      {/* Status Badge */}
-                      <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
+                        {/* Status Badge */}
+                        <div className="absolute bottom-0 right-0 w-2.5 h-2.5 sm:w-3 sm:h-3 bg-green-500 rounded-full border-2 border-white" />
+                      </div>
+                    </div>
+                    <div>
+                      <CardTitle className="text-white text-sm sm:text-base font-bold flex items-center gap-2">
+                        AI Assistant
+                      </CardTitle>
+                      <p className="text-[10px] sm:text-xs text-white/90">
+                        Supremo Barber Support
+                      </p>
                     </div>
                   </div>
-                  <div>
-                    <CardTitle className="text-white text-base font-bold flex items-center gap-2">
-                      AI Assistant
-                    </CardTitle>
-                    <p className="text-xs text-white/90">
-                      Supremo Barber Support
-                    </p>
-                  </div>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setIsOpen(false)}
-                  className="text-white hover:bg-white/20 h-8 w-8 p-0"
-                >
-                  <X className="w-5 h-5" />
-                </Button>
-              </div>
-            </CardHeader>
-
-            {/* Messages Area */}
-            <CardContent className="p-0 flex-1 flex flex-col overflow-hidden">
-              <div className="flex-1 overflow-y-auto p-4 bg-white space-y-4">
-                {messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`flex gap-2 ${
-                      message.role === "user"
-                        ? "justify-end"
-                        : "justify-start"
-                    }`}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsOpen(false)}
+                    className="text-white hover:bg-white/20 h-8 w-8 p-0"
                   >
-                    {/* Bot Avatar - Only show for assistant */}
-                    {message.role === "assistant" && (
-                      <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 shadow-md overflow-hidden bg-[white]">
+                    <X className="w-4 h-4 sm:w-5 sm:h-5" />
+                  </Button>
+                </div>
+              </CardHeader>
+
+              {/* Messages Area */}
+              <CardContent className="p-0 flex-1 flex flex-col overflow-hidden">
+                <div className="flex-1 overflow-y-auto p-3 sm:p-4 bg-white space-y-3 sm:space-y-4">
+                  {messages.map((message) => (
+                    <div
+                      key={message.id}
+                      className={`flex gap-2 items-start ${
+                        message.role === "user"
+                          ? "justify-end"
+                          : "justify-start"
+                      }`}
+                    >
+                      {/* Bot Avatar - Only show for assistant */}
+                      {message.role === "assistant" && (
+                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center flex-shrink-0 shadow-md overflow-hidden bg-white border-2 border-[#DB9D47]">
+                          <img
+                            src="https://pub-86f4b5249e5c4021bb05d46908eeb094.r2.dev/supremo-barber/supremoWebLogo.png"
+                            alt="Bot Logo"
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      )}
+
+                      {/* Message Bubble */}
+                      <div
+                        className={`max-w-[70%] sm:max-w-[75%] rounded-2xl px-3 py-2 sm:px-4 sm:py-3 shadow-md "bg-white border border-[#E8DCC8] text-[#2D2D2D]"
+                        }`}
+                      >
+                        <p className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap break-words">
+                          {message.content}
+                        </p>
+                        <p
+                          className={`text-[9px] sm:text-[10px] mt-1.5 sm:mt-2 ${
+                            message.role === "user"
+                              ? "text-white/70"
+                              : "text-[#87765E]"
+                          }`}
+                        >
+                          {message.timestamp.toLocaleTimeString(
+                            [],
+                            {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            },
+                          )}
+                        </p>
+                      </div>
+
+                    </div>
+                  ))}
+
+                  {/* Typing Indicator */}
+                  {isTyping && (
+                    <div className="flex gap-2 justify-start">
+                      <div className="w-8 h-8 rounded-full bg-[#ffffff] flex items-center justify-center shadow-md">
                         <img
                           src="https://pub-86f4b5249e5c4021bb05d46908eeb094.r2.dev/supremo-barber/supremoWebLogo.png"
                           alt="Bot Logo"
                           className="w-8 h-8 object-cover"
                         />
                       </div>
-                    )}
+                      <div className="max-w-[75%] bg-[#FFF8E7] border-2 border-[#DB9D47] rounded-2xl p-3 shadow-sm flex items-center gap-1">
+                        <div
+                          className="w-2 h-2 bg-[#DB9D47] rounded-full animate-bounce"
+                          style={{ animationDelay: "0ms" }}
+                        />
+                        <div
+                          className="w-2 h-2 bg-[#DB9D47] rounded-full animate-bounce"
+                          style={{ animationDelay: "150ms" }}
+                        />
+                        <div
+                          className="w-2 h-2 bg-[#DB9D47] rounded-full animate-bounce"
+                          style={{ animationDelay: "300ms" }}
+                        />
+                      </div>
+                    </div>
+                  )}
 
-                    {/* Message Bubble */}
-                    <div
-                      className={`max-w-[75%] rounded-2xl p-3 shadow-sm ${
-                        message.role === "user"
-                          ? "bg-[#5C4A3A] text-white"
-                          : "bg-[#FFF8E7] border-2 border-[#DB9D47] text-[#2D2D2D]"
-                      }`}
+                  <div ref={messagesEndRef} />
+                </div>
+
+                {/* Quick Actions */}
+                <div className="px-4 py-2 bg-white border-t border-[#E8DCC8]">
+                  <div className="flex gap-2 overflow-x-auto pb-2">
+                    <QuickActionButton
+                      onClick={() =>
+                        setInputMessage(
+                          "What are your available time slots?",
+                        )
+                      }
+                      label=" Time Slots"
+                    />
+                    <QuickActionButton
+                      onClick={() =>
+                        setInputMessage(
+                          "What services do you offer?",
+                        )
+                      }
+                      label="✂️ Services"
+                    />
+                    <QuickActionButton
+                      onClick={() =>
+                        setInputMessage(
+                          "How much does a haircut cost?",
+                        )
+                      }
+                      label="💰 Pricing"
+                    />
+                    <QuickActionButton
+                      onClick={clearChat}
+                      label="🔄 Clear"
+                    />
+                  </div>
+                </div>
+
+                {/* Input Area */}
+                <div className="p-4 bg-white border-t border-[#E8DCC8]">
+                  <div className="flex gap-2">
+                    <Input
+                      ref={inputRef}
+                      value={inputMessage}
+                      onChange={(e) =>
+                        setInputMessage(e.target.value)
+                      }
+                      onKeyDown={handleKeyPress}
+                      placeholder="Ask me anything..."
+                      disabled={isLoading}
+                      className="flex-1 border-[#E8DCC8] focus:border-[#DB9D47]"
+                    />
+                    <Button
+                      onClick={handleSendMessage}
+                      disabled={!inputMessage.trim() || isLoading}
+                      className="bg-[#DB9D47] hover:bg-[#C88D3F] text-white px-4"
                     >
-                      <p className="text-sm whitespace-pre-wrap font-medium">
-                        {message.content}
-                      </p>
-                      <p
-                        className={`text-xs mt-1 font-normal ${
-                          message.role === "user"
-                            ? "text-white/80"
-                            : "text-[#666666]"
-                        }`}
-                      >
-                        {message.timestamp.toLocaleTimeString(
-                          [],
-                          {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          },
-                        )}
-                      </p>
-                    </div>
-
-                   
+                      {isLoading ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : (
+                        <Send className="w-5 h-5" />
+                      )}
+                    </Button>
                   </div>
-                ))}
-
-                {/* Typing Indicator */}
-                {isTyping && (
-                  <div className="flex gap-2 justify-start">
-                    <div className="w-8 h-8 rounded-full bg-[#ffffff] flex items-center justify-center shadow-md">
-                      <img
-                        src="https://pub-86f4b5249e5c4021bb05d46908eeb094.r2.dev/supremo-barber/supremoWebLogo.png"
-                        alt="Bot Logo"
-                        className="w-8 h-8 object-cover"
-                      />
-                    </div>
-                    <div className="max-w-[75%] bg-[#FFF8E7] border-2 border-[#DB9D47] rounded-2xl p-3 shadow-sm flex items-center gap-1">
-                      <div
-                        className="w-2 h-2 bg-[#DB9D47] rounded-full animate-bounce"
-                        style={{ animationDelay: "0ms" }}
-                      />
-                      <div
-                        className="w-2 h-2 bg-[#DB9D47] rounded-full animate-bounce"
-                        style={{ animationDelay: "150ms" }}
-                      />
-                      <div
-                        className="w-2 h-2 bg-[#DB9D47] rounded-full animate-bounce"
-                        style={{ animationDelay: "300ms" }}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                <div ref={messagesEndRef} />
-              </div>
-
-              {/* Quick Actions */}
-              <div className="px-4 py-2 bg-white border-t border-[#E8DCC8]">
-                <div className="flex gap-2 overflow-x-auto pb-2">
-                  <QuickActionButton
-                    onClick={() =>
-                      setInputMessage(
-                        "What are your available time slots?",
-                      )
-                    }
-                    label=" Time Slots"
-                  />
-                  <QuickActionButton
-                    onClick={() =>
-                      setInputMessage(
-                        "What services do you offer?",
-                      )
-                    }
-                    label="✂️ Services"
-                  />
-                  <QuickActionButton
-                    onClick={() =>
-                      setInputMessage(
-                        "How much does a haircut cost?",
-                      )
-                    }
-                    label="💰 Pricing"
-                  />
-                  <QuickActionButton
-                    onClick={clearChat}
-                    label="🔄 Clear"
-                  />
+                  <p className="text-xs text-[#87765E] mt-2 text-center">
+                    Powered by AI • May occasionally make mistakes
+                  </p>
                 </div>
-              </div>
-
-              {/* Input Area */}
-              <div className="p-4 bg-white border-t border-[#E8DCC8]">
-                <div className="flex gap-2">
-                  <Input
-                    ref={inputRef}
-                    value={inputMessage}
-                    onChange={(e) =>
-                      setInputMessage(e.target.value)
-                    }
-                    onKeyDown={handleKeyPress}
-                    placeholder="Ask me anything..."
-                    disabled={isLoading}
-                    className="flex-1 border-[#E8DCC8] focus:border-[#DB9D47]"
-                  />
-                  <Button
-                    onClick={handleSendMessage}
-                    disabled={!inputMessage.trim() || isLoading}
-                    className="bg-[#DB9D47] hover:bg-[#C88D3F] text-white px-4"
-                  >
-                    {isLoading ? (
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                    ) : (
-                      <Send className="w-5 h-5" />
-                    )}
-                  </Button>
-                </div>
-                <p className="text-xs text-[#87765E] mt-2 text-center">
-                  Powered by AI • May occasionally make mistakes
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+              </CardContent>
+            </Card>
+          </div>
+        </>
       )}
     </>
   );

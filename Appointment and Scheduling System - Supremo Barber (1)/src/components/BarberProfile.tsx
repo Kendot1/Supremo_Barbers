@@ -5,9 +5,8 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
-import { User, Mail, Phone, Save, Calendar, Star, Scissors, Clock, Loader2, AlertTriangle, Camera, Upload } from 'lucide-react';
+import { User, Mail, Phone, Save, Calendar, DollarSign, Star, Scissors, Clock, Loader2, AlertTriangle, Camera, Upload } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
-import { FaPesoSign } from 'react-icons/fa6';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -56,9 +55,17 @@ export function BarberProfile({ user, appointments, onUserUpdate }: BarberProfil
     confirmPassword: '',
   });
 
+  // Email change state
+  const [emailData, setEmailData] = useState({
+    newEmail: '',
+    password: '',
+  });
+  const [emailLoading, setEmailLoading] = useState(false);
+  const [showEmailConfirm, setShowEmailConfirm] = useState(false);
+
   // Update profile state when user prop changes (e.g., after avatar upload)
   useEffect(() => {
-  
+    console.log('👤 User prop changed, updating profile state with:', user);
     setProfile(prev => ({
       ...prev,
       name: user.name,
@@ -119,11 +126,19 @@ export function BarberProfile({ user, appointments, onUserUpdate }: BarberProfil
     setPasswordLoading(true);
     try {
       // Debug: Log the user ID being sent
-    
-      
+      console.log('🔐 Attempting password change for user:', {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        userObject: user
+      });
+
+      // WORKAROUND: First verify the user exists in the database
+      console.log('🔍 Verifying user exists in database...');
       try {
         const userInDb = await API.users.getById(user.id);
-       
+        console.log('✅ User found in database:', userInDb);
       } catch (verifyError: any) {
         console.error('❌ User not found in database:', verifyError);
         toast.error('Account verification failed', {
@@ -139,7 +154,7 @@ export function BarberProfile({ user, appointments, onUserUpdate }: BarberProfil
         newPassword: passwordData.newPassword,
       });
 
-   
+      console.log('✅ Password change result:', result);
 
       // Log password change to audit logs
       await logPasswordChange(
@@ -177,6 +192,77 @@ export function BarberProfile({ user, appointments, onUserUpdate }: BarberProfil
     }
   };
 
+  const handleChangeEmail = async () => {
+    if (!emailData.newEmail || !emailData.password) {
+      toast.error('Please fill in all fields');
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(emailData.newEmail)) {
+      toast.error('Invalid email format');
+      return;
+    }
+
+    if (emailData.newEmail.toLowerCase() === user.email.toLowerCase()) {
+      toast.error('New email must be different from current email');
+      return;
+    }
+
+    setShowEmailConfirm(false);
+    setEmailLoading(true);
+    try {
+      // Call API to change email
+      const result = await API.users.changeEmail(user.id, {
+        newEmail: emailData.newEmail,
+        password: emailData.password,
+      });
+
+      // Log email change to audit logs
+      await logProfileUpdate(
+        user.id,
+        user.role as 'barber',
+        user.name,
+        user.email,
+        ['email'],
+      );
+
+      toast.success('Email changed successfully!', {
+        description: `Your new email is ${result.newEmail}`,
+      });
+
+      // Update user in parent component
+      if (onUserUpdate) {
+        onUserUpdate({
+          ...user,
+          email: result.newEmail,
+        });
+      }
+
+      // Clear email change form
+      setEmailData({
+        newEmail: '',
+        password: '',
+      });
+
+      // Update profile display
+      setProfile({
+        ...profile,
+        email: result.newEmail,
+      });
+    } catch (error: any) {
+      console.error('Error changing email:', error);
+      toast.error('Failed to change email', {
+        description:
+          error.message ||
+          'Please check your password and try again.',
+      });
+    } finally {
+      setEmailLoading(false);
+    }
+  };
+
   const getInitials = (name: string) => {
     return name
       .split(' ')
@@ -210,23 +296,25 @@ export function BarberProfile({ user, appointments, onUserUpdate }: BarberProfil
       uploadFormData.append('file', file);
       uploadFormData.append('type', 'avatar'); // Specify upload type for proper folder organization
 
-    
+      console.log('📤 Uploading avatar to Cloudflare R2...');
       const response = await API.uploadImage(uploadFormData);
-    
+      console.log('✅ Upload response:', response);
       
       // Validate response
       if (!response || !response.url) {
         console.error('❌ Invalid response from upload API:', response);
         throw new Error('Upload failed: No URL returned from server');
       }
-    
+      
+      console.log('🖼️ Avatar URL received:', response.url);
       
       // Set the R2 URL in profile data
       setProfile({ ...profile, avatarUrl: response.url });
       
-    
+      // Update user in database
+      console.log('💾 Updating user in database with avatarUrl:', response.url);
       const updatedUser = await API.users.update(user.id, { avatarUrl: response.url });
-    
+      console.log('✅ Database update response:', updatedUser);
       
       // Update localStorage
       const storedUser = localStorage.getItem('currentUser');
@@ -234,12 +322,12 @@ export function BarberProfile({ user, appointments, onUserUpdate }: BarberProfil
         const parsedUser = JSON.parse(storedUser);
         parsedUser.avatarUrl = response.url;
         localStorage.setItem('currentUser', JSON.stringify(parsedUser));
-    
+        console.log('💾 Updated localStorage with new avatarUrl');
       }
       
       // Update parent component's user state
       if (onUserUpdate) {
-     
+        console.log('🔄 Calling onUserUpdate with new avatarUrl');
         onUserUpdate({ ...user, avatarUrl: response.url });
       }
       
@@ -301,7 +389,7 @@ export function BarberProfile({ user, appointments, onUserUpdate }: BarberProfil
         <Card className="border-[#E8DCC8]">
           <CardContent className="pt-6">
             <div className="flex items-center gap-3 mb-2">
-              <FaPesoSign className="w-5 h-5 text-[#D98555]" />
+              <DollarSign className="w-5 h-5 text-[#D98555]" />
               <p className="text-sm text-[#87765E]">Total Earnings</p>
             </div>
             <p className="text-2xl text-[#5C4A3A]">₱{totalEarnings.toLocaleString()}</p>
@@ -521,6 +609,101 @@ export function BarberProfile({ user, appointments, onUserUpdate }: BarberProfil
         </CardContent>
       </Card>
 
+      {/* Change Email */}
+      <Card className="border-[#E8DCC8]">
+        <CardHeader>
+          <CardTitle className="text-[#5C4A3A]">Change Email Address</CardTitle>
+          <CardDescription className="text-[#87765E]">
+            Update your email address for account access and notifications
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="p-3 bg-amber-50 border border-amber-200 rounded-md">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div className="text-sm text-amber-900">
+                <p className="font-semibold mb-1">Current email: {user.email}</p>
+                <p>Changing your email will update your login credentials.</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="newEmail" className="text-[#5C4A3A]">
+              New Email Address
+            </Label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-[#87765E]" />
+              <Input
+                id="newEmail"
+                type="email"
+                value={emailData.newEmail}
+                onChange={(e) =>
+                  setEmailData({
+                    ...emailData,
+                    newEmail: e.target.value,
+                  })
+                }
+                placeholder="new.email@example.com"
+                className="pl-9 border-[#E8DCC8] focus:border-[#DB9D47] focus:ring-[#DB9D47]"
+              />
+            </div>
+          </div>
+
+          <PasswordInput
+            label="Current Password"
+            id="emailChangePassword"
+            value={emailData.password}
+            onChange={(value) =>
+              setEmailData({
+                ...emailData,
+                password: value,
+              })
+            }
+            placeholder="••••••••"
+            showStrength={false}
+            className="border-[#E8DCC8] focus:border-[#DB9D47] focus:ring-[#DB9D47]"
+          />
+
+          <Button
+            onClick={() => {
+              // Validate first before showing confirmation
+              if (!emailData.newEmail || !emailData.password) {
+                toast.error('Please fill in all fields');
+                return;
+              }
+
+              const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+              if (!emailRegex.test(emailData.newEmail)) {
+                toast.error('Invalid email format');
+                return;
+              }
+
+              if (emailData.newEmail.toLowerCase() === user.email.toLowerCase()) {
+                toast.error('New email must be different from current email');
+                return;
+              }
+
+              setShowEmailConfirm(true);
+            }}
+            disabled={emailLoading}
+            className="bg-[#D98555] hover:bg-[#C77545] text-white"
+          >
+            {emailLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Updating...
+              </>
+            ) : (
+              <>
+                <Mail className="w-4 h-4 mr-2" />
+                Update Email
+              </>
+            )}
+          </Button>
+        </CardContent>
+      </Card>
+
       {/* Profile Confirmation Dialog */}
       <AlertDialog open={showProfileConfirm} onOpenChange={setShowProfileConfirm}>
         <AlertDialogContent className="border-[#E8DCC8]">
@@ -575,6 +758,48 @@ export function BarberProfile({ user, appointments, onUserUpdate }: BarberProfil
               className="bg-[#D98555] hover:bg-[#C77545] text-white"
             >
               Yes, Change Password
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Email Change Confirmation Dialog */}
+      <AlertDialog open={showEmailConfirm} onOpenChange={setShowEmailConfirm}>
+        <AlertDialogContent className="border-[#E8DCC8]">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-[#D98555] flex items-center gap-2">
+              <Mail className="w-5 h-5" />
+              Confirm Email Change
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-[#87765E] space-y-2">
+              <p className="font-medium">⚠️ Important Account Update</p>
+              <p>You are about to change your email address from:</p>
+              <div className="bg-[#FBF7EF] p-3 rounded-md border border-[#E8DCC8]">
+                <p className="text-[#5C4A3A] text-sm">
+                  <span className="font-semibold">Current:</span> {user.email}
+                </p>
+                <p className="text-[#5C4A3A] text-sm mt-1">
+                  <span className="font-semibold">New:</span> {emailData.newEmail}
+                </p>
+              </div>
+              <p>After this change:</p>
+              <ul className="list-disc list-inside space-y-1 ml-2">
+                <li>Use your new email to log in to your account</li>
+                <li>All notifications will be sent to your new email</li>
+                <li>Your old email will no longer work for login</li>
+              </ul>
+              <p className="mt-3">Do you want to proceed with changing your email?</p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-[#E8DCC8] text-[#5C4A3A] hover:bg-[#FBF7EF]">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleChangeEmail}
+              className="bg-[#D98555] hover:bg-[#C77545] text-white"
+            >
+              Yes, Change Email
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
