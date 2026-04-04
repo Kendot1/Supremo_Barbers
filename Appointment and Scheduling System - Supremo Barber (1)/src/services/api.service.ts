@@ -140,9 +140,23 @@ function getEndpointType(url: string): string {
 async function apiCall<T>(
   endpoint: string,
   options?: RequestInit,
-  requiresAuth: boolean = false
+  requiresAuth: boolean = false,
+  cacheConfig?: { key?: string; ttl?: number; tags?: string[]; persist?: boolean }
 ): Promise<T> {
   try {
+    // ============ CACHING CHECK FOR GET REQUESTS ============
+    const isGetRequest = !options?.method || options.method === 'GET';
+    
+    if (isGetRequest && cacheConfig?.key) {
+      const cached = apiCache.get<T>(cacheConfig.key);
+      if (cached !== null) {
+        console.log(`✅ Cache HIT: ${cacheConfig.key}`);
+        return cached;
+      }
+      console.log(`❌ Cache MISS: ${cacheConfig.key}`);
+    }
+    // ====================================================
+
     // ============ RATE LIMITING CHECK ============
     // Get user ID from localStorage for rate limiting
     let userId: string | undefined;
@@ -238,14 +252,20 @@ async function apiCall<T>(
     }
 
     const json = await response.json();
+    const data = toCamelCase(json) as T;
     
-    // If response has the standardized format { success, data }, extract data
-    if (json && typeof json === 'object' && 'success' in json && 'data' in json) {
-      return json.data as T;
+    // ============ CACHE THE RESPONSE ============
+    if (isGetRequest && cacheConfig?.key) {
+      apiCache.set(cacheConfig.key, data, {
+        ttl: cacheConfig.ttl || apiCache.TTL.MEDIUM,
+        tags: cacheConfig.tags || [],
+        persist: cacheConfig.persist ?? true, // Default to persist
+      });
+      console.log(`💾 Cached: ${cacheConfig.key}`);
     }
+    // ==========================================
     
-    // Otherwise return the raw response
-    return json as T;
+    return data;
   } catch (error) {
     if (process.env.NODE_ENV === 'development') {
       console.error('❌ API Call Error:', error);
@@ -666,7 +686,22 @@ const API = {
         'services:all',
         async () => {
           const data = await apiCall<any[]>('/services', undefined, false);
-          return toCamelCase(data);
+          
+          // Handle backend response format { success: true, data: [...] }
+          if (data && typeof data === 'object' && 'success' in data && 'data' in data) {
+            if (Array.isArray(data.data)) {
+              console.log('✅ API: Extracted services from wrapper object');
+              return toCamelCase(data.data);
+            }
+          }
+          
+          // If it's already an array, return it
+          if (Array.isArray(data)) {
+            return toCamelCase(data);
+          }
+          
+          console.warn('⚠️ API: Invalid services format, returning empty array');
+          return [];
         },
         10 * 60 * 1000 // Cache for 10 minutes
       );
@@ -740,12 +775,34 @@ const API = {
     getAll: async (filters?: any) => {
       if (USE_LOCAL_BACKEND) return LocalBackend.appointments.getAll();
       const queryParams = filters ? '?' + new URLSearchParams(filters).toString() : '';
-      return apiCall<Appointment[]>(`/appointments${queryParams}`, undefined, false);
+      const cacheKey = `appointments:all${queryParams}`;
+      
+      return apiCall<Appointment[]>(
+        `/appointments${queryParams}`,
+        undefined,
+        false,
+        {
+          key: cacheKey,
+          ttl: apiCache.TTL.MEDIUM,
+          tags: ['appointments'],
+          persist: true,
+        }
+      );
     },
     
     getById: async (id: string) => {
       if (USE_LOCAL_BACKEND) return LocalBackend.appointments.getById(id);
-      return apiCall<Appointment>(`/appointments/${id}`, undefined, false);
+      return apiCall<Appointment>(
+        `/appointments/${id}`,
+        undefined,
+        false,
+        {
+          key: `appointments:${id}`,
+          ttl: apiCache.TTL.SHORT,
+          tags: ['appointments', `appointment:${id}`],
+          persist: false,
+        }
+      );
     },
     
     getByCustomerId: async (customerId: string) => {
@@ -753,7 +810,17 @@ const API = {
         const all = LocalBackend.appointments.getAll();
         return all.filter(a => a.customer_id === customerId);
       }
-      return apiCall<Appointment[]>(`/appointments/customer/${customerId}`, undefined, false);
+      return apiCall<Appointment[]>(
+        `/appointments/customer/${customerId}`,
+        undefined,
+        false,
+        {
+          key: `appointments:customer:${customerId}`,
+          ttl: apiCache.TTL.MEDIUM,
+          tags: ['appointments', `customer:${customerId}`],
+          persist: true,
+        }
+      );
     },
     
     getByBarberId: async (barberId: string) => {
@@ -761,7 +828,17 @@ const API = {
         const all = LocalBackend.appointments.getAll();
         return all.filter(a => a.barber_id === barberId);
       }
-      return apiCall<Appointment[]>(`/appointments/barber/${barberId}`, undefined, false);
+      return apiCall<Appointment[]>(
+        `/appointments/barber/${barberId}`,
+        undefined,
+        false,
+        {
+          key: `appointments:barber:${barberId}`,
+          ttl: apiCache.TTL.MEDIUM,
+          tags: ['appointments', `barber:${barberId}`],
+          persist: true,
+        }
+      );
     },
     
     getByDate: async (date: string) => {
@@ -769,12 +846,22 @@ const API = {
         const all = LocalBackend.appointments.getAll();
         return all.filter(a => a.appointment_date === date);
       }
-      return apiCall<Appointment[]>(`/appointments/date/${date}`, undefined, false);
+      return apiCall<Appointment[]>(
+        `/appointments/date/${date}`,
+        undefined,
+        false,
+        {
+          key: `appointments:date:${date}`,
+          ttl: apiCache.TTL.SHORT,
+          tags: ['appointments'],
+          persist: false,
+        }
+      );
     },
     
     create: async (data: any) => {
       if (USE_LOCAL_BACKEND) return LocalBackend.appointments.create(data);
-      return apiCall<Appointment>(
+      const result = await apiCall<Appointment>(
         '/appointments',
         {
           method: 'POST',
@@ -782,11 +869,17 @@ const API = {
         },
         false
       );
+      
+      // Invalidate all appointment caches
+      apiCache.invalidateByTag('appointments');
+      console.log('🗑️ Invalidated appointments cache after create');
+      
+      return result;
     },
     
     update: async (id: string, data: any) => {
       if (USE_LOCAL_BACKEND) return LocalBackend.appointments.update(id, data);
-      return apiCall<Appointment>(
+      const result = await apiCall<Appointment>(
         `/appointments/${id}`,
         {
           method: 'PUT',
@@ -794,6 +887,13 @@ const API = {
         },
         false
       );
+      
+      // Invalidate related caches
+      apiCache.invalidateByTag('appointments');
+      apiCache.invalidate(`appointments:${id}`);
+      console.log('🗑️ Invalidated appointments cache after update');
+      
+      return result;
     },
     
     delete: async (id: string) => {
@@ -801,20 +901,26 @@ const API = {
         LocalBackend.appointments.delete(id);
         return { message: 'Appointment deleted successfully' };
       }
-      return apiCall<{ message: string }>(
+      const result = await apiCall<{ message: string }>(
         `/appointments/${id}`,
         {
           method: 'DELETE',
         },
         false
       );
+      
+      // Invalidate all appointment caches
+      apiCache.invalidateByTag('appointments');
+      console.log('🗑️ Invalidated appointments cache after delete');
+      
+      return result;
     },
     
     cancel: async (customerId: string, appointmentId: string, reason?: string) => {
       if (USE_LOCAL_BACKEND) {
         return LocalBackend.appointments.update(appointmentId, { status: 'cancelled' });
       }
-      return apiCall<Appointment>(
+      const result = await apiCall<Appointment>(
         `/customers/${customerId}/appointments/${appointmentId}/cancel`,
         {
           method: 'POST',
@@ -822,6 +928,12 @@ const API = {
         },
         false
       );
+      
+      // Invalidate related caches
+      apiCache.invalidateByTag('appointments');
+      console.log('🗑️ Invalidated appointments cache after cancel');
+      
+      return result;
     },
   },
 
@@ -863,7 +975,17 @@ const API = {
       if (USE_LOCAL_BACKEND) return LocalBackend.reviews.getAll();
       
       try {
-        const data = await apiCall<any[]>('/reviews', undefined, false);
+        const data = await apiCall<any[]>(
+          '/reviews',
+          undefined,
+          false,
+          {
+            key: 'reviews:all',
+            ttl: apiCache.TTL.SHORT,
+            tags: ['reviews'],
+            persist: false,
+          }
+        );
         
         // Check if data is valid
         if (!data) {
@@ -871,27 +993,59 @@ const API = {
           return [];
         }
         
-        if (!Array.isArray(data)) {
-          console.error('❌ API: Data is not an array!');
-          throw new Error('Invalid response format: expected array of reviews');
+        // If it's an object with success and data properties, extract the data array
+        if (data && typeof data === 'object' && 'success' in data && 'data' in data) {
+          if (Array.isArray(data.data)) {
+            console.log('✅ API: Extracted reviews array from wrapper object');
+            return data.data;
+          }
         }
         
-        const camelData = toCamelCase(data);
+        // If it's already an array, return it
+        if (Array.isArray(data)) {
+          return data;
+        }
         
-        return camelData;
+        console.warn('⚠️ API: Invalid format, returning empty array', data);
+        return [];
       } catch (error: any) {
         console.error('❌ API: Failed to fetch reviews:', error.message);
-        
-        // Re-throw with better context
-        const errorMessage = error.message || 'Unknown error fetching reviews';
-        throw new Error(`Backend error: ${errorMessage}`);
+        // Return empty array instead of throwing to prevent breaking the UI
+        return [];
       }
     },
     
     getRecent: async (limit: number = 10) => {
       if (USE_LOCAL_BACKEND) return LocalBackend.reviews.getRecent(limit);
-      const data = await apiCall<any[]>(`/reviews?limit=${limit}`, undefined, false);
-      return toCamelCase(data);
+      
+      try {
+        const data = await apiCall<any[]>(`/reviews?limit=${limit}`, undefined, false);
+        
+        // Check if data is valid
+        if (!data) {
+          console.warn('⚠️ API: Received null/undefined data for recent reviews');
+          return [];
+        }
+        
+        // If it's an object with success and data properties, extract the data array
+        if (data && typeof data === 'object' && 'success' in data && 'data' in data) {
+          if (Array.isArray(data.data)) {
+            console.log('✅ API: Extracted recent reviews from wrapper object');
+            return data.data;
+          }
+        }
+        
+        // If it's already an array, return it
+        if (Array.isArray(data)) {
+          return data;
+        }
+        
+        console.warn('⚠️ API: Invalid format, returning empty array');
+        return [];
+      } catch (error: any) {
+        console.error('❌ API: Failed to fetch recent reviews:', error.message);
+        return [];
+      }
     },
 
     getByBarberId: async (barberId: string) => {
@@ -908,12 +1062,24 @@ const API = {
           return [];
         }
         
-        const camelData = toCamelCase(data);
+        // If it's an object with success and data properties, extract the data array
+        if (data && typeof data === 'object' && 'success' in data && 'data' in data) {
+          if (Array.isArray(data.data)) {
+            console.log('✅ API: Extracted barber reviews from wrapper object');
+            return data.data;
+          }
+        }
         
-        return camelData;
+        // If it's already an array, return it
+        if (Array.isArray(data)) {
+          return data;
+        }
+        
+        console.warn('⚠️ API: Invalid format, returning empty array');
+        return [];
       } catch (error: any) {
-        console.error('❌ API: Failed to fetch barber reviews');
-        throw error;
+        console.error('❌ API: Failed to fetch barber reviews:', error.message);
+        return [];
       }
     },
 
@@ -922,8 +1088,34 @@ const API = {
         const all = LocalBackend.reviews.getAll();
         return all.filter(r => r.customer_id === customerId);
       }
-      const data = await apiCall<any[]>(`/reviews?customer_id=${customerId}`, undefined, false);
-      return toCamelCase(data);
+      
+      try {
+        const data = await apiCall<any[]>(`/reviews?customer_id=${customerId}`, undefined, false);
+        
+        if (!data) {
+          console.warn('⚠️ API: Received null/undefined data for customer reviews');
+          return [];
+        }
+        
+        // If it's an object with success and data properties, extract the data array
+        if (data && typeof data === 'object' && 'success' in data && 'data' in data) {
+          if (Array.isArray(data.data)) {
+            console.log('✅ API: Extracted customer reviews from wrapper object');
+            return data.data;
+          }
+        }
+        
+        // If it's already an array, return it
+        if (Array.isArray(data)) {
+          return data;
+        }
+        
+        console.warn('⚠️ API: Invalid format, returning empty array');
+        return [];
+      } catch (error: any) {
+        console.error('❌ API: Failed to fetch customer reviews:', error.message);
+        return [];
+      }
     },
     
     create: async (data: any) => {
