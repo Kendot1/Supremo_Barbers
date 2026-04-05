@@ -4,7 +4,7 @@
 
 :root {
   --font-size: 16px;
-  
+
   /* User-Friendly Supremo Barber Palette - Softer on Eyes */
   --background: #FFFDF8;
   --foreground: #5C4A3A;
@@ -12,27 +12,27 @@
   --card-foreground: #5C4A3A;
   --popover: #FFFFFF;
   --popover-foreground: #5C4A3A;
-  
+
   /* Primary: Amber #DB9D47 */
   --primary: #DB9D47;
   --primary-foreground: #FFFFFF;
-  
+
   /* Secondary: Soft Cream */
   --secondary: #F8F0E0;
   --secondary-foreground: #5C4A3A;
-  
+
   /* Muted - Gentle background */
   --muted: #FBF7EF;
   --muted-foreground: #87765E;
-  
+
   /* Accent: Soft Terracotta */
   --accent: #D98555;
   --accent-foreground: #FFFFFF;
-  
+
   /* Destructive */
   --destructive: #E57373;
   --destructive-foreground: #FFFFFF;
-  
+
   /* Borders - Softer */
   --border: #E8DCC8;
   --input: transparent;
@@ -41,16 +41,16 @@
   --font-weight-medium: 500;
   --font-weight-normal: 400;
   --ring: #DB9D47;
-  
+
   /* Charts - Warm and Soft */
   --chart-1: #DB9D47;
   --chart-2: #D98555;
   --chart-3: #94A670;
   --chart-4: #B89968;
   --chart-5: #A68968;
-  
+
   --radius: 0.5rem;
-  
+
   /* Sidebar - Softer Dark with Warm Tones */
   --sidebar: #5C4A3A;
   --sidebar-foreground: #F5EDD8;
@@ -214,9 +214,77 @@ html {
     opacity: 0;
     transform: translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulseSlow {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.7;
+  }
+}
+
+@keyframes scrollDown {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+
+  40% {
+    opacity: 1;
+  }
+
+  80% {
+    transform: translateY(12px);
+    opacity: 0;
+  }
+
+  100% {
+    transform: translateY(12px);
+    opacity: 0;
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+
+  100% {
+    background-position: 1000px 0;
   }
 }
 
@@ -656,6 +724,7 @@ html {
 }
 
 @media (min-width: 640px) {
+
   .fullcalendar-supremo .fc-day-sunday-closed::after,
   .fullcalendar-supremo-compact .fc-day-sunday-closed::after {
     font-size: 0.6rem;
@@ -666,6 +735,7 @@ html {
   .fullcalendar-supremo .fc-day-sunday-closed::after {
     font-size: 0.75rem;
   }
+
   .fullcalendar-supremo-compact .fc-day-sunday-closed::after {
     font-size: 0.65rem;
   }
@@ -765,26 +835,6 @@ button[disabled].rdp-day:hover {
   bottom: 3px;
 }
 
-@keyframes slideInLeft {
-  from {
-    opacity: 0;
-    transform: translateX(-20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes shimmer {
-  0% {
-    background-position: -1000px 0;
-  }
-  100% {
-    background-position: 1000px 0;
-  }
-}
-
 .animate-fade-in {
   animation: fadeIn 0.5s ease-out;
 }
@@ -797,6 +847,24 @@ button[disabled].rdp-day:hover {
   animation: shimmer 2s infinite;
   background: linear-gradient(to right, #FAF7F0 4%, #E8DFC8 25%, #FAF7F0 36%);
   background-size: 1000px 100%;
+}
+
+/* Landing Page Custom Animations */
+.animate-fade-in-up {
+  animation: fadeInUp 0.6s ease-out forwards;
+}
+
+.animate-pulse-slow {
+  animation: pulseSlow 3s ease-in-out infinite;
+}
+
+.animate-scroll-down {
+  animation: scrollDown 2s ease-in-out infinite;
+}
+
+/* Animation Delays */
+.animation-delay-1000 {
+  animation-delay: 1000ms;
 }
 
 /* Smooth transitions */
@@ -832,10 +900,13 @@ button[disabled].rdp-day:hover {
 
 /* Hide scrollbar for horizontal scroll */
 .scrollbar-hide {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
+  -ms-overflow-style: none;
+  /* IE and Edge */
+  scrollbar-width: none;
+  /* Firefox */
 }
 
 .scrollbar-hide::-webkit-scrollbar {
-  display: none;  /* Chrome, Safari and Opera */
+  display: none;
+  /* Chrome, Safari and Opera */
 }

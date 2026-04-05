@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { apiCache, cachedAPICall, DataCache, CacheConfig } from '../utils/apiCache';
+import { apiCache, cachedAPICall, DataCache, CacheConfig } from './apiCache';
 
 // ============================================
 // GENERIC CACHE HOOK

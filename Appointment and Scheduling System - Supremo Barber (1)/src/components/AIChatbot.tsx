@@ -20,11 +20,6 @@ import {
   projectId,
   publicAnonKey,
 } from "../utils/supabase/info.tsx";
-import {
-  rateLimiter,
-  getUserRateLimitKey,
-  formatRetryAfter,
-} from "../utils/rateLimiter";
 
 interface Message {
   id: string;
@@ -131,44 +126,7 @@ How can I assist you today?`;
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || isLoading) return;
 
-    // Check rate limit
-    const rateLimitKey = getUserRateLimitKey(
-      "ai:chat",
-      currentUser?.id,
-    );
-    const rateLimit = rateLimiter.isAllowed(rateLimitKey);
 
-    if (!rateLimit.allowed) {
-      let errorTitle = "Rate Limit Exceeded";
-      let errorMessage = "";
-      let chatMessage = "";
-
-      if (rateLimit.reason === "burst_detected") {
-        errorTitle = "🚨 Burst Detection - Slow Down!";
-        errorMessage = `You're sending messages too quickly! Please wait ${formatRetryAfter(rateLimit.retryAfter || 120)} before continuing.`;
-        chatMessage = `⚠️ **Burst Detection Alert!**\n\nYou've sent ${5} messages in rapid succession (within 30 seconds). This looks like automated behavior.\n\n🛡️ **Your account has been temporarily limited for ${formatRetryAfter(rateLimit.retryAfter || 120)}.**\n\nPlease wait before sending another message. This protection helps ensure fair usage for all users and prevents system abuse.\n\nThank you for your understanding! 🙏`;
-      } else {
-        errorMessage = rateLimit.retryAfter
-          ? `Please wait ${formatRetryAfter(rateLimit.retryAfter)} before sending another message.`
-          : "Too many requests. Please try again later.";
-        chatMessage = `⚠️ Rate limit exceeded. ${errorMessage}\n\nThis helps us ensure fair usage for all users. Thank you for your understanding!`;
-      }
-
-      toast.error(errorTitle, {
-        description: errorMessage,
-        duration: 5000,
-      });
-
-      // Show rate limit message in chat
-      const rateLimitMessage: Message = {
-        id: Date.now().toString(),
-        role: "assistant",
-        content: chatMessage,
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, rateLimitMessage]);
-      return;
-    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -413,11 +371,10 @@ How can I assist you today?`;
                   {messages.map((message) => (
                     <div
                       key={message.id}
-                      className={`flex items-start gap-2 w-full min-w-0  ${
-                        message.role === "user"
+                      className={`flex items-start gap-2 w-full min-w-0  ${message.role === "user"
                           ? "justify-end"
                           : "justify-start"
-                      }`}
+                        }`}
                     >
                       {/* Bot Avatar - Only show for assistant */}
                       {message.role === "assistant" && (
@@ -439,10 +396,9 @@ How can I assist you today?`;
                           rounded-2xl shadow-md
                           break-words whitespace-pre-wrap
 
-                          ${
-                            message.role === "user"
-                              ? "bg-[#DB9D47] text-white self-end"
-                              : "bg-white border border-[#E8DCC8] text-[#2D2D2D] self-start"
+                          ${message.role === "user"
+                            ? "bg-[#DB9D47] text-white self-end"
+                            : "bg-white border border-[#E8DCC8] text-[#2D2D2D] self-start"
                           }
                         `}
                       >
@@ -450,11 +406,10 @@ How can I assist you today?`;
                           {cleanMessageContent(message.content)}
                         </p>
                         <p
-                          className={`text-[10px] sm:text-[12px] mt-1.5 sm:mt-2 ${
-                            message.role === "user"
+                          className={`text-[10px] sm:text-[12px] mt-1.5 sm:mt-2 ${message.role === "user"
                               ? "text-white/70"
                               : "text-[#87765E]"
-                          }`}
+                            }`}
                         >
                           {message.timestamp.toLocaleTimeString(
                             [],

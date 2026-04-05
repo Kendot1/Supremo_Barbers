@@ -2,6 +2,8 @@
  * Shared Supabase Client
  * This ensures we only create ONE instance of the Supabase client
  * to avoid the "Multiple GoTrueClient instances" warning
+ * 
+ * Note: Worker polyfill is loaded in /index.html before any modules
  */
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
@@ -22,9 +24,22 @@ export function getSupabaseClient(): SupabaseClient {
       auth: {
         persistSession: false, // We handle auth separately
         autoRefreshToken: false,
+        detectSessionInUrl: false,
+        flowType: 'pkce',
+        storage: undefined, // Disable storage to avoid Worker usage
+      },
+      realtime: {
+        params: {
+          eventsPerSecond: 2,
+        },
+      },
+      global: {
+        headers: {
+          'x-client-info': 'supabase-js-web',
+        },
       },
     });
-
+    console.log('✅ Shared Supabase client initialized');
   }
   return supabaseInstance;
 }

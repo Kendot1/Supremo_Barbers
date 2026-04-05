@@ -36,6 +36,7 @@
             "@radix-ui/react-toggle-group": "^1.1.2",
             "@radix-ui/react-tooltip": "^1.1.8",
             "@supabase/supabase-js": "*",
+            "@tailwindcss/vite": "^4.2.2",
             "@vitejs/plugin-react": "*",
             "bcryptjs": "*",
             "class-variance-authority": "^0.7.1",

@@ -9,16 +9,26 @@ import {
   Scissors,
   Clock,
   Star,
+  MapPin,
+  Menu,
+  Award,
+  Users,
+  ArrowRight,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
-  MapPin,
   Phone,
   Mail,
   Facebook,
   Instagram,
   Twitter,
-  Menu,
-  X,
+  Shield,
+  Heart,
+  Calendar,
+  Sparkles,
+  CheckCircle,
+  Wallet,
+  Bell,
 } from "lucide-react";
 import {
   Sheet,
@@ -28,6 +38,7 @@ import {
   SheetDescription,
   SheetTrigger,
 } from "./ui/sheet";
+import { useIntersectionObserver } from "../hooks/useIntersectionObserver";
 
 interface LandingPageProps {
   onGetStarted: () => void;
@@ -39,7 +50,7 @@ interface LandingPageProps {
 
 interface Service {
   _id: string;
-  id: string; // Supabase returns 'id', keep both for compatibility
+  id: string;
   name: string;
   price: number;
   duration: number;
@@ -57,147 +68,6 @@ interface Review {
   showOnLanding?: boolean;
 }
 
-// Fallback data for demo mode (when backend is unavailable)
-const FALLBACK_SERVICES: Service[] = [
-  {
-    _id: "1",
-    id: "1",
-    name: "Gupit Supremo",
-    price: 250,
-    duration: 30,
-    description: "Classic haircut with modern styling",
-    imageUrl:
-      "https://images.unsplash.com/photo-1759408174071-f2971472dc73?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxiYXJiZXIlMjBjdXR0aW5nJTIwaGFpcnxlbnwxfHx8fDE3NjAxNDc1NjF8MA&ixlib=rb-4.1.0&q=80&w=1080",
-    isActive: true,
-  },
-  {
-    _id: "2",
-    id: "2",
-    name: "Gupit Supremo w/ Banlaw",
-    price: 300,
-    duration: 40,
-    description: "Premium haircut with hair wash",
-    imageUrl:
-      "https://images.unsplash.com/photo-1605497788044-5a32c7078486?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxiYXJiZXIlMjBzaG9wJTIwc2VydmljZXxlbnwxfHx8fDE3NjAxNDc1OTB8MA&ixlib=rb-4.1.0&q=80&w=1080",
-    isActive: true,
-  },
-  {
-    _id: "3",
-    id: "3",
-    name: "Ahit Supremo",
-    price: 200,
-    duration: 30,
-    description: "Clean and precise shave",
-    imageUrl:
-      "https://images.unsplash.com/photo-1621605815971-fbc98d665033?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxiYXJiZXIlMjBzaGF2ZXxlbnwxfHx8fDE3NjAxNDc1NjF8MA&ixlib=rb-4.1.0&q=80&w=1080",
-    isActive: true,
-  },
-  {
-    _id: "4",
-    id: "4",
-    name: "Hair Tattoo",
-    price: 350,
-    duration: 45,
-    description: "Artistic hair designs",
-    imageUrl:
-      "https://images.unsplash.com/photo-1503951914875-452162b0f3f1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxoYWlyJTIwZGVzaWdufGVufDF8fHx8MTc2MDE0NzY1N3ww&ixlib=rb-4.1.0&q=80&w=1080",
-    isActive: true,
-  },
-  {
-    _id: "5",
-    id: "5",
-    name: "Supremo Espesyal",
-    price: 450,
-    duration: 60,
-    description: "Complete grooming experience",
-    imageUrl:
-      "https://images.unsplash.com/photo-1622286342621-4bd786c2447c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcm9mZXNzaW9uYWwlMjBiYXJiZXJ8ZW58MXx8fHwxNzYwMTQ3NjI4fDA&ixlib=rb-4.1.0&q=80&w=1080",
-    isActive: true,
-  },
-  {
-    _id: "6",
-    id: "6",
-    name: "Supremo Espesyal w/ Ahit",
-    price: 550,
-    duration: 75,
-    description: "Premium grooming with shave",
-    imageUrl:
-      "https://images.unsplash.com/photo-1599351431202-1e0f0137899a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxiYXJiZXIlMjBncm9vbWluZ3xlbnwxfHx8fDE3NjAxNDc1NjF8MA&ixlib=rb-4.1.0&q=80&w=1080",
-    isActive: true,
-  },
-  {
-    _id: "7",
-    id: "7",
-    name: "Linis Tenga",
-    price: 150,
-    duration: 15,
-    description: "Professional ear cleaning",
-    imageUrl:
-      "https://images.unsplash.com/photo-1585747860715-2ba37e788b70?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxiYXJiZXIlMjB0b29sc3xlbnwxfHx8fDE3NjAxNDc1NjF8MA&ixlib=rb-4.1.0&q=80&w=1080",
-    isActive: true,
-  },
-  {
-    _id: "8",
-    id: "8",
-    name: "Tina (Hair Color)",
-    price: 450,
-    duration: 90,
-    description: "Professional hair coloring",
-    imageUrl:
-      "https://images.unsplash.com/photo-1560066984-138dadb4c035?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxoYWlyJTIwY29sb3J8ZW58MXx8fHwxNzYwMTQ3NjU3fDA&ixlib=rb-4.1.0&q=80&w=1080",
-    isActive: true,
-  },
-  {
-    _id: "9",
-    id: "9",
-    name: "Scalp Treatment",
-    price: 450,
-    duration: 45,
-    description: "Therapeutic scalp care",
-    imageUrl:
-      "https://images.unsplash.com/photo-1519823551278-64ac92734fb1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxzY2FscCUyMHRyZWF0bWVudHxlbnwxfHx8fDE3NjAxNDc1NjF8MA&ixlib=rb-4.1.0&q=80&w=1080",
-    isActive: true,
-  },
-  {
-    _id: "10",
-    id: "10",
-    name: "Perm",
-    price: 1800,
-    duration: 120,
-    description: "Professional hair perming",
-    imageUrl:
-      "https://images.unsplash.com/photo-1562322140-8baeececf3df?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxoYWlyJTIwcGVybXxlbnwxfHx8fDE3NjAxNDc1NjF8MA&ixlib=rb-4.1.0&q=80&w=1080",
-    isActive: true,
-  },
-];
-
-const FALLBACK_TESTIMONIALS: Review[] = [
-  {
-    id: "1",
-    customerName: "Marcus Johnson",
-    comment:
-      "Best barbershop experience I've ever had! The attention to detail is amazing.",
-    rating: 5,
-    showOnLanding: true,
-  },
-  {
-    id: "2",
-    customerName: "David Chen",
-    comment:
-      "Professional service, great atmosphere, and my haircut always looks fresh!",
-    rating: 5,
-    showOnLanding: true,
-  },
-  {
-    id: "3",
-    customerName: "Robert Williams",
-    comment:
-      "Been coming here for 2 years. Never disappointed. Highly recommend!",
-    rating: 5,
-    showOnLanding: true,
-  },
-];
-
 export function LandingPage({
   onGetStarted,
   onLogin,
@@ -205,15 +75,12 @@ export function LandingPage({
   onNavigateToTerms,
   onNavigateToPrivacy,
 }: LandingPageProps) {
-  const [activeTestimonial, setActiveTestimonial] = useState(0);
-  const [currentServiceIndex, setCurrentServiceIndex] =
-    useState(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isTestimonialsPaused, setIsTestimonialsPaused] =
     useState(false);
   const [activeSection, setActiveSection] = useState("home");
-  const servicesScrollRef = useRef<HTMLDivElement>(null);
   const testimonialsScrollRef = useRef<HTMLDivElement>(null);
+  const [scrollY, setScrollY] = useState(0);
 
   // Database-driven state
   const [services, setServices] = useState<Service[]>([]);
@@ -235,32 +102,81 @@ export function LandingPage({
   const [isCalculatingDistance, setIsCalculatingDistance] =
     useState(false);
 
+  // Scroll animation refs
+  const [heroRef, heroVisible] = useIntersectionObserver({
+    threshold: 0.2,
+  });
+  const [aboutRef, aboutVisible] = useIntersectionObserver({
+    threshold: 0.15,
+  });
+  const [servicesRef, servicesVisible] =
+    useIntersectionObserver({ threshold: 0.1 });
+  const [testimonialsRef, testimonialsVisible] =
+    useIntersectionObserver({ threshold: 0.1 });
+
+  // Process step refs for scroll animation
+  const [step1Ref, step1Visible] = useIntersectionObserver({
+    threshold: 0.5,
+  });
+  const [step2Ref, step2Visible] = useIntersectionObserver({
+    threshold: 0.5,
+  });
+  const [step3Ref, step3Visible] = useIntersectionObserver({
+    threshold: 0.5,
+  });
+  const [step4Ref, step4Visible] = useIntersectionObserver({
+    threshold: 0.5,
+  });
+
+  // State for service carousel
+  const [currentServiceIndex, setCurrentServiceIndex] =
+    useState(0);
+  const [hoveredService, setHoveredService] = useState<
+    number | null
+  >(null);
+
+  // Animated counter state
+  const [counters, setCounters] = useState({
+    years: 0,
+    clients: 0,
+    rating: 0,
+  });
+
   // Supremo Barber Lagro coordinates
   const BUSINESS_LAT = 14.7356399;
   const BUSINESS_LNG = 121.0685179;
 
-  // Calculate distance using Haversine formula
+  // Parallax effect
+  useEffect(() => {
+    const handleScroll = () => setScrollY(window.scrollY);
+    window.addEventListener("scroll", handleScroll, {
+      passive: true,
+    });
+    return () =>
+      window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  // Calculate distance
   const calculateDistance = (
     lat1: number,
     lon1: number,
     lat2: number,
     lon2: number,
   ): number => {
-    const R = 6371; // Radius of the Earth in kilometers
+    const R = 6371;
     const dLat = ((lat2 - lat1) * Math.PI) / 180;
     const dLon = ((lon2 - lon1) * Math.PI) / 180;
     const a =
       Math.sin(dLat / 2) * Math.sin(dLat / 2) +
       Math.cos((lat1 * Math.PI) / 180) *
-        Math.cos((lat2 * Math.PI) / 180) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const distance = R * c;
-    return distance;
+    return R * c;
   };
 
-  // Handle Get Directions button click
+  // Handle Get Directions
   const handleGetDirections = () => {
     if (navigator.geolocation) {
       setIsCalculatingDistance(true);
@@ -272,7 +188,6 @@ export function LandingPage({
           };
           setUserLocation(userCoords);
 
-          // Calculate distance
           const dist = calculateDistance(
             userCoords.lat,
             userCoords.lng,
@@ -280,41 +195,66 @@ export function LandingPage({
             BUSINESS_LNG,
           );
 
-          // Format distance
           if (dist < 1) {
             setDistance(`${(dist * 1000).toFixed(0)} meters`);
           } else {
             setDistance(`${dist.toFixed(2)} km`);
           }
 
-          // Create directions embed URL
-          const businessCoords = `${BUSINESS_LAT},${BUSINESS_LNG}`;
-          const directionsUrl = `https://www.google.com/maps/embed/v1/directions?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dF46OB-zq8g5b0&origin=${userCoords.lat},${userCoords.lng}&destination=${businessCoords}&mode=driving`;
+          const directionsUrl = `https://www.google.com/maps/embed/v1/directions?key=AIzaSyBFw0Qbyq9zTFTd-tUY6dF46OB-zq8g5b0&origin=${userCoords.lat},${userCoords.lng}&destination=${BUSINESS_LAT},${BUSINESS_LNG}&mode=driving`;
 
           setMapSrc(directionsUrl);
           setIsCalculatingDistance(false);
         },
-        (error) => {
+        () => {
           alert(
-            "Unable to get your location. Please enable location services and try again.",
+            "Unable to get your location. Please enable location services.",
           );
           setIsCalculatingDistance(false);
         },
       );
-    } else {
-      alert("Geolocation is not supported by your browser.");
     }
   };
 
-  // Get user's location on mount (removed auto-request, now manual via button)
+  // Initialize map
   useEffect(() => {
-    // Set default map to show business location
     setMapSrc(
       "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3857.0899999999985!2d121.065943!3d14.7356399!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3397b18f133910f3%3A0xca4ad80100d1404f!2sSupremo%20Barber%20Lagro!5e0!3m2!1sen!2sph!4v1637000000000!5m2!1sen!2sph",
     );
   }, []);
 
-  // Auto-scroll testimonials carousel
+  // Animated counter effect
+  useEffect(() => {
+    if (!heroVisible) return;
+
+    const targets = { years: 7, clients: 10000, rating: 5.0 };
+    const duration = 2000;
+    const steps = 60;
+    const stepDuration = duration / steps;
+
+    let currentStep = 0;
+    const interval = setInterval(() => {
+      currentStep++;
+      const progress = currentStep / steps;
+
+      setCounters({
+        years: Math.floor(targets.years * progress),
+        clients: Math.floor(targets.clients * progress),
+        rating: parseFloat(
+          (targets.rating * progress).toFixed(1),
+        ),
+      });
+
+      if (currentStep >= steps) {
+        setCounters(targets);
+        clearInterval(interval);
+      }
+    }, stepDuration);
+
+    return () => clearInterval(interval);
+  }, [heroVisible]);
+
+  // Auto-scroll testimonials
   useEffect(() => {
     if (testimonials.length === 0 || isTestimonialsPaused)
       return;
@@ -324,25 +264,22 @@ export function LandingPage({
 
     const scroll = () => {
       if (scrollContainer) {
-        const cardWidth = 384 + 24; // Card width (384px for sm:w-96) + gap (24px)
-        const maxScroll = cardWidth * testimonials.length; // Full width of original set
+        const cardWidth = 384 + 32;
+        const maxScroll = cardWidth * testimonials.length;
 
         if (scrollContainer.scrollLeft >= maxScroll - 10) {
-          // Near the end, reset to beginning smoothly
           scrollContainer.scrollLeft = 1;
         } else {
-          // Smooth continuous scroll
-          scrollContainer.scrollLeft += 1.5;
+          scrollContainer.scrollLeft += 1;
         }
       }
     };
 
-    const intervalId = setInterval(scroll, 20); // Smooth scroll speed (faster)
-
+    const intervalId = setInterval(scroll, 30);
     return () => clearInterval(intervalId);
   }, [testimonials.length, isTestimonialsPaused]);
 
-  // Track active section based on scroll position
+  // Track active section
   useEffect(() => {
     const handleScroll = () => {
       const sections = [
@@ -350,10 +287,8 @@ export function LandingPage({
         "about",
         "services",
         "testimonials",
-        "location",
-        "contact",
       ];
-      const scrollPosition = window.scrollY + 100; // Offset for navbar height
+      const scrollPosition = window.scrollY + 100;
 
       for (const sectionId of sections) {
         const section = document.getElementById(sectionId);
@@ -374,289 +309,158 @@ export function LandingPage({
     };
 
     window.addEventListener("scroll", handleScroll);
-    handleScroll(); // Call once on mount
-
+    handleScroll();
     return () =>
       window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Fetch services from database
+  // Fetch services
   useEffect(() => {
     const fetchServices = async () => {
       try {
         setIsLoadingServices(true);
         const fetchedServices = await API.services.getAll();
-        // Only show active services (strict check)
         const activeServices = fetchedServices.filter(
           (s: Service) => s.isActive === true,
         );
         setServices(activeServices);
       } catch (error) {
-        // Silently handle error - database might be empty or backend not ready
         setServices([]);
       } finally {
         setIsLoadingServices(false);
       }
     };
-
     fetchServices();
   }, []);
 
-  // Fetch reviews from database
+  // Fetch reviews
   useEffect(() => {
     const fetchReviews = async () => {
       try {
         setIsLoadingReviews(true);
         const fetchedReviews = await API.reviews.getAll();
-        // Only show reviews that are explicitly marked to show on landing page
         const landingReviews = fetchedReviews.filter(
           (r: Review) => r.showOnLanding === true,
         );
         setTestimonials(landingReviews);
       } catch (error) {
-        console.error(
-          "Error fetching reviews for landing page:",
-          error,
-        );
-        // Use fallback testimonials on error
         setTestimonials([]);
       } finally {
         setIsLoadingReviews(false);
       }
     };
-
     fetchReviews();
   }, []);
 
-  const nextTestimonial = () => {
-    if (testimonials.length > 0) {
-      setActiveTestimonial(
-        (prev) => (prev + 1) % testimonials.length,
-      );
-    }
-  };
-
-  const prevTestimonial = () => {
-    if (testimonials.length > 0) {
-      setActiveTestimonial(
-        (prev) =>
-          (prev - 1 + testimonials.length) %
-          testimonials.length,
-      );
-    }
-  };
-
   const scrollToServices = () => {
-    const servicesSection = document.getElementById("services");
-    if (servicesSection) {
-      servicesSection.scrollIntoView({ behavior: "smooth" });
-    }
+    document
+      .getElementById("services")
+      ?.scrollIntoView({ behavior: "smooth" });
   };
-
-  const nextService = () => {
-    setCurrentServiceIndex(
-      (prev) => (prev + 1) % services.length,
-    );
-  };
-
-  const prevService = () => {
-    setCurrentServiceIndex(
-      (prev) => (prev - 1 + services.length) % services.length,
-    );
-  };
-
-  const scrollServices = (direction: "left" | "right") => {
-    if (servicesScrollRef.current) {
-      const scrollAmount = 308; // Width of card (288px) + gap (20px)
-      const newScrollLeft =
-        servicesScrollRef.current.scrollLeft +
-        (direction === "right" ? scrollAmount : -scrollAmount);
-      servicesScrollRef.current.scrollTo({
-        left: newScrollLeft,
-        behavior: "smooth",
-      });
-    }
-  };
-
-  // State for auto-sliding image carousel
-  const [currentSlide, setCurrentSlide] = useState(0);
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-      setCurrentSlide((prev) => prev + 1);
-    }, 5000); // Change slide every 5 seconds
-
-    return () => clearInterval(intervalId);
-  }, []);
-
-  // State for interactive feature cards
-  const [activeCard, setActiveCard] = useState<number | null>(
-    null,
-  );
 
   return (
-    <div className="min-h-screen bg-white">
-      {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-b border-slate-200 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-2">
-              <img
-                src="https://pub-86f4b5249e5c4021bb05d46908eeb094.r2.dev/supremo-barber/supremoWebLogo.png"
-                alt="Supremo Barber Logo"
-                className="h-10 w-10 sm:h-12 sm:w-12"
-              />
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
+      {/* Professional Navigation */}
+      <nav className="fixed top-0 left-0 right-0 bg-white/80 backdrop-blur-2xl border-b border-slate-200/60 z-50 transition-all duration-300">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
+          <div className="flex items-center justify-between h-24">
+            <div className="flex items-center gap-4 group cursor-pointer">
+              <div className="relative">
+                <div className="absolute inset-0 bg-[#DB9D47]/20 rounded-2xl blur-xl group-hover:bg-[#DB9D47]/30 transition-all"></div>
+                <img
+                  src="https://pub-86f4b5249e5c4021bb05d46908eeb094.r2.dev/supremo-barber/supremoWebLogo.png"
+                  alt="Supremo Barber"
+                  className="relative h-16 w-16 group-hover:scale-105 transition-transform"
+                />
+              </div>
               <div>
-                <span className="text-base sm:text-xl text-slate-900">
+                <div className="text-2xl font-bold text-slate-900">
                   Supremo Barber
-                </span>
+                </div>
               </div>
             </div>
+
             {/* Desktop Navigation */}
-            <div className="hidden lg:flex items-center gap-8">
-              <a
-                href="#home"
-                className={`text-slate-700 hover:text-[#DB9D47] transition-all pb-1 border-b-2 ${
-                  activeSection === "home"
-                    ? "border-[#DB9D47] text-[#DB9D47]"
-                    : "border-transparent"
-                } hover:border-[#DB9D47]`}
-              >
-                Home
-              </a>
-              <a
-                href="#about"
-                className={`text-slate-700 hover:text-[#DB9D47] transition-all pb-1 border-b-2 ${
-                  activeSection === "about"
-                    ? "border-[#DB9D47] text-[#DB9D47]"
-                    : "border-transparent"
-                } hover:border-[#DB9D47]`}
-              >
-                About Us
-              </a>
-              <a
-                href="#services"
-                className={`text-slate-700 hover:text-[#DB9D47] transition-all pb-1 border-b-2 ${
-                  activeSection === "services"
-                    ? "border-[#DB9D47] text-[#DB9D47]"
-                    : "border-transparent"
-                } hover:border-[#DB9D47]`}
-              >
-                Services
-              </a>
-              <a
-                href="#testimonials"
-                className={`text-slate-700 hover:text-[#DB9D47] transition-all pb-1 border-b-2 ${
-                  activeSection === "testimonials"
-                    ? "border-[#DB9D47] text-[#DB9D47]"
-                    : "border-transparent"
-                } hover:border-[#DB9D47]`}
-              >
-                Testimonials
-              </a>
-              <a
-                href="#location"
-                className={`text-slate-700 hover:text-[#DB9D47] transition-all pb-1 border-b-2 ${
-                  activeSection === "location"
-                    ? "border-[#DB9D47] text-[#DB9D47]"
-                    : "border-transparent"
-                } hover:border-[#DB9D47]`}
-              >
-                Location
-              </a>
-              <a
-                href="#contact"
-                className={`text-slate-700 hover:text-[#DB9D47] transition-all pb-1 border-b-2 ${
-                  activeSection === "contact"
-                    ? "border-[#DB9D47] text-[#DB9D47]"
-                    : "border-transparent"
-                } hover:border-[#DB9D47]`}
-              >
-                Contact
-              </a>
+            <div className="hidden lg:flex items-center gap-12">
+              {[
+                "Home",
+                "About",
+                "Services",
+                "Testimonials",
+              ].map((section) => (
+                <a
+                  key={section}
+                  href={`#${section.toLowerCase()}`}
+                  className={`relative text-sm font-semibold tracking-wide transition-colors group ${activeSection === section.toLowerCase()
+                    ? "text-[#DB9D47]"
+                    : "text-slate-600 hover:text-slate-900"
+                    }`}
+                >
+                  {section}
+                  <span
+                    className={`absolute -bottom-1 left-0 h-0.5 bg-[#DB9D47] transition-all ${activeSection === section.toLowerCase()
+                      ? "w-full"
+                      : "w-0 group-hover:w-full"
+                      }`}
+                  ></span>
+                </a>
+              ))}
+            </div>
+
+            <div className="hidden lg:flex items-center gap-4">
               <Button
                 onClick={onLogin}
-                variant="outline"
-                size="sm"
+                variant="ghost"
+                className="text-slate-700 hover:text-slate-900 font-semibold"
               >
-                Login
+                Sign In
+              </Button>
+              <Button
+                onClick={onGetStarted}
+                className="bg-[#DB9D47] hover:bg-[#C56E33] text-white px-6 shadow-lg shadow-[#DB9D47]/30 hover:shadow-xl hover:scale-105 transition-all"
+              >
+                Book Now
               </Button>
             </div>
-            {/* Mobile Navigation */}
-            <div className="flex lg:hidden items-center gap-2">
+
+            {/* Mobile Menu */}
+            <div className="lg:hidden">
               <Sheet
                 open={mobileMenuOpen}
                 onOpenChange={setMobileMenuOpen}
               >
                 <SheetTrigger asChild>
-                  <button className="inline-flex items-center justify-center px-2 py-2 hover:bg-slate-100 rounded-md transition-colors">
+                  <button className="p-3 hover:bg-slate-100 rounded-xl transition-colors">
                     <Menu className="h-6 w-6 text-slate-700" />
                   </button>
                 </SheetTrigger>
                 <SheetContent
                   side="right"
-                  className="w-[300px] sm:w-[400px]"
+                  className="w-[300px]"
                 >
                   <SheetHeader>
-                    <SheetTitle className="flex items-center gap-2">
-                      <img
-                        src="https://pub-86f4b5249e5c4021bb05d46908eeb094.r2.dev/supremo-barber/supremoWebLogo.png"
-                        alt="Supremo Barber Logo"
-                        className="h-10 w-10"
-                      />
-                      <div className="text-left">
-                        <div className="text-lg">
-                          Supremo Barber
-                        </div>
-                      </div>
-                    </SheetTitle>
+                    <SheetTitle>Menu</SheetTitle>
                     <SheetDescription className="sr-only">
-                      Navigation menu for Supremo Barber
+                      Navigation menu
                     </SheetDescription>
                   </SheetHeader>
                   <div className="mt-8 flex flex-col gap-4">
-                    <a
-                      href="#home"
-                      className="text-lg text-slate-700 hover:text-slate-900 transition-colors py-2"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      Home
-                    </a>
-                    <a
-                      href="#about"
-                      className="text-lg text-slate-700 hover:text-slate-900 transition-colors py-2"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      About Us
-                    </a>
-                    <a
-                      href="#services"
-                      className="text-lg text-slate-700 hover:text-slate-900 transition-colors py-2"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      Services
-                    </a>
-                    <a
-                      href="#testimonials"
-                      className="text-lg text-slate-700 hover:text-slate-900 transition-colors py-2"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      Testimonials
-                    </a>
-                    <a
-                      href="#location"
-                      className="text-lg text-slate-700 hover:text-slate-900 transition-colors py-2"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      Location
-                    </a>
-                    <a
-                      href="#contact"
-                      className="text-lg text-slate-700 hover:text-slate-900 transition-colors py-2"
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      Contact
-                    </a>
-                    <div className="border-t border-slate-200 pt-4 mt-2 space-y-3">
+                    {[
+                      "Home",
+                      "About",
+                      "Services",
+                      "Testimonials",
+                    ].map((section) => (
+                      <a
+                        key={section}
+                        href={`#${section.toLowerCase()}`}
+                        className="text-lg font-semibold text-slate-700 hover:text-[#DB9D47] py-2 transition-colors"
+                        onClick={() => setMobileMenuOpen(false)}
+                      >
+                        {section}
+                      </a>
+                    ))}
+                    <div className="border-t pt-4 mt-2 space-y-3">
                       <Button
                         onClick={() => {
                           onLogin();
@@ -665,7 +469,16 @@ export function LandingPage({
                         variant="outline"
                         className="w-full"
                       >
-                        Login
+                        Sign In
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          scrollToServices();
+                          setMobileMenuOpen(false);
+                        }}
+                        className="w-full bg-[#DB9D47] hover:bg-[#C56E33] text-white"
+                      >
+                        Book Now
                       </Button>
                     </div>
                   </div>
@@ -679,290 +492,534 @@ export function LandingPage({
       {/* Hero Section */}
       <section
         id="home"
-        className="relative min-h-screen flex items-center justify-center overflow-hidden pt-16"
+        ref={heroRef}
+        className="relative min-h-screen flex items-center pt-24 pb-20 overflow-hidden"
       >
-        <div className="absolute inset-0">
+        {/* Background with Parallax */}
+        <div
+          className="absolute inset-0 z-0"
+          style={{
+            transform: `translateY(${scrollY * 0.5}px)`,
+          }}
+        >
           <img
             src="https://pub-86f4b5249e5c4021bb05d46908eeb094.r2.dev/supremo-barber/home.jpg"
-            alt="Supremo Barber Shop Interior"
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover scale-110"
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-slate-900/80 to-slate-900/40" />
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-900/80 via-slate-900/70 to-slate-900/60"></div>
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-transparent to-transparent"></div>
         </div>
 
-        <div className="relative z-10 text-center text-white px-4 py-12">
-          <div className="inline-flex items-center justify-center mb-4 sm:mb-6">
-            <img
-              src="https://pub-86f4b5249e5c4021bb05d46908eeb094.r2.dev/supremo-barber/supremoWebLogo.png"
-              alt="Supremo Barber Logo"
-              className="h-20 w-20 sm:h-28 sm:w-28 md:h-32 md:w-32"
-            />
+        <div className="relative z-10 max-w-7xl mx-auto px-6 lg:px-8 w-full">
+          <div className="grid grid-cols-1 gap-16 items-center justify-center">
+            {/* Left Content */}
+            <div
+              className={`text-white transition-all duration-1000 text-center max-w-4xl mx-auto ${heroVisible
+                ? "opacity-100 translate-x-0"
+                : "opacity-0 -translate-x-10"
+                }`}
+            >
+              {/* Main Headline */}
+              <h1 className="text-6xl sm:text-7xl lg:text-8xl font-bold mb-8 leading-[0.95]">
+                <span className="block text-white">
+                  Stay Sharp.
+                </span>
+                <span className="block mt-2 bg-gradient-to-r from-[#DB9D47] via-[#F3E5AB] to-[#DB9D47] bg-clip-text text-transparent">
+                  Look Supreme.
+                </span>
+              </h1>
+
+              <p className="text-xl sm:text-2xl text-slate-300 mb-12 max-w-2xl leading-relaxed mx-auto">
+                Experience the art of traditional barbering
+                combined with modern style. Book your
+                transformation today.
+              </p>
+
+              {/* CTA Button */}
+              <div className="flex justify-center mb-16">
+                <Button
+                  size="lg"
+                  onClick={scrollToServices}
+                  className="group bg-[#DB9D47] hover:bg-[#C56E33] text-white px-10 py-7 text-xl font-semibold shadow-2xl shadow-[#DB9D47]/40 hover:shadow-[#DB9D47]/60 hover:scale-105 transition-all"
+                >
+                  Book Appointment
+                  <ArrowRight className="ml-2 w-6 h-6 group-hover:translate-x-1 transition-transform" />
+                </Button>
+              </div>
+
+              {/* Horizontal Stats */}
+              <div className="flex flex-wrap items-center justify-center gap-8 lg:gap-12">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-[#DB9D47]/20 flex items-center justify-center border border-[#DB9D47]/30">
+                    <Award className="w-6 h-6 text-[#DB9D47]" />
+                  </div>
+                  <div>
+                    <div className="text-3xl font-bold text-white">
+                      {counters.years}+
+                    </div>
+                    <div className="text-sm text-slate-400">
+                      Years Experience
+                    </div>
+                  </div>
+                </div>
+
+                <div className="w-px h-12 bg-slate-700 hidden sm:block"></div>
+
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-[#DB9D47]/20 flex items-center justify-center border border-[#DB9D47]/30">
+                    <Users className="w-6 h-6 text-[#DB9D47]" />
+                  </div>
+                  <div>
+                    <div className="text-3xl font-bold text-white">
+                      10k+
+                    </div>
+                    <div className="text-sm text-slate-400">
+                      Happy Clients
+                    </div>
+                  </div>
+                </div>
+
+                <div className="w-px h-12 bg-slate-700 hidden sm:block"></div>
+
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-[#DB9D47]/20 flex items-center justify-center border border-[#DB9D47]/30">
+                    <Star className="w-6 h-6 text-[#DB9D47]" />
+                  </div>
+                  <div>
+                    <div className="text-3xl font-bold text-white">
+                      {counters.rating.toFixed(1)}
+                    </div>
+                    <div className="text-sm text-slate-400">
+                      Average Rating
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Side - Barber Figure */}
+            <div
+              className={`hidden lg:block transition-all duration-1000 delay-300 ${heroVisible
+                ? "opacity-100 translate-x-0"
+                : "opacity-0 translate-x-10"
+                }`}
+            >
+              <div className="relative">
+                {/* Decorative Elements */}
+                <div className="absolute -top-8 -left-8 w-72 h-72 bg-[#DB9D47]/10 rounded-full blur-3xl animate-pulse"></div>
+                <div className="absolute -bottom-8 -right-8 w-72 h-72 bg-[#C56E33]/10 rounded-full blur-3xl animate-pulse animation-delay-1000"></div>
+              </div>
+            </div>
           </div>
-          <h1 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl mb-4 sm:mb-6 text-white px-2">
-            Stay Sharp. Look Supreme.
-          </h1>
-          <p className="text-base sm:text-lg md:text-xl lg:text-2xl mb-6 sm:mb-8 text-slate-200 max-w-2xl mx-auto px-4">
-            Premium barbering services with modern style and
-            traditional craftsmanship
-          </p>
-          <Button
-            size="lg"
-            onClick={scrollToServices}
-            className="bg-[#DB9D47] hover:bg-[#C56E33] text-white px-6 py-5 sm:px-8 sm:py-6 text-base sm:text-lg shadow-lg hover:shadow-xl transition-all"
-          >
-            Book Now
-          </Button>
         </div>
 
         {/* Scroll Indicator */}
-        <div className="hidden sm:block absolute bottom-8 left-1/2 transform -translate-x-1/2 animate-bounce">
-          <div className="w-6 h-10 border-2 border-white/50 rounded-full flex items-start justify-center p-2">
-            <div className="w-1 h-3 bg-white/50 rounded-full" />
+        <div className="absolute bottom-12 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 animate-bounce">
+          <div className="text-white/60 text-sm font-medium">
+            Scroll to explore
+          </div>
+          <div className="w-6 h-10 border-2 border-white/40 rounded-full flex items-start justify-center p-1.5">
+            <div className="w-1 h-3 bg-white/60 rounded-full animate-scroll-down"></div>
           </div>
         </div>
       </section>
 
-      {/* About Us Section */}
+      {/* About Section */}
       <section
         id="about"
-        className="py-12 sm:py-16 md:py-24 bg-slate-50"
+        ref={aboutRef}
+        className="relative py-32 bg-white overflow-hidden"
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 sm:gap-12 items-center mb-12 sm:mb-16">
-            {/* Auto-sliding Image Carousel */}
-            <div className="relative h-[350px] sm:h-[450px] md:h-[550px] overflow-hidden rounded-2xl shadow-2xl group bg-[#5C4A3A]">
-              <div
-                className="flex transition-transform duration-1000 ease-in-out h-full"
-                style={{
-                  transform: `translateX(-${(currentSlide % 4) * 100}%)`,
-                  width: "400%",
-                }}
-              >
-                <div className="w-full h-full flex-shrink-0">
-                  <ImageWithFallback
-                    src="https://pub-86f4b5249e5c4021bb05d46908eeb094.r2.dev/supremo-barber/505002634_1124361566390528_1724927473209330463_n.jpg"
-                    alt="Barber Cutting Hair"
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div className="w-full h-full flex-shrink-0">
-                  <ImageWithFallback
-                    src="https://pub-86f4b5249e5c4021bb05d46908eeb094.r2.dev/supremo-barber/506784157_1129798049180213_1555651505459883985_n.jpg"
-                    alt="Modern Barbershop Interior"
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div className="w-full h-full flex-shrink-0">
-                  <ImageWithFallback
-                    src="https://pub-86f4b5249e5c4021bb05d46908eeb094.r2.dev/supremo-barber/509339966_1133597715466913_2353055682521326682_n.jpg"
-                    alt="Barber Styling Beard"
-                    className="w-full h-full object-cover object-center"
-                  />
-                </div>
-                <div className="w-full h-full flex-shrink-0">
-                  <ImageWithFallback
-                    src="https://pub-86f4b5249e5c4021bb05d46908eeb094.r2.dev/supremo-barber/516586604_1150745710418780_7458982299338019424_n.jpg"
-                    alt="Professional Barber Tools"
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              </div>
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
+          {/* Section Header */}
+          <div
+            className={`max-w-3xl mb-20 transition-all duration-1000 ${aboutVisible
+              ? "opacity-100 translate-y-0"
+              : "opacity-0 translate-y-10"
+              }`}
+          >
+            <div className="inline-flex items-center gap-2 bg-[#DB9D47]/10 rounded-full px-4 py-2 mb-6 border border-[#DB9D47]/20">
+              <div className="w-2 h-2 bg-[#DB9D47] rounded-full animate-pulse"></div>
+              <span className="text-sm font-bold text-[#DB9D47] uppercase tracking-wider">
+                About Us
+              </span>
+            </div>
+            <h2 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-slate-900 mb-6">
+              Your Go-To Destination for{" "}
+              <span className="text-[#DB9D47]">
+                Premier Grooming
+              </span>
+            </h2>
+            <p className="text-xl text-slate-600 leading-relaxed">
+              Where tradition meets innovation in the art of
+              men's grooming
+            </p>
+          </div>
 
-              {/* Slide Indicators */}
-              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 flex gap-2 z-10">
-                {[0, 1, 2, 3].map((index) => (
-                  <button
-                    key={index}
-                    onClick={() => setCurrentSlide(index)}
-                    className={`w-2 h-2 rounded-full transition-all duration-300 ${
-                      currentSlide % 4 === index
-                        ? "w-8 bg-[#DB9D47]"
-                        : "bg-white/50 hover:bg-white/80"
-                    }`}
-                    aria-label={`Go to slide ${index + 1}`}
-                  />
-                ))}
-              </div>
+          {/* Bento Grid Layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-20">
+            {/* Large Story Card */}
+            <div
+              className={`lg:col-span-8 transition-all duration-1000 delay-200 ${aboutVisible
+                ? "opacity-100 translate-y-0"
+                : "opacity-0 translate-y-10"
+                }`}
+            >
+              <Card className="h-full bg-gradient-to-br from-[#5C4A3A] to-[#3E3229] text-white p-12 rounded-3xl border-none shadow-2xl overflow-hidden group hover:scale-[1.02] transition-transform duration-500">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-[#DB9D47]/10 rounded-full blur-3xl"></div>
+                <div className="relative">
+                  <h3 className="text-3xl font-bold mb-6">
+                    Excellence Since 2017
+                  </h3>
+                  <p className="text-lg text-slate-300 leading-relaxed mb-6">
+                    At Supremo Barber, we believe grooming is
+                    more than just a service—it's an experience.
+                    Since 2017, we've been Lagro's premier
+                    destination for men who demand excellence in
+                    every cut, style, and detail.
+                  </p>
+                  <p className="text-base text-slate-400 leading-relaxed mb-8">
+                    Our master barbers combine years of
+                    expertise with the latest techniques to
+                    deliver precision haircuts, classic shaves,
+                    and modern styling. Using only premium
+                    products from trusted brands like Reuzel,
+                    Layrite, and Uppercut, we ensure every
+                    client walks out looking and feeling their
+                    absolute best.
+                  </p>
+
+                  {/* Contact Info */}
+                  <div className="space-y-4 pt-6 border-t border-white/20">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-[#DB9D47]/20 flex items-center justify-center border border-[#DB9D47]/30">
+                        <MapPin className="w-6 h-6 text-[#DB9D47]" />
+                      </div>
+                      <div>
+                        <div className="font-semibold text-white mb-1">
+                          Visit Us
+                        </div>
+                        <div className="text-sm text-slate-400">
+                          Lagro, Quezon City, Philippines
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-[#DB9D47]/20 flex items-center justify-center border border-[#DB9D47]/30">
+                        <Clock className="w-6 h-6 text-[#DB9D47]" />
+                      </div>
+                      <div>
+                        <div className="font-semibold text-white mb-1">
+                          Open Hours
+                        </div>
+                        <div className="text-sm text-slate-400">
+                          Mon-Sat: 9AM - 8PM • Closed Sunday
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Card>
             </div>
 
-            {/* About Text - Right Side */}
-            <div className="space-y-4">
-              <h2 className="text-3xl sm:text-4xl md:text-5xl text-slate-900">
-                About Our Barbershop
-              </h2>
-              <p className="text-base sm:text-lg md:text-xl text-slate-600 leading-relaxed">
-                Since 2017, we've been dedicated to providing
-                exceptional grooming services in a welcoming and
-                professional environment. With years of
-                expertise and passion, Supremo Barber has become
-                a trusted destination for modern gentlemen.
-              </p>
-              <p className="text-sm sm:text-base text-slate-500 leading-relaxed">
-                Our commitment to excellence, combined with a
-                warm atmosphere and skilled craftsmanship,
-                ensures every visit is an experience worth
-                remembering. We don't just cut hair – we craft
-                confidence.
-              </p>
+            {/* Map Card */}
+            <div
+              className={`lg:col-span-4 transition-all duration-1000 delay-300 ${aboutVisible
+                ? "opacity-100 translate-y-0"
+                : "opacity-0 translate-y-10"
+                }`}
+            >
+              <Card className="h-full rounded-3xl overflow-hidden shadow-2xl border-2 border-[#DB9D47]/20 group hover:shadow-[#DB9D47]/30 hover:scale-[1.02] transition-all duration-500">
+                <div className="relative h-full min-h-[400px]">
+                  {distance && userLocation && (
+                    <div className="absolute top-4 left-4 z-20 bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl px-4 py-3 border border-[#DB9D47]/20">
+                      <div className="flex items-center gap-2">
+                        <MapPin className="w-5 h-5 text-[#DB9D47]" />
+                        <div>
+                          <div className="text-xs text-slate-600 font-semibold">
+                            Distance
+                          </div>
+                          <div className="text-lg font-bold text-slate-900">
+                            {distance}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {!userLocation && (
+                    <div className="absolute top-4 left-4 z-20">
+                      <Button
+                        onClick={handleGetDirections}
+                        disabled={isCalculatingDistance}
+                        size="sm"
+                        className="bg-white/95 backdrop-blur-xl hover:bg-white text-slate-900 shadow-2xl hover:scale-105 transition-all border border-[#DB9D47]/20"
+                      >
+                        {isCalculatingDistance ? (
+                          <>
+                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-slate-900 mr-2"></div>
+                            Loading...
+                          </>
+                        ) : (
+                          <>
+                            <MapPin className="w-4 h-4 mr-2 text-[#DB9D47]" />
+                            Directions
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  )}
+
+                  {mapSrc ? (
+                    <iframe
+                      src={mapSrc}
+                      width="100%"
+                      height="100%"
+                      style={{ border: 0 }}
+                      allowFullScreen
+                      loading="lazy"
+                      title="Location"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-slate-100">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#DB9D47]"></div>
+                    </div>
+                  )}
+                </div>
+              </Card>
             </div>
           </div>
 
-          {/* Interactive Feature Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
-            {/* Card 1 - Expert Barbers */}
-            <Card
-              key="feature-expert-barbers"
-              className={`group cursor-pointer transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 border-2 ${
-                activeCard === 0
-                  ? "border-[#DB9D47] bg-gradient-to-br from-[#F3E5AB]/20 to-white"
-                  : "border-gray-200 hover:border-[#DB9D47]/50"
+          {/* Feature Cards */}
+          <div
+            className={`grid grid-cols-1 md:grid-cols-3 gap-6 transition-all duration-1000 delay-400 ${aboutVisible
+              ? "opacity-100 translate-y-0"
+              : "opacity-0 translate-y-10"
               }`}
-              onClick={() =>
-                setActiveCard(activeCard === 0 ? null : 0)
-              }
-            >
-              <CardContent className="p-6 sm:p-8 text-center">
-                <div
-                  className={`w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-5 rounded-full flex items-center justify-center transition-all duration-300 ${
-                    activeCard === 0
-                      ? "bg-[#DB9D47] scale-110"
-                      : "bg-[#F3E5AB]/30 group-hover:bg-[#DB9D47]/20"
-                  }`}
-                >
-                  <Scissors
-                    className={`w-8 h-8 sm:w-10 sm:h-10 transition-colors duration-300 ${
-                      activeCard === 0
-                        ? "text-white"
-                        : "text-[#DB9D47]"
-                    }`}
-                  />
-                </div>
-                <h3 className="text-xl sm:text-2xl font-semibold text-[#4B2E05] mb-2 sm:mb-3">
-                  Expert Barbers
-                </h3>
-                <p
-                  className={`text-sm sm:text-base text-[#6B5835] transition-all duration-300 leading-relaxed ${
-                    activeCard === 0
-                      ? "h-auto opacity-100"
-                      : "h-auto opacity-70 group-hover:opacity-100"
-                  }`}
-                >
-                  Our team of skilled professionals brings years
-                  of experience and passion to every cut.
-                </p>
-                {activeCard === 0 && (
-                  <div className="mt-5 pt-5 border-t border-[#DB9D47]/30 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                    <p className="text-xs sm:text-sm text-[#6B5835] italic">
-                      ✨ All barbers certified with 5+ years
-                      experience
-                    </p>
+          >
+            {[
+              {
+                icon: CheckCircle2,
+                title: "Master Barbers",
+                desc: "Our certified barbers bring 5-7 years of professional experience, mastering both classic techniques and contemporary styles",
+                color: "from-[#DB9D47] to-[#C56E33]",
+              },
+              {
+                icon: Shield,
+                title: "Premium Quality",
+                desc: "We exclusively use top-tier professional products—Reuzel for pomades, Layrite for styling, and Uppercut for finishing touches",
+                color: "from-[#87765E] to-[#5C4A3A]",
+              },
+              {
+                icon: Heart,
+                title: "Client-First Experience",
+                desc: "Enjoy a relaxing atmosphere with personalized consultations, ensuring your style vision becomes reality every visit",
+                color: "from-[#C56E33] to-[#A0522D]",
+              },
+            ].map((feature, idx) => (
+              <Card
+                key={idx}
+                className="group relative bg-white rounded-3xl p-8 border-2 border-slate-100 hover:border-[#DB9D47]/30 hover:shadow-2xl hover:shadow-[#DB9D47]/10 transition-all duration-500 hover:-translate-y-2 overflow-hidden"
+              >
+                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-[#DB9D47]/5 to-transparent rounded-full blur-2xl group-hover:scale-150 transition-transform duration-500"></div>
+                <div className="relative">
+                  <div
+                    className={`inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br ${feature.color} shadow-xl mb-6 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500`}
+                  >
+                    <feature.icon className="w-8 h-8 text-white" />
                   </div>
-                )}
-              </CardContent>
-            </Card>
+                  <h3 className="text-2xl font-bold text-slate-900 mb-3">
+                    {feature.title}
+                  </h3>
+                  <p className="text-slate-600 leading-relaxed">
+                    {feature.desc}
+                  </p>
+                </div>
+              </Card>
+            ))}
+          </div>
 
-            {/* Card 2 - Premium Quality */}
-            <Card
-              key="feature-premium-quality"
-              className={`group cursor-pointer transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 border-2 ${
-                activeCard === 1
-                  ? "border-[#C56E33] bg-gradient-to-br from-[#C56E33]/10 to-white"
-                  : "border-gray-200 hover:border-[#C56E33]/50"
-              }`}
-              onClick={() =>
-                setActiveCard(activeCard === 1 ? null : 1)
-              }
+          {/* How It Works - Integrated Timeline */}
+          <div className="mt-32 pt-16 border-t-2 border-[#DB9D47]/10">
+            <div
+              className={`text-center mb-20 transition-all duration-1000 ${aboutVisible
+                ? "opacity-100 translate-y-0"
+                : "opacity-0 translate-y-10"
+                }`}
             >
-              <CardContent className="p-6 sm:p-8 text-center">
-                <div
-                  className={`w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-5 rounded-full flex items-center justify-center transition-all duration-300 ${
-                    activeCard === 1
-                      ? "bg-[#C56E33] scale-110"
-                      : "bg-[#C56E33]/10 group-hover:bg-[#C56E33]/20"
-                  }`}
-                >
-                  <Star
-                    className={`w-8 h-8 sm:w-10 sm:h-10 transition-colors duration-300 ${
-                      activeCard === 1
-                        ? "text-white"
-                        : "text-[#C56E33]"
-                    }`}
-                  />
-                </div>
-                <h3 className="text-xl sm:text-2xl font-semibold text-[#4B2E05] mb-2 sm:mb-3">
-                  Premium Quality
-                </h3>
-                <p
-                  className={`text-sm sm:text-base text-[#6B5835] transition-all duration-300 leading-relaxed ${
-                    activeCard === 1
-                      ? "h-auto opacity-100"
-                      : "h-auto opacity-70 group-hover:opacity-100"
-                  }`}
-                >
-                  We use only the finest products and tools to
-                  ensure the best results for our clients.
-                </p>
-                {activeCard === 1 && (
-                  <div className="mt-5 pt-5 border-t border-[#C56E33]/30 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                    <p className="text-xs sm:text-sm text-[#6B5835] italic">
-                      ✨ Premium brands: Reuzel, Layrite,
-                      Uppercut
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+              <div className="inline-flex items-center gap-2 bg-[#DB9D47]/10 rounded-full px-4 py-2 mb-6 border border-[#DB9D47]/20">
+                <Calendar className="w-4 h-4 text-[#DB9D47]" />
+                <span className="text-sm font-bold text-[#DB9D47] uppercase tracking-wider">
+                  How It Works
+                </span>
+              </div>
+              <h2 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-slate-900 mb-6">
+                Your Journey to{" "}
+                <span className="text-[#DB9D47]">
+                  Supreme Style
+                </span>
+              </h2>
+              <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+                Four simple steps to secure your spot and
+                experience premium grooming
+              </p>
+            </div>
 
-            {/* Card 3 - Modern Environment */}
-            <Card
-              key="feature-modern-environment"
-              className={`group cursor-pointer transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 border-2 ${
-                activeCard === 2
-                  ? "border-[#7B8A4E] bg-gradient-to-br from-[#7B8A4E]/10 to-white"
-                  : "border-gray-200 hover:border-[#7B8A4E]/50"
-              }`}
-              onClick={() =>
-                setActiveCard(activeCard === 2 ? null : 2)
-              }
-            >
-              <CardContent className="p-6 sm:p-8 text-center">
+            {/* Animated Timeline Steps */}
+            <div className="relative max-w-4xl mx-auto">
+              {/* Vertical Line */}
+              <div className="absolute left-1/2 top-0 bottom-0 w-0.5 bg-gradient-to-b from-[#DB9D47] via-[#DB9D47] to-transparent hidden lg:block -translate-x-1/2"></div>
+
+              {/* Step 1 */}
+              <div ref={step1Ref} className="relative mb-24">
                 <div
-                  className={`w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-5 rounded-full flex items-center justify-center transition-all duration-300 ${
-                    activeCard === 2
-                      ? "bg-[#7B8A4E] scale-110"
-                      : "bg-[#7B8A4E]/10 group-hover:bg-[#7B8A4E]/20"
-                  }`}
-                >
-                  <Clock
-                    className={`w-8 h-8 sm:w-10 sm:h-10 transition-colors duration-300 ${
-                      activeCard === 2
-                        ? "text-white"
-                        : "text-[#7B8A4E]"
+                  className={`grid grid-cols-1 lg:grid-cols-2 gap-12 items-center transition-all duration-1000 ${step1Visible
+                    ? "opacity-100 translate-y-0"
+                    : "opacity-0 translate-y-20"
                     }`}
-                  />
-                </div>
-                <h3 className="text-xl sm:text-2xl font-semibold text-[#4B2E05] mb-2 sm:mb-3">
-                  Modern Environment
-                </h3>
-                <p
-                  className={`text-sm sm:text-base text-[#6B5835] transition-all duration-300 leading-relaxed ${
-                    activeCard === 2
-                      ? "h-auto opacity-100"
-                      : "h-auto opacity-70 group-hover:opacity-100"
-                  }`}
                 >
-                  Our barbershop is designed with modern
-                  aesthetics and comfort in mind.
-                </p>
-                {activeCard === 2 && (
-                  <div className="mt-5 pt-5 border-t border-[#7B8A4E]/30 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                    <p className="text-xs sm:text-sm text-[#6B5835] italic">
-                      ✨ Clean and stylish interior
-                    </p>
+                  <div className="lg:text-right">
+                    <div className="inline-block lg:block">
+                      <div className="inline-flex items-center gap-2 bg-[#DB9D47]/10 rounded-full px-4 py-2 mb-4 border border-[#DB9D47]/20">
+                        <span className="text-sm font-bold text-[#DB9D47]">
+                          STEP 01
+                        </span>
+                      </div>
+                      <h3 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-3">
+                        Browse & Select Your Service
+                      </h3>
+                      <p className="text-base text-slate-600 leading-relaxed max-w-lg lg:ml-auto">
+                        Explore our curated range of premium
+                        services—from precision haircuts and
+                        beard trims to hot towel shaves and
+                        styling.
+                      </p>
+                    </div>
                   </div>
-                )}
-              </CardContent>
-            </Card>
+                  <div className="relative lg:pl-12">
+                    <div className="absolute left-1/2 lg:left-0 top-1/2 -translate-y-1/2 w-16 h-16 -translate-x-1/2 lg:translate-x-0 bg-gradient-to-br from-[#DB9D47] to-[#C56E33] rounded-full shadow-xl shadow-[#DB9D47]/40 flex items-center justify-center z-10 animate-pulse-slow">
+                      <Scissors className="w-8 h-8 text-white" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Step 2 */}
+              <div ref={step2Ref} className="relative mb-24">
+                <div
+                  className={`grid grid-cols-1 lg:grid-cols-2 gap-12 items-center transition-all duration-1000 ${step2Visible
+                    ? "opacity-100 translate-y-0"
+                    : "opacity-0 translate-y-20"
+                    }`}
+                >
+                  <div className="lg:order-2">
+                    <div className="inline-block lg:block">
+                      <div className="inline-flex items-center gap-2 bg-[#DB9D47]/10 rounded-full px-4 py-2 mb-4 border border-[#DB9D47]/20">
+                        <span className="text-sm font-bold text-[#DB9D47]">
+                          STEP 02
+                        </span>
+                      </div>
+                      <h3 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-3">
+                        Pick Your Perfect Time
+                      </h3>
+                      <p className="text-base text-slate-600 leading-relaxed max-w-lg">
+                        View real-time availability and choose a
+                        date and time that fits your schedule.
+                        Our system shows only open slots.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="relative lg:order-1 lg:pr-12 lg:text-right">
+                    <div className="absolute left-1/2 lg:left-auto lg:right-0 top-1/2 -translate-y-1/2 w-16 h-16 -translate-x-1/2 lg:translate-x-0 bg-gradient-to-br from-[#DB9D47] to-[#C56E33] rounded-full shadow-xl shadow-[#DB9D47]/40 flex items-center justify-center z-10 animate-pulse-slow">
+                      <Calendar className="w-8 h-8 text-white" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Step 3 */}
+              <div ref={step3Ref} className="relative mb-24">
+                <div
+                  className={`grid grid-cols-1 lg:grid-cols-2 gap-12 items-center transition-all duration-1000 ${step3Visible
+                    ? "opacity-100 translate-y-0"
+                    : "opacity-0 translate-y-20"
+                    }`}
+                >
+                  <div className="lg:text-right">
+                    <div className="inline-block lg:block">
+                      <div className="inline-flex items-center gap-2 bg-[#DB9D47]/10 rounded-full px-4 py-2 mb-4 border border-[#DB9D47]/20">
+                        <span className="text-sm font-bold text-[#DB9D47]">
+                          STEP 03
+                        </span>
+                      </div>
+                      <h3 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-3">
+                        Secure with 50% Deposit
+                      </h3>
+                      <p className="text-base text-slate-600 leading-relaxed max-w-lg lg:ml-auto">
+                        Review your booking details and confirm
+                        with a quick 50% deposit payment to
+                        secure your appointment.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="relative lg:pl-12">
+                    <div className="absolute left-1/2 lg:left-0 top-1/2 -translate-y-1/2 w-16 h-16 -translate-x-1/2 lg:translate-x-0 bg-gradient-to-br from-[#DB9D47] to-[#C56E33] rounded-full shadow-xl shadow-[#DB9D47]/40 flex items-center justify-center z-10 animate-pulse-slow">
+                      <Wallet className="w-8 h-8 text-white" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Step 4 */}
+              <div ref={step4Ref} className="relative">
+                <div
+                  className={`grid grid-cols-1 lg:grid-cols-2 gap-12 items-center transition-all duration-1000 ${step4Visible
+                    ? "opacity-100 translate-y-0"
+                    : "opacity-0 translate-y-20"
+                    }`}
+                >
+                  <div className="lg:order-2">
+                    <div className="inline-block lg:block">
+                      <div className="inline-flex items-center gap-2 bg-[#DB9D47]/10 rounded-full px-4 py-2 mb-4 border border-[#DB9D47]/20">
+                        <span className="text-sm font-bold text-[#DB9D47]">
+                          STEP 04
+                        </span>
+                      </div>
+                      <h3 className="text-2xl sm:text-3xl font-bold text-slate-900 mb-3">
+                        Experience Supreme Grooming
+                      </h3>
+                      <p className="text-base text-slate-600 leading-relaxed max-w-lg">
+                        Arrive on time and relax. Our expert
+                        barbers will deliver a personalized
+                        grooming experience.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="relative lg:order-1 lg:pr-12 lg:text-right">
+                    <div className="absolute left-1/2 lg:left-auto lg:right-0 top-1/2 -translate-y-1/2 w-16 h-16 -translate-x-1/2 lg:translate-x-0 bg-gradient-to-br from-[#DB9D47] to-[#C56E33] rounded-full shadow-xl shadow-[#DB9D47]/40 flex items-center justify-center z-10 animate-pulse-slow">
+                      <Sparkles className="w-8 h-8 text-white" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* CTA Button */}
+            <div
+              className={`text-center mt-16 transition-all duration-1000 ${step4Visible
+                ? "opacity-100 translate-y-0"
+                : "opacity-0 translate-y-10"
+                }`}
+            >
+              <Button
+                size="lg"
+                onClick={scrollToServices}
+                className="bg-[#DB9D47] hover:bg-[#C56E33] text-white px-10 py-6 text-base font-semibold shadow-2xl shadow-[#DB9D47]/30 hover:shadow-[#DB9D47]/40 hover:scale-105 transition-all rounded-2xl"
+              >
+                Get Started Now
+                <ArrowRight className="ml-2 w-5 h-5" />
+              </Button>
+            </div>
           </div>
         </div>
       </section>
@@ -970,69 +1027,129 @@ export function LandingPage({
       {/* Services Section */}
       <section
         id="services"
-        className="py-12 sm:py-16 md:py-24 bg-white"
+        ref={servicesRef}
+        className="relative py-32 bg-gradient-to-b from-slate-50 to-white overflow-hidden"
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-8 sm:mb-12 md:mb-16">
-            <h2 className="text-3xl sm:text-4xl md:text-5xl text-slate-900 mb-3 sm:mb-4">
-              Our Services
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
+          {/* Section Header */}
+          <div
+            className={`text-center max-w-3xl mx-auto mb-20 transition-all duration-1000 ${servicesVisible
+              ? "opacity-100 translate-y-0"
+              : "opacity-0 translate-y-10"
+              }`}
+          >
+            <div className="inline-flex items-center gap-2 bg-[#DB9D47]/10 rounded-full px-4 py-2 mb-6 border border-[#DB9D47]/20">
+              <Scissors className="w-4 h-4 text-[#DB9D47]" />
+              <span className="text-sm font-bold text-[#DB9D47] uppercase tracking-wider">
+                Services
+              </span>
+            </div>
+            <h2 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-slate-900 mb-6">
+              Premium{" "}
+              <span className="text-[#DB9D47]">Services</span>
             </h2>
-            <p className="text-base sm:text-lg md:text-xl text-slate-600 max-w-3xl mx-auto px-2">
-              From classic cuts to modern styles, we offer a
-              full range of grooming services
+            <p className="text-xl text-slate-600">
+              Choose from our range of expert grooming services
+              tailored to your style
             </p>
           </div>
 
-          {/* Desktop Grid - Two Rows */}
+          {/* Desktop Grid */}
           <div className="hidden md:block">
             {isLoadingServices ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#DB9D47]"></div>
+              <div className="flex items-center justify-center py-20">
+                <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-[#DB9D47]"></div>
               </div>
             ) : services.length === 0 ? (
-              <div className="text-center py-12 text-slate-600">
-                No services available at the moment.
+              <div className="text-center py-20 text-slate-600">
+                No services available.
               </div>
             ) : (
-              <div className="grid grid-cols-3 gap-5 pb-4">
-                {services.slice(0, 6).map((service) => (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {services.slice(0, 6).map((service, index) => (
                   <Card
                     key={service.id || service._id}
-                    className="hover:shadow-lg transition-shadow overflow-hidden border-[#E8DCC8]"
+                    className={`group relative overflow-hidden bg-white cursor-pointer transition-all duration-500 hover:shadow-xl border border-slate-200 ${servicesVisible
+                      ? "animate-fade-in-up"
+                      : "opacity-0"
+                      }`}
                     onClick={() =>
                       onServiceClick?.(
                         service.id || service._id,
                       )
                     }
+                    onMouseEnter={() =>
+                      setHoveredService(index)
+                    }
+                    onMouseLeave={() => setHoveredService(null)}
+                    style={{
+                      animationDelay: `${index * 100}ms`,
+                    }}
                   >
-                    <div className="relative h-44 overflow-hidden">
+                    {/* Traditional Barber Pole Stripe Accent */}
+                    <div className="absolute top-0 left-0 w-1 h-full bg-[#DB9D47] transform origin-top transition-all duration-500 group-hover:w-2"></div>
+
+                    {/* Image Container */}
+                    <div className="relative h-40 overflow-hidden bg-slate-100">
                       <ImageWithFallback
                         src={
                           normalizeR2Url(service.imageUrl) ||
-                          "https://images.unsplash.com/photo-1621605815971-fbc98d665033?w=400&h=400&fit=crop"
+                          "https://images.unsplash.com/photo-1621605815971-fbc98d665033?w=600"
                         }
                         alt={service.name}
-                        className="w-full h-full object-cover"
+                        className={`w-full h-full object-cover transition-all duration-500 ${hoveredService === index
+                          ? "scale-105"
+                          : "scale-100"
+                          }`}
                       />
+                      <div className="absolute inset-0 bg-slate-900/20"></div>
                     </div>
+
+                    {/* Content */}
                     <CardContent className="p-4">
-                      <div className="mb-3">
-                        <h3 className="text-lg text-[#5C4A3A] mb-1.5">
-                          {service.name}
-                        </h3>
-                        <p className="text-xs text-[#87765E] mb-3 line-clamp-2 leading-relaxed">
-                          {service.description}
-                        </p>
-                      </div>
+                      {/* Title */}
+                      <h3 className="text-xl font-bold text-slate-900 mb-2">
+                        {service.name}
+                      </h3>
+
+                      {/* Description */}
+                      <p className="text-slate-600 mb-4 line-clamp-2 text-sm leading-snug">
+                        {service.description}
+                      </p>
+
+                      {/* Divider Line */}
+                      <div className="w-full h-px bg-slate-200 mb-3"></div>
+
+                      {/* Details Row */}
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1.5 text-xs text-[#87765E]">
+                        {/* Duration */}
+                        <div className="flex items-center gap-1.5 text-slate-600">
                           <Clock className="w-3.5 h-3.5" />
-                          <span>{service.duration} min</span>
-                        </div>
-                        <div className="text-[#DB9D47]">
-                          <span className="text-base">
-                            ₱{service.price}
+                          <span className="text-xs font-medium">
+                            {service.duration} min
                           </span>
+                        </div>
+
+                        {/* Price */}
+                        <div className="text-right">
+                          <div className="text-xl font-bold text-[#DB9D47]">
+                            ₱{service.price}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Hover Action */}
+                      <div
+                        className={`mt-3 pt-3 border-t border-slate-200 transition-all duration-300 ${hoveredService === index
+                          ? "opacity-100 translate-y-0"
+                          : "opacity-0 translate-y-2"
+                          }`}
+                      >
+                        <div className="flex items-center justify-center gap-2 text-[#DB9D47] font-semibold">
+                          <span className="text-xs uppercase tracking-wide">
+                            Book This Service
+                          </span>
+                          <ArrowRight className="w-3.5 h-3.5" />
                         </div>
                       </div>
                     </CardContent>
@@ -1043,94 +1160,74 @@ export function LandingPage({
           </div>
 
           {/* Mobile Carousel */}
-          <div className="md:hidden relative">
+          <div className="md:hidden">
             {isLoadingServices ? (
-              <Card
-                key="loading-services"
-                className="border-[#E8DCC8] p-12"
-              >
-                <div className="flex items-center justify-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#DB9D47]"></div>
-                </div>
-              </Card>
+              <div className="flex justify-center py-20">
+                <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-[#DB9D47]"></div>
+              </div>
             ) : services.length === 0 ? (
-              <Card
-                key="no-services"
-                className="border-[#E8DCC8] p-12"
-              >
-                <div className="text-center text-slate-600">
-                  No services available at the moment.
-                </div>
-              </Card>
+              <div className="text-center py-20 text-slate-600">
+                No services available.
+              </div>
             ) : (
               <div>
-                <Card
-                  key={`service-mobile-${currentServiceIndex}`}
-                  className="hover:shadow-lg transition-shadow overflow-hidden border-[#E8DCC8] cursor-pointer"
-                  onClick={() =>
-                    onServiceClick?.(
-                      services[currentServiceIndex]._id,
-                    )
-                  }
-                >
-                  <div className="relative h-48 overflow-hidden">
+                <Card className="overflow-hidden rounded-3xl border-2 border-[#DB9D47]/20 shadow-xl bg-white">
+                  <div className="relative h-72 overflow-hidden">
                     <ImageWithFallback
                       src={
                         normalizeR2Url(
                           services[currentServiceIndex]
                             .imageUrl,
                         ) ||
-                        "https://images.unsplash.com/photo-1621605815971-fbc98d665033?w=400&h=400&fit=crop"
+                        "https://images.unsplash.com/photo-1621605815971-fbc98d665033"
                       }
                       alt={services[currentServiceIndex].name}
                       className="w-full h-full object-cover"
                     />
-                  </div>
-                  <CardContent className="p-6">
-                    <div className="mb-4">
-                      <h3 className="text-xl text-[#5C4A3A] mb-2">
+                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/50 to-transparent"></div>
+                    <div className="absolute top-4 right-4 bg-white/95 backdrop-blur-xl rounded-2xl px-4 py-2.5 shadow-2xl border border-[#DB9D47]/20">
+                      <div className="text-xs text-slate-600 font-semibold">
+                        From
+                      </div>
+                      <div className="text-xl font-bold text-[#DB9D47]">
+                        ₱{services[currentServiceIndex].price}
+                      </div>
+                    </div>
+                    <div className="absolute bottom-4 left-4 right-4">
+                      <h3 className="text-2xl font-bold text-white drop-shadow-lg">
                         {services[currentServiceIndex].name}
                       </h3>
-                      <p className="text-sm text-[#87765E] mb-4">
-                        {
-                          services[currentServiceIndex]
-                            .description
-                        }
-                      </p>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-sm text-[#87765E]">
-                        <Clock className="w-4 h-4" />
-                        <span>
-                          {
-                            services[currentServiceIndex]
-                              .duration
-                          }{" "}
-                          min
-                        </span>
-                      </div>
-                      <div className="text-[#DB9D47]">
-                        <span className="text-lg">
-                          ₱{services[currentServiceIndex].price}
-                        </span>
-                      </div>
+                  </div>
+                  <CardContent className="p-6 bg-white">
+                    <p className="text-slate-600 mb-4">
+                      {
+                        services[currentServiceIndex]
+                          .description
+                      }
+                    </p>
+                    <div className="flex items-center gap-2 text-slate-600 pt-3 border-t">
+                      <Clock className="w-5 h-5 text-[#DB9D47]" />
+                      <span className="font-semibold">
+                        {services[currentServiceIndex].duration}{" "}
+                        min
+                      </span>
                     </div>
                   </CardContent>
                 </Card>
 
-                {/* Dots Indicator */}
-                <div className="flex justify-center gap-2 mt-6">
+                <div className="flex justify-center gap-2 mt-8">
                   {services.slice(0, 6).map((_, index) => (
                     <button
                       key={index}
                       onClick={() =>
                         setCurrentServiceIndex(index)
                       }
-                      className={`w-2 h-2 rounded-full transition-all ${
-                        index === currentServiceIndex
-                          ? "bg-[#DB9D47] w-8"
-                          : "bg-slate-300"
-                      }`}
+                      className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${index === currentServiceIndex
+                        ? "bg-[#DB9D47] w-8"
+                        : "bg-slate-300 hover:bg-slate-400"
+                        }`}
+                      aria-label={`Go to service ${index + 1}`}
                     />
                   ))}
                 </div>
@@ -1138,13 +1235,20 @@ export function LandingPage({
             )}
           </div>
 
-          <div className="text-center mt-8 space-y-3">
+          {/* CTA */}
+          <div
+            className={`text-center mt-16 transition-all duration-1000 delay-300 ${servicesVisible
+              ? "opacity-100 translate-y-0"
+              : "opacity-0 translate-y-10"
+              }`}
+          >
             <Button
               size="lg"
               onClick={onGetStarted}
-              className="bg-[#DB9D47] hover:bg-[#C56E33] text-white shadow-lg hover:shadow-xl transition-all"
+              className="bg-[#DB9D47] hover:bg-[#C56E33] text-white px-10 py-6 text-base font-semibold shadow-2xl shadow-[#DB9D47]/30 hover:shadow-[#DB9D47]/40 hover:scale-105 transition-all rounded-2xl"
             >
-              See More Services
+              View All Services
+              <ArrowRight className="ml-2 w-5 h-5" />
             </Button>
           </div>
         </div>
@@ -1153,33 +1257,47 @@ export function LandingPage({
       {/* Testimonials Section */}
       <section
         id="testimonials"
-        className="py-12 sm:py-16 md:py-24 bg-slate-50 overflow-hidden"
+        ref={testimonialsRef}
+        className="relative py-32 bg-white overflow-hidden"
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-8 sm:mb-12 md:mb-16">
-            <h2 className="text-3xl sm:text-4xl md:text-5xl text-slate-900 mb-3 sm:mb-4">
-              What Our Clients Say
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
+          {/* Section Header */}
+          <div
+            className={`text-center max-w-3xl mx-auto mb-20 transition-all duration-1000 ${testimonialsVisible
+              ? "opacity-100 translate-y-0"
+              : "opacity-0 translate-y-10"
+              }`}
+          >
+            <div className="inline-flex items-center gap-2 bg-[#DB9D47]/10 rounded-full px-4 py-2 mb-6 border border-[#DB9D47]/20">
+              <Star className="w-4 h-4 text-[#DB9D47]" />
+              <span className="text-sm font-bold text-[#DB9D47] uppercase tracking-wider">
+                Testimonials
+              </span>
+            </div>
+            <h2 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-slate-900 mb-6">
+              What Our{" "}
+              <span className="text-[#DB9D47]">Clients Say</span>
             </h2>
-            <p className="text-base sm:text-lg md:text-xl text-slate-600">
-              Don't just take our word for it
+            <p className="text-xl text-slate-600">
+              Join thousands of satisfied customers who trust us
+              with their style
             </p>
           </div>
 
+          {/* Testimonials Scroll */}
           <div className="relative">
             {isLoadingReviews ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#DB9D47]"></div>
+              <div className="flex items-center justify-center py-20">
+                <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-[#DB9D47]"></div>
               </div>
             ) : testimonials.length === 0 ? (
-              <Card className="p-6 sm:p-8 md:p-12">
-                <div className="text-center text-slate-600">
-                  No reviews available at the moment.
-                </div>
-              </Card>
+              <div className="text-center py-20 text-slate-600">
+                No testimonials available.
+              </div>
             ) : (
               <div
                 ref={testimonialsScrollRef}
-                className="flex gap-6 overflow-x-auto scrollbar-hide pb-4"
+                className="flex gap-8 overflow-x-auto scrollbar-hide pb-4"
                 style={{
                   scrollbarWidth: "none",
                   msOverflowStyle: "none",
@@ -1191,16 +1309,15 @@ export function LandingPage({
                   setIsTestimonialsPaused(false)
                 }
               >
-                {/* Duplicate testimonials array twice for infinite loop effect */}
                 {[...testimonials, ...testimonials].map(
                   (testimonial, index) => (
                     <Card
                       key={`${testimonial.id}-${index}`}
-                      className="flex-shrink-0 w-80 sm:w-96 p-8 transition-all duration-300 hover:shadow-xl border-[#E8DCC8]"
+                      className="flex-shrink-0 w-96 p-10 transition-all duration-500 hover:shadow-2xl border-2 border-slate-100 hover:border-[#DB9D47]/30 rounded-3xl"
                     >
                       <div className="flex flex-col items-center text-center">
                         {testimonial.customerAvatar ? (
-                          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full mb-4 shadow-lg overflow-hidden ring-4 ring-[#DB9D47]/20">
+                          <div className="w-20 h-20 rounded-full mb-6 shadow-xl overflow-hidden ring-4 ring-[#DB9D47]/20">
                             <ImageWithFallback
                               src={normalizeR2Url(
                                 testimonial.customerAvatar,
@@ -1213,124 +1330,38 @@ export function LandingPage({
                             />
                           </div>
                         ) : (
-                          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-[#DB9D47] to-[#C56E33] rounded-full flex items-center justify-center text-white text-xl sm:text-2xl mb-4 shadow-lg">
+                          <div className="w-20 h-20 bg-gradient-to-br from-[#DB9D47] to-[#C56E33] rounded-full flex items-center justify-center text-white text-2xl mb-6 shadow-xl">
                             {testimonial.customerName
                               ?.substring(0, 2)
                               .toUpperCase() || "CU"}
                           </div>
                         )}
-                        <div className="flex gap-1 mb-4">
+                        <div className="flex gap-1 mb-6">
                           {[...Array(testimonial.rating)].map(
                             (_, i) => (
                               <Star
                                 key={i}
-                                className="w-5 h-5 fill-yellow-400 text-yellow-400"
+                                className="w-5 h-5 fill-[#DB9D47] text-[#DB9D47]"
                               />
                             ),
                           )}
                         </div>
-                        <p className="text-base sm:text-lg text-slate-700 mb-6 italic leading-relaxed min-h-[80px]">
+                        <p className="text-lg text-slate-700 mb-6 italic leading-relaxed min-h-[100px]">
                           "{testimonial.comment}"
                         </p>
-                        <div className="border-t border-slate-200 pt-4 w-full">
-                          <p className="font-semibold text-lg text-slate-900 mb-1">
+                        <div className="border-t-2 border-[#DB9D47]/20 pt-6 w-full">
+                          <p className="font-bold text-xl text-slate-900 mb-1">
                             {testimonial.customerName ||
                               "Anonymous Customer"}
+                          </p>
+                          <p className="text-sm text-slate-500">
+                            Verified Customer
                           </p>
                         </div>
                       </div>
                     </Card>
                   ),
                 )}
-              </div>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* Location Section */}
-      <section
-        id="location"
-        className="py-12 sm:py-16 md:py-24 bg-white"
-      >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-8 sm:mb-12 md:mb-16">
-            <h2 className="text-3xl sm:text-4xl md:text-5xl text-slate-900 mb-3 sm:mb-4">
-              Visit Us
-            </h2>
-            <p className="text-base sm:text-lg md:text-xl text-slate-600">
-              {userLocation
-                ? "Directions from your location to Supremo Barber"
-                : "Find our location and plan your visit"}
-            </p>
-          </div>
-
-          {/* Get Directions Button and Distance Display */}
-          {!userLocation && (
-            <div className="text-center mb-8">
-              <Button
-                size="lg"
-                onClick={handleGetDirections}
-                disabled={isCalculatingDistance}
-                className="bg-[#DB9D47] hover:bg-[#C56E33] text-white shadow-lg hover:shadow-xl transition-all"
-              >
-                {isCalculatingDistance ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    Calculating...
-                  </>
-                ) : (
-                  <>
-                    <MapPin className="w-5 h-5 mr-2" />
-                    Get Directions
-                  </>
-                )}
-              </Button>
-            </div>
-          )}
-
-          {/* Distance Display */}
-          {distance && userLocation && (
-            <div className="text-center mb-8">
-              <Card className="inline-block px-6 py-4 bg-gradient-to-r from-[#F3E5AB]/30 to-[#FFF9F0] border-[#DB9D47]/40">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-[#DB9D47] rounded-full flex items-center justify-center">
-                    <MapPin className="w-5 h-5 text-white" />
-                  </div>
-                  <div className="text-left">
-                    <p className="text-sm text-[#87765E]">
-                      Distance from your location
-                    </p>
-                    <p className="text-xl text-[#4B2E05]">
-                      {distance}
-                    </p>
-                  </div>
-                </div>
-              </Card>
-            </div>
-          )}
-
-          {/* Full-width Map Container */}
-          <div className="rounded-2xl overflow-hidden shadow-2xl h-[500px] sm:h-[600px] lg:h-[700px]">
-            {mapSrc ? (
-              <iframe
-                src={mapSrc}
-                width="100%"
-                height="100%"
-                style={{ border: 0 }}
-                allowFullScreen
-                loading="lazy"
-                referrerPolicy="no-referrer-when-downgrade"
-                title="Supremo Barber Location"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center bg-slate-100">
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#DB9D47] mx-auto mb-4"></div>
-                  <p className="text-slate-600">
-                    Loading map...
-                  </p>
-                </div>
               </div>
             )}
           </div>

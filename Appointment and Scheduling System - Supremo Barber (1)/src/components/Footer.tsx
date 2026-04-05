@@ -30,8 +30,12 @@ export function Footer({ onNavigateToTerms, onNavigateToPrivacy }: FooterProps) 
           {/* About Section */}
           <div className="space-y-4">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-[#DB9D47] rounded-full flex items-center justify-center shadow-lg shadow-[#DB9D47]/50">
-                <Scissors className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+              <div className="w-12 h-8 sm:w-12 sm:h-10 rounded-full flex items-center justify-center">
+                <img
+                  src="https://pub-86f4b5249e5c4021bb05d46908eeb094.r2.dev/supremo-barber/supremoWebLogo.png"
+                  alt="Supremo Barber Logo"
+                  className="h-10 w-10 sm:h-12 sm:w-12"
+                />
               </div>
               <h3 className="text-lg sm:text-xl text-[#FFC976]">
                 Supremo Barber
