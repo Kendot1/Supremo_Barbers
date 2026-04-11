@@ -17,6 +17,7 @@ import { exportToCSV } from "./utils/exportUtils";
 import { PasswordConfirmationDialog } from "./PasswordConfirmationDialog";
 import { PasswordInput as StrongPasswordInput, ConfirmPasswordInput } from "./ui/PasswordInput";
 import type { PasswordStrength } from "@/utils/passwordValidator";
+import { Pagination } from "./ui/pagination";
 
 interface Barber {
   id: string;
@@ -73,6 +74,8 @@ export function BarberModule({ appointments }: BarberModuleProps) {
   });
   const [barbers, setBarbers] = useState<Barber[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // Fetch barbers from database
   useEffect(() => {
@@ -185,12 +188,26 @@ export function BarberModule({ appointments }: BarberModuleProps) {
 
     const email = generateEmail(newBarber.name, barbers);
     const defaultPassword = "SupremoBarber2024";
+    
+    // Generate username from barber name (firstname + lastname initial)
+    const generateUsername = (name: string): string => {
+      const parts = name.trim().toLowerCase().split(' ');
+      if (parts.length === 1) {
+        return parts[0]; // Single name (e.g., "john" -> "john")
+      }
+      const firstName = parts[0];
+      const lastNameInitial = parts[parts.length - 1].charAt(0);
+      return `${firstName}${lastNameInitial}`; // e.g., "John Doe" -> "johnd"
+    };
+    
+    const username = generateUsername(newBarber.name);
 
     try {
       // Step 1: Create user account with role 'barber'
       const userResponse = await API.auth.register({
         name: newBarber.name,
         email,
+        username, // Add username field
         password: defaultPassword,
         phone: '',
         role: 'barber', // Barber role
@@ -441,6 +458,9 @@ export function BarberModule({ appointments }: BarberModuleProps) {
     toast.success(`Exported ${filteredBarbers.length} barbers successfully!`);
   };
 
+  const totalPages = Math.ceil(filteredBarbers.length / itemsPerPage);
+  const currentBarbers = filteredBarbers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
   return (
     <div className="space-y-6">
       {/* Analytics Cards */}
@@ -656,7 +676,7 @@ export function BarberModule({ appointments }: BarberModuleProps) {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredBarbers.map((barber) => (
+                    {currentBarbers.map((barber) => (
                       <TableRow key={barber.id} className="hover:bg-[#FBF7EF]">
                         <TableCell className="text-[#5C4A3A]">
                           <div>
@@ -717,6 +737,17 @@ export function BarberModule({ appointments }: BarberModuleProps) {
                   </TableBody>
                 </Table>
               </div>
+              <Pagination
+                totalItems={filteredBarbers.length}
+                itemsPerPage={itemsPerPage}
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+                onItemsPerPageChange={(newSize) => {
+                  setItemsPerPage(newSize);
+                  setCurrentPage(1);
+                }}
+              />
             </TabsContent>
 
             <TabsContent value="calendar">

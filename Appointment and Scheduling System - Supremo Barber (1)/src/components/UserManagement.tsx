@@ -14,10 +14,15 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from './ui/select';
-import { UserPlus, Search, Edit, Trash2, CheckCircle2, XCircle, Loader2, Users, UserCheck, UserPlus as UserPlusIcon } from 'lucide-react';
+import { UserPlus, Search, Edit, Trash2, CheckCircle2, XCircle, Loader2, Users, UserCheck, UserPlus as UserPlusIcon, Download } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
 import { PasswordConfirmationDialog } from './PasswordConfirmationDialog';
 import API from '../services/api.service';
+import {
+  exportToCSV,
+  formatDateForExport,
+} from './utils/exportUtils';
+import { Pagination } from './ui/pagination';
 
 interface UserData {
   id: string;
@@ -49,6 +54,8 @@ export function UserManagement() {
     action: null,
     userId: null,
   });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [usersPerPage, setUsersPerPage] = useState(10);
 
   // Fetch users from database on mount
   useEffect(() => {
@@ -194,6 +201,22 @@ export function UserManagement() {
     }
   };
 
+  const handleExportToCSV = () => {
+    const formattedUsers = users.map(user => ({
+      ID: user.id,
+      Name: user.name,
+      Email: user.email,
+      Role: user.role,
+      Status: user.status,
+      'Join Date': formatDateForExport(user.joinDate),
+    }));
+    exportToCSV(formattedUsers, 'customers');
+  };
+
+  const indexOfLastUser = currentPage * usersPerPage;
+  const indexOfFirstUser = indexOfLastUser - usersPerPage;
+  const currentUsers = filteredUsers.slice(indexOfFirstUser, indexOfLastUser);
+
   return (
     <>
       {/* Analytics Cards */}
@@ -301,6 +324,14 @@ export function UserManagement() {
                 className="pl-9"
               />
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportToCSV}
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Export CSV
+            </Button>
           </div>
 
           {/* Users Table */}
@@ -323,13 +354,13 @@ export function UserManagement() {
                       <p className="text-sm text-muted-foreground">Loading users from database...</p>
                     </TableCell>
                   </TableRow>
-                ) : filteredUsers.length === 0 ? (
+                ) : currentUsers.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={5} className="text-center py-8">
                       <p className="text-sm text-muted-foreground">No users found</p>
                     </TableCell>
                   </TableRow>
-                ) : filteredUsers.map((user) => (
+                ) : currentUsers.map((user) => (
                   <TableRow key={user.id}>
                     <TableCell>{user.name}</TableCell>
                     <TableCell>{user.email}</TableCell>
@@ -367,6 +398,17 @@ export function UserManagement() {
               </TableBody>
             </Table>
           </div>
+          <Pagination
+            totalItems={filteredUsers.length}
+            itemsPerPage={usersPerPage}
+            currentPage={currentPage}
+            totalPages={Math.ceil(filteredUsers.length / usersPerPage)}
+            onPageChange={setCurrentPage}
+            onItemsPerPageChange={(newSize) => {
+              setUsersPerPage(newSize);
+              setCurrentPage(1);
+            }}
+          />
         </CardContent>
 
         {/* Password Confirmation Dialog */}

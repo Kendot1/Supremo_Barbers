@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from "react";
-import { FaPesoSign } from "react-icons/fa6";
 import {
   Card,
   CardContent,
@@ -28,6 +27,15 @@ import {
   CartesianGrid,
   ResponsiveContainer,
 } from "recharts";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "./ui/table";
+import { Badge } from "./ui/badge";
 import type { Appointment, User } from "../App";
 import API from "../services/api.service";
 
@@ -55,6 +63,15 @@ interface BarberAppointment {
   totalPrice?: number;
   total_amount?: number;
   price?: number;
+  serviceName?: string;
+  service_name?: string;
+  service?: string;
+  barberName?: string;
+  barber_name?: string;
+  barber?: string;
+  customerName?: string;
+  customer_name?: string;
+  customer?: string;
 }
 
 interface Review {
@@ -107,7 +124,8 @@ export function BarberEarningsOverview({
       try {
         const data =
           await API.appointments.getByBarberId(barberId);
-       
+        console.log("📊 Barber Appointments fetched:", data);
+        console.log("📊 Sample appointment:", data?.[0]);
         setBarberAppointments(data || []);
       } catch (error) {
         console.warn(
@@ -128,7 +146,9 @@ export function BarberEarningsOverview({
 
       try {
         const data = await API.reviews.getByBarberId(barberId);
-      
+        console.log("⭐ Barber Reviews fetched:", data);
+        console.log("⭐ Reviews count:", data?.length);
+        console.log("⭐ Sample review:", data?.[0]);
         setBarberReviews(data || []);
       } catch (error) {
         console.warn("⚠️ Reviews data not available:", error);
@@ -165,7 +185,9 @@ export function BarberEarningsOverview({
         console.warn(
           "⚠️ Earnings data not available - using fallback data",
         );
-     
+        console.log(
+          "ℹ️ This is normal if no completed appointments exist yet",
+        );
         // Fallback to empty data
         setEarningsData({
           totalEarnings: 0,
@@ -223,7 +245,12 @@ export function BarberEarningsOverview({
     const today = new Date();
     const todayString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
-  
+    console.log("💡 Calculating stats...");
+    console.log(
+      "💡 Total appointments:",
+      barberAppointments.length,
+    );
+    console.log("💡 Total reviews:", barberReviews.length);
 
     // All appointments (excluding cancelled) for total bookings
     const allAppointments = barberAppointments.filter(
@@ -233,7 +260,10 @@ export function BarberEarningsOverview({
       (apt) => apt.status === "completed",
     );
 
-   
+    console.log(
+      "💡 Completed appointments:",
+      completedAppointments.length,
+    );
 
     // Total bookings count (all non-cancelled appointments)
     const totalBookings = allAppointments.length;
@@ -244,22 +274,26 @@ export function BarberEarningsOverview({
       (sum, apt) => {
         const price =
           apt.totalPrice || apt.total_amount || apt.price || 0;
-      
+        console.log("💰 Appointment price:", price, "Fields:", {
+          totalPrice: apt.totalPrice,
+          total_amount: apt.total_amount,
+          price: apt.price,
+        });
         return sum + price;
       },
       0,
     );
 
-   
+    console.log("💰 Total Earnings calculated:", totalEarnings);
 
     // Completion rate
     const completionRate =
       allAppointments.length > 0
         ? Math.round(
-          (completedAppointments.length /
-            allAppointments.length) *
-          100,
-        )
+            (completedAppointments.length /
+              allAppointments.length) *
+              100,
+          )
         : 0;
 
     // Average rating from reviews
@@ -270,18 +304,22 @@ export function BarberEarningsOverview({
       return reviewBarberId === barberId;
     });
 
-  
+    console.log(
+      "⭐ Relevant reviews for barber:",
+      relevantReviews.length,
+    );
+
     const avgRating =
       relevantReviews.length > 0
         ? (
-          relevantReviews.reduce((sum, review) => {
-           
-            return sum + (review.rating || 0);
-          }, 0) / relevantReviews.length
-        ).toFixed(1)
+            relevantReviews.reduce((sum, review) => {
+              console.log("⭐ Review rating:", review.rating);
+              return sum + (review.rating || 0);
+            }, 0) / relevantReviews.length
+          ).toFixed(1)
         : "0";
 
- 
+    console.log("⭐ Average Rating calculated:", avgRating);
 
     // Weekly stats from database
     const weeklyEarnings = earningsData?.totalEarnings || 0;
@@ -323,7 +361,7 @@ export function BarberEarningsOverview({
     {
       label: "Total Earnings",
       value: `₱${stats.totalEarnings}`,
-      icon: FaPesoSign,
+      icon: DollarSign,
       color: "bg-[#94A670]",
       trend: "+8%",
       trendUp: true,
@@ -434,6 +472,93 @@ export function BarberEarningsOverview({
               </BarChart>
             </ResponsiveContainer>
           </ChartContainer>
+        </CardContent>
+      </Card>
+
+      {/* Revenue Details Table */}
+      <Card className="border-[#E8DCC8]">
+        <CardHeader>
+          <CardTitle className="text-[#5C4A3A]">
+            Revenue Details
+          </CardTitle>
+          <CardDescription className="text-[#87765E]">
+            Completed appointments with customer information
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="border border-[#E8DCC8] rounded-lg overflow-hidden">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-[#FBF7EF]">
+                    <TableHead className="text-[#5C4A3A]">ID</TableHead>
+                    <TableHead className="text-[#5C4A3A]">Service</TableHead>
+                    
+                    <TableHead className="text-[#5C4A3A]">Customer</TableHead>
+                    <TableHead className="text-[#5C4A3A]">Date</TableHead>
+                    <TableHead className="text-[#5C4A3A] text-right">Price</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {barberAppointments
+                    .filter((apt) => apt.status === "completed")
+                    .sort((a, b) => {
+                      const dateA = new Date(a.appointmentDate || a.appointment_date || "");
+                      const dateB = new Date(b.appointmentDate || b.appointment_date || "");
+                      return dateB.getTime() - dateA.getTime();
+                    })
+                    .map((appointment) => {
+                      const appointmentId = appointment.id.substring(0, 8);
+                      const service = appointment.serviceName || appointment.service_name || appointment.service || "N/A";
+                      const barber = appointment.barberName || appointment.barber_name || appointment.barber || user.name;
+                      const customer = appointment.customerName || appointment.customer_name || appointment.customer || "N/A";
+                      const date = appointment.appointmentDate || appointment.appointment_date || "N/A";
+                      const price = appointment.totalPrice || appointment.total_amount || appointment.price || 0;
+
+                      return (
+                        <TableRow key={appointment.id} className="hover:bg-[#FBF7EF]">
+                          <TableCell className="font-mono text-xs text-[#87765E]">
+                            {appointmentId}
+                          </TableCell>
+                          <TableCell className="text-[#5C4A3A]">
+                            {service}
+                          </TableCell>
+                         
+                          <TableCell className="text-[#5C4A3A]">
+                            {customer}
+                          </TableCell>
+                          <TableCell className="text-[#5C4A3A]">
+                            {new Date(date).toLocaleDateString()}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <span className="font-medium text-[#94A670]">
+                              ₱{price.toLocaleString()}
+                            </span>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  {barberAppointments.filter((apt) => apt.status === "completed").length === 0 && (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8 text-[#87765E]">
+                        No completed appointments yet
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+
+          {/* Summary Footer */}
+          <div className="mt-4 flex items-center justify-between text-sm">
+            <span className="text-[#87765E]">
+              Showing {barberAppointments.filter((apt) => apt.status === "completed").length} completed appointments
+            </span>
+            <span className="font-medium text-[#5C4A3A]">
+              Total Revenue: <span className="text-[#94A670]">₱{stats.totalEarnings.toLocaleString()}</span>
+            </span>
+          </div>
         </CardContent>
       </Card>
     </div>

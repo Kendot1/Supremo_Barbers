@@ -4,8 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Badge } from './ui/badge';
-import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow
+import { 
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
 } from './ui/table';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
@@ -13,12 +13,13 @@ import {
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle
 } from './ui/dialog';
-import {
-  Search, Star, Filter, Eye, EyeOff, Trash2, Download, TrendingUp
+import { 
+  Search, Star, Filter, Eye, EyeOff, Trash2, Download, TrendingUp 
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from 'sonner@2.0.3';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { PasswordConfirmationDialog } from './PasswordConfirmationDialog';
+import { Pagination } from './ui/pagination';
 
 // Utility function to parse date string without timezone issues
 const parseLocalDate = (dateString: string): Date => {
@@ -33,7 +34,7 @@ export interface Review {
   customerAvatar?: string;
   rating: number;
   comment: string;
-
+  service: string;
   barber: string;
   date: string;
   status: 'pending' | 'approved' | 'rejected';
@@ -45,18 +46,98 @@ interface ReviewsManagementProps {
   onUpdateReviews?: (reviews: Review[]) => void;
 }
 
+// Mock data for demonstration
+const mockReviews: Review[] = [
+  {
+    id: 'rev-1',
+    customerId: 'cust-1',
+    customerName: 'Mike Rodriguez',
+    customerAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop',
+    rating: 5,
+    comment: 'Excellent service! Tony gave me the best haircut I\'ve ever had. The attention to detail is amazing and the atmosphere is very professional.',
+    service: 'Supremo Espesyal',
+    barber: 'Tony Stark',
+    date: '2025-10-20',
+    status: 'approved',
+    featured: true,
+  },
+  {
+    id: 'rev-2',
+    customerId: 'cust-2',
+    customerName: 'Sarah Johnson',
+    customerAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop',
+    rating: 5,
+    comment: 'Amazing experience! Very clean and professional environment. Peter is incredibly skilled and friendly.',
+    service: 'Gupit Supremo w/ Banlaw',
+    barber: 'Peter Parker',
+    date: '2025-10-19',
+    status: 'approved',
+    featured: true,
+  },
+  {
+    id: 'rev-3',
+    customerId: 'cust-3',
+    customerName: 'David Chen',
+    rating: 4,
+    comment: 'Great haircut and good price. The only thing is the wait time was a bit long, but worth it.',
+    service: 'Gupit Supremo',
+    barber: 'Bruce Wayne',
+    date: '2025-10-18',
+    status: 'approved',
+    featured: false,
+  },
+  {
+    id: 'rev-4',
+    customerId: 'cust-4',
+    customerName: 'Emma Wilson',
+    customerAvatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop',
+    rating: 5,
+    comment: 'Best barbershop in town! The scalp treatment was so relaxing and my hair feels amazing.',
+    service: 'Scalp Treatment',
+    barber: 'Tony Stark',
+    date: '2025-10-17',
+    status: 'approved',
+    featured: true,
+  },
+  {
+    id: 'rev-5',
+    customerId: 'cust-5',
+    customerName: 'James Martinez',
+    rating: 3,
+    comment: 'Service was okay. The haircut was fine but not exactly what I asked for.',
+    service: 'Gupit Supremo',
+    barber: 'Peter Parker',
+    date: '2025-10-16',
+    status: 'approved',
+    featured: false,
+  },
+  {
+    id: 'rev-6',
+    customerId: 'cust-6',
+    customerName: 'Lisa Anderson',
+    rating: 5,
+    comment: 'Outstanding! The hair tattoo design was exactly what I wanted. Highly recommend!',
+    service: 'Hair Tattoo',
+    barber: 'Bruce Wayne',
+    date: '2025-10-15',
+    status: 'pending',
+    featured: false,
+  },
+];
 
-export function ReviewsManagement({
-  reviews: propReviews,
-  onUpdateReviews
+export function ReviewsManagement({ 
+  reviews: propReviews, 
+  onUpdateReviews 
 }: ReviewsManagementProps) {
-  const [reviews, setReviews] = useState<Review[]>(propReviews);
+  const [reviews, setReviews] = useState<Review[]>(propReviews || mockReviews);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRating, setFilterRating] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [selectedReview, setSelectedReview] = useState<Review | null>(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [reviewsPerPage, setReviewsPerPage] = useState(10);
   const [passwordConfirmation, setPasswordConfirmation] = useState<{
     isOpen: boolean;
     action: 'delete' | 'approve' | 'reject' | null;
@@ -78,7 +159,7 @@ export function ReviewsManagement({
         setReviews(fetchedReviews);
       } catch (error) {
         console.error('Error fetching reviews:', error);
-        setReviews(propReviews);
+        setReviews(propReviews || mockReviews);
       } finally {
         setIsLoading(false);
       }
@@ -91,10 +172,10 @@ export function ReviewsManagement({
     const total = reviews.length;
     const approved = reviews.filter(r => r.status === 'approved').length;
     const featured = reviews.filter(r => r.featured).length;
-    const avgRating = reviews.length > 0
+    const avgRating = reviews.length > 0 
       ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
       : '0.0';
-
+    
     return { total, approved, featured, avgRating };
   }, [reviews]);
 
@@ -103,24 +184,25 @@ export function ReviewsManagement({
     return reviews.filter(review => {
       // Format date for better search experience (supports both YYYY-MM-DD and formatted dates)
       const formattedDate = parseLocalDate(review.date).toLocaleDateString();
-
-      const matchesSearch =
+      
+      const matchesSearch = 
         review.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
         review.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         review.comment.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        review.service.toLowerCase().includes(searchTerm.toLowerCase()) ||
         review.barber.toLowerCase().includes(searchTerm.toLowerCase()) ||
         review.date.includes(searchTerm) ||
         formattedDate.toLowerCase().includes(searchTerm.toLowerCase()) ||
         review.rating.toString().includes(searchTerm) ||
         review.status.toLowerCase().includes(searchTerm.toLowerCase());
-
-      const matchesRating = filterRating === 'all' ||
-        (filterRating === '5' && review.rating === 5) ||
-        (filterRating === '4+' && review.rating >= 4) ||
-        (filterRating === '3-' && review.rating <= 3);
-
+      
+      const matchesRating = filterRating === 'all' || 
+                           (filterRating === '5' && review.rating === 5) ||
+                           (filterRating === '4+' && review.rating >= 4) ||
+                           (filterRating === '3-' && review.rating <= 3);
+      
       const matchesStatus = filterStatus === 'all' || review.status === filterStatus;
-
+      
       return matchesSearch && matchesRating && matchesStatus;
     });
   }, [reviews, searchTerm, filterRating, filterStatus]);
@@ -131,7 +213,7 @@ export function ReviewsManagement({
       const fetchedReviews = await API.reviews.getAll();
       setReviews(fetchedReviews);
       onUpdateReviews?.(fetchedReviews);
-
+      
       const review = reviews.find(r => r.id === reviewId);
       if (review) {
         toast.success(review.featured ? 'Review removed from featured' : 'Review added to featured');
@@ -230,15 +312,22 @@ export function ReviewsManagement({
         {[1, 2, 3, 4, 5].map((star) => (
           <Star
             key={star}
-            className={`w-4 h-4 ${star <= rating
+            className={`w-4 h-4 ${
+              star <= rating
                 ? 'fill-[#DB9D47] text-[#DB9D47]'
                 : 'text-[#E8DCC8]'
-              }`}
+            }`}
           />
         ))}
       </div>
     );
   };
+
+  // Get current reviews to display
+  const indexOfLastReview = currentPage * reviewsPerPage;
+  const indexOfFirstReview = indexOfLastReview - reviewsPerPage;
+  const currentReviews = filteredReviews.slice(indexOfFirstReview, indexOfLastReview);
+  const totalPages = Math.ceil(filteredReviews.length / reviewsPerPage);
 
   return (
     <div className="space-y-4 md:space-y-6">
@@ -295,7 +384,7 @@ export function ReviewsManagement({
                 Manage and showcase customer feedback
               </CardDescription>
             </div>
-            <Button
+            <Button 
               onClick={handleExportReviews}
               className="bg-[#DB9D47] hover:bg-[#C88A35] text-white text-xs md:text-sm px-3 md:px-4"
             >
@@ -347,6 +436,7 @@ export function ReviewsManagement({
                 <TableRow className="bg-[#FBF7EF]">
                   <TableHead className="text-[#5C4A3A] text-xs md:text-sm">Customer</TableHead>
                   <TableHead className="text-[#5C4A3A] text-xs md:text-sm">Rating</TableHead>
+                  <TableHead className="text-[#5C4A3A] text-xs md:text-sm hidden lg:table-cell">Service</TableHead>
                   <TableHead className="text-[#5C4A3A] text-xs md:text-sm hidden md:table-cell">Barber</TableHead>
                   <TableHead className="text-[#5C4A3A] text-xs md:text-sm hidden sm:table-cell">Date</TableHead>
                   <TableHead className="text-[#5C4A3A] text-xs md:text-sm">Status</TableHead>
@@ -355,14 +445,14 @@ export function ReviewsManagement({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredReviews.length === 0 ? (
+                {currentReviews.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} className="text-center py-8 text-[#87765E]">
                       No reviews found
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredReviews.map((review) => (
+                  currentReviews.map((review) => (
                     <TableRow key={review.id} className="hover:bg-[#FBF7EF]">
                       <TableCell>
                         <div className="flex items-center gap-2 md:gap-3">
@@ -380,27 +470,30 @@ export function ReviewsManagement({
                           {[1, 2, 3, 4, 5].map((star) => (
                             <Star
                               key={star}
-                              className={`w-3 h-3 md:w-4 md:h-4 ${star <= review.rating
+                              className={`w-3 h-3 md:w-4 md:h-4 ${
+                                star <= review.rating
                                   ? 'fill-[#DB9D47] text-[#DB9D47]'
                                   : 'text-[#E8DCC8]'
-                                }`}
+                              }`}
                             />
                           ))}
                         </div>
                       </TableCell>
+                      <TableCell className="text-[#5C4A3A] text-xs hidden lg:table-cell">{review.service}</TableCell>
                       <TableCell className="text-[#87765E] text-xs hidden md:table-cell">{review.barber}</TableCell>
                       <TableCell className="text-[#87765E] text-xs hidden sm:table-cell whitespace-nowrap">
                         {parseLocalDate(review.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                       </TableCell>
                       <TableCell>
-                        <Badge
+                        <Badge 
                           variant="outline"
-                          className={`text-[10px] md:text-xs ${review.status === 'approved'
+                          className={`text-[10px] md:text-xs ${
+                            review.status === 'approved' 
                               ? 'bg-green-100 text-green-700 border-green-200'
                               : review.status === 'pending'
-                                ? 'bg-yellow-100 text-yellow-700 border-yellow-200'
-                                : 'bg-red-100 text-red-700 border-red-200'
-                            }`}
+                              ? 'bg-yellow-100 text-yellow-700 border-yellow-200'
+                              : 'bg-red-100 text-red-700 border-red-200'
+                          }`}
                         >
                           {review.status}
                         </Badge>
@@ -462,6 +555,17 @@ export function ReviewsManagement({
               </TableBody>
             </Table>
           </div>
+          <Pagination
+            totalItems={filteredReviews.length}
+            itemsPerPage={reviewsPerPage}
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            onItemsPerPageChange={(newSize) => {
+              setReviewsPerPage(newSize);
+              setCurrentPage(1);
+            }}
+          />
         </CardContent>
       </Card>
 
@@ -499,21 +603,24 @@ export function ReviewsManagement({
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-
+                <div>
+                  <p className="text-sm text-[#87765E] mb-1">Service</p>
+                  <p className="text-[#5C4A3A]">{selectedReview.service}</p>
+                </div>
                 <div>
                   <p className="text-sm text-[#87765E] mb-1">Barber</p>
                   <p className="text-[#5C4A3A]">{selectedReview.barber}</p>
                 </div>
                 <div>
                   <p className="text-sm text-[#87765E] mb-1">Status</p>
-                  <Badge
+                  <Badge 
                     variant="outline"
                     className={
-                      selectedReview.status === 'approved'
+                      selectedReview.status === 'approved' 
                         ? 'bg-green-100 text-green-700 border-green-200'
                         : selectedReview.status === 'pending'
-                          ? 'bg-yellow-100 text-yellow-700 border-yellow-200'
-                          : 'bg-red-100 text-red-700 border-red-200'
+                        ? 'bg-yellow-100 text-yellow-700 border-yellow-200'
+                        : 'bg-red-100 text-red-700 border-red-200'
                     }
                   >
                     {selectedReview.status}
@@ -527,8 +634,8 @@ export function ReviewsManagement({
             </div>
           )}
           <DialogFooter>
-            <Button
-              variant="outline"
+            <Button 
+              variant="outline" 
               onClick={() => setIsViewDialogOpen(false)}
             >
               Close
@@ -556,19 +663,18 @@ export function ReviewsManagement({
           passwordConfirmation.action === 'delete'
             ? 'Confirm Review Deletion'
             : passwordConfirmation.action === 'approve'
-              ? 'Confirm Review Approval'
-              : 'Confirm Review Rejection'
+            ? 'Confirm Review Approval'
+            : 'Confirm Review Rejection'
         }
         description={
           passwordConfirmation.action === 'delete'
             ? `Enter your password to confirm deletion of review by ${passwordConfirmation.customerName}`
             : passwordConfirmation.action === 'approve'
-              ? `Enter your password to approve review by ${passwordConfirmation.customerName}`
-              : `Enter your password to reject review by ${passwordConfirmation.customerName}`
+            ? `Enter your password to approve review by ${passwordConfirmation.customerName}`
+            : `Enter your password to reject review by ${passwordConfirmation.customerName}`
         }
         actionType={passwordConfirmation.action === 'delete' ? 'delete' : 'edit'}
       />
     </div>
   );
 }
-

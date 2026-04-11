@@ -749,24 +749,7 @@ export function LandingPage({
 
                   {!userLocation && (
                     <div className="absolute top-4 left-4 z-20">
-                      <Button
-                        onClick={handleGetDirections}
-                        disabled={isCalculatingDistance}
-                        size="sm"
-                        className="bg-white/95 backdrop-blur-xl hover:bg-white text-slate-900 shadow-2xl hover:scale-105 transition-all border border-[#DB9D47]/20"
-                      >
-                        {isCalculatingDistance ? (
-                          <>
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-slate-900 mr-2"></div>
-                            Loading...
-                          </>
-                        ) : (
-                          <>
-                            <MapPin className="w-4 h-4 mr-2 text-[#DB9D47]" />
-                            Directions
-                          </>
-                        )}
-                      </Button>
+                      
                     </div>
                   )}
 

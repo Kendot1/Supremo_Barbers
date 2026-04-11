@@ -48,16 +48,13 @@ import {
   YAxis,
   CartesianGrid,
   ResponsiveContainer,
-  LineChart,
   Line,
+  LineChart,
 } from "recharts";
+import type { Appointment } from "../App";
 import { toast } from "sonner";
-import type { Appointment, User } from "../App";
-import {
-  exportToCSV,
-  formatDateForExport,
-  formatCurrencyForExport,
-} from "./utils/exportUtils";
+import { exportToCSV, formatDateForExport, formatCurrencyForExport } from "./utils/exportUtils";
+import { Pagination } from "./ui/pagination";
 import API from "../services/api.service";
 
 // Utility function to parse date string without timezone issues
@@ -100,12 +97,13 @@ export function RevenueModule({
   const [isLoadingPredictions, setIsLoadingPredictions] =
     useState(true);
   const [isLoadingData, setIsLoadingData] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // Database state
   const [appointments, setAppointments] = useState<
     Appointment[]
   >([]);
-  const [users, setUsers] = useState<User[]>([]);
   const [barbers, setBarbers] = useState<any[]>([]);
 
   // Fetch all data from database
@@ -113,15 +111,17 @@ export function RevenueModule({
     const fetchData = async () => {
       try {
         setIsLoadingData(true);
-        const [appointmentsData, usersData, barbersData] =
+        const [appointmentsData, barbersData] =
           await Promise.all([
             API.appointments.getAll(),
-            API.users.getAll(),
             API.barbers.getAll(),
           ]);
 
+        console.log("📊 Revenue Module - Appointments:", appointmentsData);
+        console.log("💈 Revenue Module - Barbers:", barbersData);
+        console.log("🔍 Sample appointment:", appointmentsData?.[0]);
+        
         setAppointments(appointmentsData || []);
-        setUsers(usersData || []);
         setBarbers(barbersData || []);
       } catch (error) {
         console.error("Failed to fetch revenue data:", error);
@@ -280,17 +280,9 @@ export function RevenueModule({
   const getBarberName = (barberId: string): string => {
     const barber = barbers.find((b) => b.id === barberId);
     if (barber) {
-      // Try to get user name from users array
-      const user = users.find((u) => u.id === barber.user_id);
-      return user?.name || barber.name || barber.id;
+      return barber.name || barber.id;
     }
     return barberId;
-  };
-
-  // Helper function to get customer name by ID
-  const getCustomerName = (customerId: string): string => {
-    const customer = users.find((u) => u.id === customerId);
-    return customer?.name || customer?.email || customerId;
   };
 
   // Convert completed appointments to transactions with real names
@@ -306,12 +298,8 @@ export function RevenueModule({
           date: getAppointmentDate(a),
           barber: getBarberName(a.barber || a.barber_id || ""),
           barberId: a.barber || a.barber_id || "",
-          customer: getCustomerName(
-            a.userId || a.customer_id || "",
-          ),
-          customerId: a.userId || a.customer_id || "",
         })),
-    [appointments, barbers, users],
+    [appointments, barbers],
   );
 
   // Get unique barber names for filter
@@ -421,7 +409,7 @@ export function RevenueModule({
   // Calculate revenue data based on time filter
   const dailyRevenueData = useMemo(() => {
     const now = new Date();
-    let data: { day: string; revenue: number }[] = [];
+    let data: { day: string; revenue: number; id: string }[] = [];
 
     switch (timeFilter) {
       case "day": {
@@ -446,6 +434,7 @@ export function RevenueModule({
         data = hours.slice(8, 20).map((hour) => ({
           day: `${hour}:00`,
           revenue: hourlyRevenue.get(hour) || 0,
+          id: `hour-${hour}`,
         }));
         break;
       }
@@ -476,6 +465,7 @@ export function RevenueModule({
         data = days.map((day, index) => ({
           day,
           revenue: revenueByDay.get(index) || 0,
+          id: `day-${index}-${day}`,
         }));
         break;
       }
@@ -499,9 +489,10 @@ export function RevenueModule({
         });
 
         data = Array.from(revenueByDate.entries()).map(
-          ([date, revenue]) => ({
+          ([date, revenue], index) => ({
             day: new Date(date).getDate().toString(),
             revenue,
+            id: `date-${date}-${index}`,
           }),
         );
         break;
@@ -535,6 +526,7 @@ export function RevenueModule({
         data = months.map((month, index) => ({
           day: month,
           revenue: revenueByMonth.get(index) || 0,
+          id: `month-${index}-${month}`,
         }));
         break;
       }
@@ -554,7 +546,11 @@ export function RevenueModule({
     });
 
     return Array.from(serviceRevenue.entries())
-      .map(([service, revenue]) => ({ service, revenue }))
+      .map(([service, revenue], index) => ({ 
+        service, 
+        revenue,
+        id: `service-${service.replace(/\s+/g, '-')}-${index}-${revenue}`
+      }))
       .sort((a, b) => b.revenue - a.revenue)
       .slice(0, 5);
   }, [transactions]);
@@ -570,9 +566,6 @@ export function RevenueModule({
         .toLowerCase()
         .includes(searchQuery.toLowerCase()) ||
       txn.serviceName
-        .toLowerCase()
-        .includes(searchQuery.toLowerCase()) ||
-      txn.customer
         .toLowerCase()
         .includes(searchQuery.toLowerCase()) ||
       txn.barber
@@ -598,6 +591,12 @@ export function RevenueModule({
     return matchesSearch && matchesBarber && matchesPrice;
   });
 
+  // Calculate pagination
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentTransactions = filteredTransactions.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage);
+
   const handleExportRevenue = () => {
     if (filteredTransactions.length === 0) {
       toast.error("No revenue data to export");
@@ -607,7 +606,6 @@ export function RevenueModule({
     const exportData = filteredTransactions.map((txn) => ({
       "Transaction ID": txn.id,
       Service: txn.serviceName,
-      Customer: txn.customer,
       Barber: txn.barber,
       Date: formatDateForExport(txn.date),
       Amount: formatCurrencyForExport(txn.price),
@@ -622,7 +620,6 @@ export function RevenueModule({
     exportData.push({
       "Transaction ID": "",
       Service: "",
-      Customer: "",
       Barber: "TOTAL",
       Date: "",
       Amount: formatCurrencyForExport(totalRevenue),
@@ -631,7 +628,6 @@ export function RevenueModule({
     const headers = [
       "Transaction ID",
       "Service",
-      "Customer",
       "Barber",
       "Date",
       "Amount",
@@ -657,8 +653,29 @@ export function RevenueModule({
   return (
     <div className="space-y-4 md:space-y-6">
       {/* Analytics Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-      
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+        <Card className="border-[#E8DCC8]">
+          <CardContent className="pt-4 md:pt-6 p-3 md:p-6">
+            <div className="flex items-center justify-between mb-1 md:mb-2">
+              <p className="w-4 h-4 md:w-5 md:h-5 text-[#DB9D47]">
+                ₱
+              </p>
+              .
+              <span
+                className={`text-xs md:text-sm ${analytics.dailyGrowth >= 0 ? "text-[#94A670]" : "text-red-600"}`}
+              >
+                {analytics.dailyGrowth >= 0 ? "+" : ""}
+                {analytics.dailyGrowth}%
+              </span>
+            </div>
+            <div className="text-lg md:text-2xl text-[#5C4A3A] mb-0.5 md:mb-1">
+              ₱{analytics.dailyRevenue.toLocaleString()}
+            </div>
+            <p className="text-xs md:text-sm text-[#87765E]">
+              Today
+            </p>
+          </CardContent>
+        </Card>
 
         <Card className="border-[#E8DCC8]">
           <CardContent className="pt-4 md:pt-6 p-3 md:p-6">
@@ -961,7 +978,7 @@ export function RevenueModule({
               onClick={handleExportRevenue}
             >
               <Download className="w-4 h-4 mr-2" />
-              Export Report
+              Export
             </Button>
           </div>
         </CardHeader>
@@ -1031,58 +1048,55 @@ export function RevenueModule({
                   <TableHead className="text-[#5C4A3A]">
                     Service
                   </TableHead>
-                  <TableHead className="text-[#5C4A3A] text-right">
-                    Price
+                  <TableHead className="text-[#5C4A3A]">
+                    Barber
                   </TableHead>
                   <TableHead className="text-[#5C4A3A]">
                     Date
                   </TableHead>
-                  <TableHead className="text-[#5C4A3A] hidden md:table-cell">
-                    Barber
-                  </TableHead>
-                  <TableHead className="text-[#5C4A3A] hidden lg:table-cell">
-                    Customer
+                  <TableHead className="text-[#5C4A3A] text-right">
+                    Price
                   </TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredTransactions.length === 0 ? (
+                {currentTransactions.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={6}
+                      colSpan={5}
                       className="text-center text-[#87765E] py-8"
                     >
                       No transactions found
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredTransactions.map((txn) => (
+                  currentTransactions.map((txn) => (
                     <TableRow
                       key={txn.id}
                       className="hover:bg-[#FBF7EF]"
                     >
-                      <TableCell className="text-[#5C4A3A] text-xs">
+                      <TableCell className="font-mono text-xs text-[#87765E]">
                         {txn.id.slice(0, 8)}
                       </TableCell>
-                      <TableCell className="text-[#5C4A3A] text-sm">
+                      <TableCell className="text-[#5C4A3A]">
                         {txn.serviceName}
                       </TableCell>
-                      <TableCell className="text-right text-[#DB9D47]">
-                        ₱{txn.price.toLocaleString()}
+                      <TableCell className="text-[#5C4A3A]">
+                        {txn.barber}
                       </TableCell>
-                      <TableCell className="text-[#87765E] text-sm">
+                      <TableCell className="text-[#5C4A3A]">
                         {parseLocalDate(
                           txn.date,
                         ).toLocaleDateString("en-US", {
                           month: "short",
                           day: "numeric",
+                          year: "numeric",
                         })}
                       </TableCell>
-                      <TableCell className="text-[#87765E] hidden md:table-cell">
-                        {txn.barber}
-                      </TableCell>
-                      <TableCell className="text-[#87765E] hidden lg:table-cell">
-                        {txn.customer}
+                      <TableCell className="text-right">
+                        <span className="font-medium text-[#94A670]">
+                          ₱{txn.price.toLocaleString()}
+                        </span>
                       </TableCell>
                     </TableRow>
                   ))
@@ -1090,6 +1104,29 @@ export function RevenueModule({
               </TableBody>
             </Table>
           </div>
+
+          {/* Summary Footer */}
+          <div className="mt-4 flex items-center justify-between text-sm">
+            <span className="text-[#87765E]">
+              Showing {filteredTransactions.length} completed transactions
+            </span>
+            <span className="font-medium text-[#5C4A3A]">
+              Total Revenue: <span className="text-[#94A670]">₱{filteredTransactions.reduce((sum, txn) => sum + txn.price, 0).toLocaleString()}</span>
+            </span>
+          </div>
+
+          {/* Pagination */}
+          <Pagination
+            totalItems={filteredTransactions.length}
+            itemsPerPage={itemsPerPage}
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            onItemsPerPageChange={(newSize) => {
+              setItemsPerPage(newSize);
+              setCurrentPage(1);
+            }}
+          />
         </CardContent>
       </Card>
     </div>

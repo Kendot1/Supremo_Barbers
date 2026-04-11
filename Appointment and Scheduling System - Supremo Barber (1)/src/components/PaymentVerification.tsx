@@ -64,6 +64,7 @@ import {
   Filter,
   RefreshCw,
   Loader2,
+  Download,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { Appointment } from "../App";
@@ -73,8 +74,14 @@ import {
   createNotification,
   type Notification,
 } from "./NotificationCenter";
+import {
+  exportToCSV,
+  formatDateForExport,
+  formatCurrencyForExport,
+} from "./utils/exportUtils";
 import API from "../services/api.service";
 import { logPaymentVerification } from "../services/audit-notification.service";
+import { Pagination } from "./ui/pagination";
 
 // Utility function to parse date string without timezone issues
 const parseLocalDate = (dateString: string): Date => {
@@ -136,6 +143,8 @@ export function PaymentVerification({
   >("pending");
   const [searchTerm, setSearchTerm] = useState("");
   const [filterBarber, setFilterBarber] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   // Database state
   const [payments, setPayments] = useState<PaymentRecord[]>([]);
@@ -225,7 +234,7 @@ export function PaymentVerification({
           
           // If appointment date has passed
           if (aptDate < today) {
-          
+            console.log('⏰ Auto-cancelling expired appointment:', apt.id, 'for', apt.customerName);
             
             try {
               // Update appointment to cancelled
@@ -246,13 +255,15 @@ export function PaymentVerification({
               if (currentUser) {
                 try {
                   await API.notifications.create({
-                    user_id: apt.userId || apt.customer_id || '',
-                    user_role: 'customer', // Required field for database
+                    userId: apt.userId || apt.customer_id || '',
+                    userRole: 'customer', // Required field for database
                     title: 'Appointment Auto-Cancelled',
                     message: `Your appointment for ${apt.service} on ${parseLocalDate(apt.date).toLocaleDateString()} was automatically cancelled due to unverified payment.`,
                     type: 'booking',
-                    appointment_id: apt.id,
-                    is_read: false,
+                    appointmentId: apt.id,
+                    isRead: false,
+                    actionUrl: `/appointments?highlight=${apt.id}`, // Highlight the cancelled appointment
+                    actionLabel: 'View Appointments',
                   });
                 } catch (error) {
                   console.error('Failed to send auto-cancel notification:', error);
@@ -359,6 +370,12 @@ export function PaymentVerification({
       apt.paymentStatus === "rejected",
   ).length;
 
+  // Calculate pagination
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentPayments = appointmentsWithPayment.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(appointmentsWithPayment.length / itemsPerPage);
+
   const handleViewProof = (
     appointment: AppointmentWithPayment,
   ) => {
@@ -393,13 +410,17 @@ export function PaymentVerification({
         status: "verified", // Set to "verified" when payment is approved
       };
 
-    
+      console.log('🚀 Approving payment - Update payload:', updatePayload);
+      console.log('🚀 Appointment ID:', selectedAppointment.id);
 
       const updatedAppointment = await API.appointments.update(
         selectedAppointment.id,
         updatePayload,
       );
 
+      console.log('✅ Payment approved - Updated appointment:', updatedAppointment);
+      console.log('✅ New status:', updatedAppointment.status);
+      console.log('✅ New payment_status:', updatedAppointment.payment_status);
 
       // Update payment record if it exists - only update verified_by and verified_at
       if (selectedAppointment.payment?.id) {
@@ -417,24 +438,33 @@ export function PaymentVerification({
         }
       }
 
-    
+      // Send direct notification to customer FIRST
+      console.log('📧 Sending direct approval notification to customer...');
       const customerId = selectedAppointment.userId || selectedAppointment.customer_id || '';
-   
+      console.log('🔍 DEBUG - Appointment object:', JSON.stringify(selectedAppointment, null, 2));
+      console.log('🔍 DEBUG - selectedAppointment.userId:', selectedAppointment.userId);
+      console.log('🔍 DEBUG - selectedAppointment.customer_id:', selectedAppointment.customer_id);
+      console.log('🔍 DEBUG - Resolved customerId:', customerId);
+      console.log('🔍 DEBUG - currentUser:', currentUser);
       
       if (customerId && currentUser) {
         try {
           const notificationPayload = {
-            user_id: customerId,
-            user_role: 'customer', // Required field for database
+            userId: customerId,
+            userRole: 'customer', // Required field for database
             title: '✅ Payment Verified!',
             message: `Great news! Your payment of ₱${(selectedAppointment.paymentAmount || selectedAppointment.price / 2).toFixed(2)} for ${selectedAppointment.service} on ${parseLocalDate(selectedAppointment.date).toLocaleDateString()} has been verified and approved. Your booking is confirmed!`,
             type: 'booking',
-            appointment_id: selectedAppointment.id,
-            is_read: false,
+            appointmentId: selectedAppointment.id,
+            isRead: false,
+            actionUrl: '/appointments',
+            actionLabel: 'View Appointment',
           };
-    
+          console.log('📧 Direct notification payload:', JSON.stringify(notificationPayload, null, 2));
+          console.log('🔑 Attempting API.notifications.create...');
           const createdNotification = await API.notifications.create(notificationPayload);
-        
+          console.log('✅ Direct approval notification sent successfully to customer:', customerId);
+          console.log('✅ Created notification response:', JSON.stringify(createdNotification, null, 2));
         } catch (error) {
           console.error('❌ Failed to send direct approval notification:', error);
           console.error('❌ Error type:', typeof error);
@@ -466,7 +496,7 @@ export function PaymentVerification({
       );
 
       // Create audit log and notification for customer using the new audit service
-   
+      console.log('📧 Sending approval notification to customer...');
       if (currentUser) {
         await logPaymentVerification(
           currentUser.id,
@@ -493,7 +523,7 @@ export function PaymentVerification({
               selectedAppointment.price / 2,
           }
         );
-       
+        console.log('✅ Approval notification sent successfully');
       }
 
       // Trigger appointment refresh in parent component FIRST and wait for it
@@ -541,6 +571,9 @@ export function PaymentVerification({
         },
       );
 
+      console.log('❌ Payment rejected - Updated appointment:', updatedAppointment);
+      console.log('❌ New status:', updatedAppointment.status);
+      console.log('❌ New payment_status:', updatedAppointment.payment_status);
 
       // Update payment record if it exists
       if (selectedAppointment.payment?.id) {
@@ -556,29 +589,31 @@ export function PaymentVerification({
           );
         } catch (error) {
           console.warn(
-            "⚠️ Payment record update failed (not critical):",
+            "⚠ Payment record update failed (not critical):",
             error,
           );
         }
       }
 
       // Send direct notification to customer FIRST
-   
+      console.log('📧 Sending direct rejection notification to customer...');
       const customerId = selectedAppointment.userId || selectedAppointment.customer_id || '';
       if (customerId && currentUser) {
         try {
           const notificationPayload = {
-            user_id: customerId,
-            user_role: 'customer', // Required field for database
+            userId: customerId,
+            userRole: 'customer', // Required field for database
             title: '❌ Payment Rejected',
             message: `Your payment proof for ${selectedAppointment.service} on ${parseLocalDate(selectedAppointment.date).toLocaleDateString()} was rejected. Reason: ${rejectionReason}. Please upload a new payment proof to confirm your booking.`,
             type: 'booking',
-            appointment_id: selectedAppointment.id,
-            is_read: false,
+            appointmentId: selectedAppointment.id,
+            isRead: false,
+            actionUrl: '/appointments',
+            actionLabel: 'View Appointment',
           };
-     
+          console.log('📧 Direct notification payload:', notificationPayload);
           await API.notifications.create(notificationPayload);
-      
+          console.log('✅ Direct rejection notification sent successfully to customer:', customerId);
         } catch (error) {
           console.error('❌ Failed to send direct rejection notification:', error);
         }
@@ -605,7 +640,7 @@ export function PaymentVerification({
       );
 
       // Create audit log and notification for customer using the new audit service
-  
+      console.log('📧 Sending rejection notification to customer...');
       if (currentUser) {
         await logPaymentVerification(
           currentUser.id,
@@ -633,7 +668,7 @@ export function PaymentVerification({
           },
           rejectionReason
         );
-    
+        console.log('✅ Rejection notification sent successfully');
       }
 
       // Trigger appointment refresh in parent component FIRST and wait for it
@@ -657,6 +692,53 @@ export function PaymentVerification({
         `Failed to reject payment: ${error.message || "Unknown error"}`,
       );
     }
+  };
+
+  const handleExportPayments = () => {
+    if (appointmentsWithPayment.length === 0) {
+      toast.error("No payment data to export");
+      return;
+    }
+
+    const exportData = appointmentsWithPayment.map((apt) => ({
+      "Appointment ID": apt.id.substring(0, 8),
+      Customer: apt.customerName || "Unknown",
+      Service: apt.service,
+      Barber: apt.barber,
+      Date: formatDateForExport(apt.date),
+      Time: apt.time,
+      "Payment Amount": formatCurrencyForExport(
+        apt.paymentAmount || apt.price / 2
+      ),
+      "Total Price": formatCurrencyForExport(apt.price),
+      "Payment Method": apt.paymentMethod || "N/A",
+      "Payment Type": apt.paymentType || "downpayment",
+      "Payment Status": apt.paymentStatus || "pending",
+      Reference: apt.paymentReference || "N/A",
+    }));
+
+    exportToCSV(
+      exportData,
+      [
+        "Appointment ID",
+        "Customer",
+        "Service",
+        "Barber",
+        "Date",
+        "Time",
+        "Payment Amount",
+        "Total Price",
+        "Payment Method",
+        "Payment Type",
+        "Payment Status",
+        "Reference",
+      ],
+      "supremo-barber-payments"
+    );
+
+    toast.success(
+      `Exported ${appointmentsWithPayment.length} payment records successfully!`
+    );
   };
 
   const getStatusBadge = (status: string) => {
@@ -805,6 +887,17 @@ export function PaymentVerification({
                   Refresh
                 </span>
               </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportPayments}
+                className="border-[#DB9D47] text-[#DB9D47] hover:bg-[#DB9D47] hover:text-white"
+              >
+                <Download className="w-4 h-4" />
+                <span className="ml-2 hidden sm:inline">
+                  Export CSV
+                </span>
+              </Button>
             </div>
           </div>
         </CardHeader>
@@ -932,7 +1025,7 @@ export function PaymentVerification({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {appointmentsWithPayment.map(
+                  {currentPayments.map(
                     (appointment) => (
                       <TableRow key={appointment.id}>
                         <TableCell>
@@ -1400,6 +1493,21 @@ export function PaymentVerification({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Pagination */}
+      {appointmentsWithPayment.length > 0 && (
+        <Pagination
+          totalItems={appointmentsWithPayment.length}
+          itemsPerPage={itemsPerPage}
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+          onItemsPerPageChange={(newSize) => {
+            setItemsPerPage(newSize);
+            setCurrentPage(1);
+          }}
+        />
+      )}
     </div>
   );
 }

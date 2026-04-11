@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from "react";
-import { FaPesoSign } from "react-icons/fa6";
 import {
   Card,
   CardContent,
@@ -41,7 +40,6 @@ import {
   Edit,
   Trash2,
   Scissors,
-  DollarSign,
   Clock,
   Image as ImageIcon,
   Power,
@@ -50,7 +48,9 @@ import {
   Upload,
   ArrowUpDown,
   TrendingUp,
+  Download,
 } from "lucide-react";
+import { FaPesoSign } from "react-icons/fa6";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "./ui/alert";
 import { Switch } from "./ui/switch";
@@ -58,6 +58,12 @@ import API from "../services/api.service";
 import { ImageWithFallback } from "./fallback/ImageWithFallback";
 import { PasswordConfirmationDialog } from "./PasswordConfirmationDialog";
 import type { User } from "../App";
+import {
+  exportToCSV,
+  formatCurrencyForExport,
+  formatDateForExport,
+} from "./utils/exportUtils";
+import { Pagination } from "./ui/pagination";
 
 export interface Service {
   id: string;
@@ -73,9 +79,10 @@ export interface Service {
 
 interface ServicesModuleProps {
   user: User;
+  onBookService?: (serviceId: string) => void;
 }
 
-export function ServicesModule({ user }: ServicesModuleProps) {
+export function ServicesModule({ user, onBookService }: ServicesModuleProps) {
   const [services, setServices] = useState<Service[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
@@ -86,19 +93,25 @@ export function ServicesModule({ user }: ServicesModuleProps) {
   const [deleteConfirmation, setDeleteConfirmation] = useState<{
     isOpen: boolean;
     service: Service | null;
-  }>({
+  }>(
+    {
     isOpen: false,
     service: null,
   });
   const [imagePreview, setImagePreview] = useState<string>("");
-  const [uploadedFile, setUploadedFile] = useState<File | null>(
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [toggleConfirmation, setToggleConfirmation] = useState<{
+    isOpen: boolean;
+    service: Service | null;
+  }>({ isOpen: false, service: null });
+  const [togglingServiceId, setTogglingServiceId] = useState<string | null>(
     null,
   );
-  const [isUploading, setIsUploading] = useState(false);
-  const [togglingServiceId, setTogglingServiceId] = useState<
-    string | null
-  >(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [servicesPerPage, setServicesPerPage] = useState(10);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -119,7 +132,8 @@ export function ServicesModule({ user }: ServicesModuleProps) {
     try {
       setIsLoading(true);
       const data = await API.services.getAll();
-     
+      console.log('🔍 ServicesModule - Fetched services:', data);
+      console.log('🔍 ServicesModule - First service imageUrl:', data[0]?.imageUrl);
       setServices(data);
     } catch (error) {
       console.error('❌ ServicesModule - Error fetching services:', error);
@@ -193,7 +207,7 @@ export function ServicesModule({ user }: ServicesModuleProps) {
 
     // Upload to Cloudflare R2 immediately
     try {
-      setIsUploading(true);
+      setIsSubmitting(true);
       toast.loading("Uploading image to Cloudflare R2...", {
         id: "image-upload",
       });
@@ -223,7 +237,7 @@ export function ServicesModule({ user }: ServicesModuleProps) {
         fileInputRef.current.value = "";
       }
     } finally {
-      setIsUploading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -263,7 +277,7 @@ export function ServicesModule({ user }: ServicesModuleProps) {
     if (!validateForm()) return;
 
     try {
-      setIsUploading(true);
+      setIsSubmitting(true);
 
       // Image URL is already set if user uploaded via the upload input
       // No need to re-upload here
@@ -308,7 +322,7 @@ export function ServicesModule({ user }: ServicesModuleProps) {
         );
       }
     } finally {
-      setIsUploading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -348,19 +362,24 @@ export function ServicesModule({ user }: ServicesModuleProps) {
 
   const handleToggleStatus = async (service: Service) => {
     setTogglingServiceId(service.id);
-   
+    console.log("🔄 Toggling service status:", {
+      serviceId: service.id,
+      serviceName: service.name,
+      currentStatus: service.isActive,
+      newStatus: !service.isActive,
+    });
 
     try {
       const updateData = {
         isActive: !service.isActive,
       };
-     
+      console.log("📤 Sending update request:", updateData);
 
       const result = await API.services.update(
         service.id,
         updateData,
       );
-     
+      console.log("✅ Update successful:", result);
 
       toast.success(
         `Service ${!service.isActive ? "activated" : "deactivated"} successfully!`,
@@ -451,10 +470,51 @@ export function ServicesModule({ user }: ServicesModuleProps) {
   const averageDuration =
     services.length > 0
       ? Math.round(
-        services.reduce((sum, s) => sum + s.duration, 0) /
-        services.length,
-      )
+          services.reduce((sum, s) => sum + s.duration, 0) /
+            services.length,
+        )
       : 0;
+
+  const handleExportServices = () => {
+    if (sortedServices.length === 0) {
+      toast.error("No services to export");
+      return;
+    }
+
+    const exportData = sortedServices.map((service) => ({
+      Name: service.name,
+      Description: service.description,
+      Price: formatCurrencyForExport(service.price),
+      "Duration (minutes)": service.duration,
+      Status: service.isActive ? "Active" : "Inactive",
+      "Created At": formatDateForExport(service.createdAt),
+      "Updated At": formatDateForExport(service.updatedAt),
+    }));
+
+    exportToCSV(
+      exportData,
+      [
+        "Name",
+        "Description",
+        "Price",
+        "Duration (minutes)",
+        "Status",
+        "Created At",
+        "Updated At",
+      ],
+      "supremo-barber-services"
+    );
+
+    toast.success(
+      `Exported ${sortedServices.length} services successfully!`
+    );
+  };
+
+  // Calculate pagination
+  const indexOfLastService = currentPage * servicesPerPage;
+  const indexOfFirstService = indexOfLastService - servicesPerPage;
+  const currentServices = sortedServices.slice(indexOfFirstService, indexOfLastService);
+  const totalPages = Math.ceil(sortedServices.length / servicesPerPage);
 
   return (
     <div className="space-y-6">
@@ -493,7 +553,7 @@ export function ServicesModule({ user }: ServicesModuleProps) {
         <div className="flex flex-col p-3 sm:p-4 bg-white rounded-lg border border-[#E8DCC8] hover:shadow-md transition-shadow">
           <div className="flex items-center justify-between mb-2">
             <div className="bg-[#D98555] p-2 sm:p-2.5 rounded-lg">
-              <p className="w-4 h-4 sm:w-5 sm:h-5 text-white" ><FaPesoSign /></p>
+              <FaPesoSign className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
             </div>
             <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4 text-[#94A670]" />
           </div>
@@ -534,13 +594,23 @@ export function ServicesModule({ user }: ServicesModuleProps) {
                 duration
               </CardDescription>
             </div>
-            <Button
-              className="bg-[#DB9D47] hover:bg-[#C88A35] text-white w-full md:w-auto"
-              onClick={() => handleOpenDialog()}
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Add Service
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+              <Button
+                variant="outline"
+                onClick={handleExportServices}
+                className="border-[#DB9D47] text-[#DB9D47] hover:bg-[#DB9D47] hover:text-white"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Export CSV
+              </Button>
+              <Button
+                className="bg-[#DB9D47] hover:bg-[#C88A35] text-white"
+                onClick={() => handleOpenDialog()}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add Service
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -626,6 +696,7 @@ export function ServicesModule({ user }: ServicesModuleProps) {
                   <TableHead className="text-[#5C4A3A] text-center">
                     Status
                   </TableHead>
+                  
                   <TableHead className="text-[#5C4A3A] text-right">
                     Actions
                   </TableHead>
@@ -635,7 +706,7 @@ export function ServicesModule({ user }: ServicesModuleProps) {
                 {isLoading ? (
                   <TableRow>
                     <TableCell
-                      colSpan={6}
+                      colSpan={onBookService ? 7 : 6}
                       className="text-center py-8 text-[#87765E]"
                     >
                       Loading services...
@@ -644,7 +715,7 @@ export function ServicesModule({ user }: ServicesModuleProps) {
                 ) : sortedServices.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={6}
+                      colSpan={onBookService ? 7 : 6}
                       className="text-center py-8 text-[#87765E]"
                     >
                       {searchQuery
@@ -653,7 +724,7 @@ export function ServicesModule({ user }: ServicesModuleProps) {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  sortedServices.map((service) => (
+                  currentServices.map((service) => (
                     <TableRow
                       key={service.id}
                       className="hover:bg-[#FBF7EF]"
@@ -713,6 +784,7 @@ export function ServicesModule({ user }: ServicesModuleProps) {
                           </Badge>
                         </div>
                       </TableCell>
+                      
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
                           <Button
@@ -760,7 +832,7 @@ export function ServicesModule({ user }: ServicesModuleProps) {
                   : "No services available. Click 'Add Service' to get started."}
               </div>
             ) : (
-              sortedServices.map((service) => (
+              currentServices.map((service) => (
                 <Card
                   key={service.id}
                   className="border-[#E8DCC8]"
@@ -790,7 +862,7 @@ export function ServicesModule({ user }: ServicesModuleProps) {
 
                     <div className="grid grid-cols-2 gap-3 mb-3">
                       <div className="flex items-center gap-2">
-
+                        <FaPesoSign className="w-4 h-4 text-[#DB9D47]" />
                         <span className="text-[#DB9D47]">
                           ₱{service.price}
                         </span>
@@ -832,38 +904,70 @@ export function ServicesModule({ user }: ServicesModuleProps) {
                       </div>
                     </div>
 
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          handleOpenDialog(service)
-                        }
-                        className="flex-1 border-[#DB9D47] text-[#DB9D47] hover:bg-[#DB9D47] hover:text-white"
-                      >
-                        <Edit className="w-4 h-4 mr-2" />
-                        Edit
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() =>
-                          setDeleteConfirmation({
-                            isOpen: true,
-                            service,
-                          })
-                        }
-                        className="flex-1 border-red-300 text-red-600 hover:bg-red-600 hover:text-white"
-                      >
-                        <Trash2 className="w-4 h-4 mr-2" />
-                        Delete
-                      </Button>
+                    <div className="space-y-2">
+                      {onBookService && (
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            onBookService(service.id);
+                            toast.success("Service selected! Complete your booking.");
+                          }}
+                          disabled={!service.isActive}
+                          className="w-full bg-[#DB9D47] text-white hover:bg-[#C88A35] disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Book Now
+                        </Button>
+                      )}
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            handleOpenDialog(service)
+                          }
+                          className="flex-1 border-[#DB9D47] text-[#DB9D47] hover:bg-[#DB9D47] hover:text-white"
+                        >
+                          <Edit className="w-4 h-4 mr-2" />
+                          Edit
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() =>
+                            setDeleteConfirmation({
+                              isOpen: true,
+                              service,
+                            })
+                          }
+                          className="flex-1 border-red-300 text-red-600 hover:bg-red-600 hover:text-white"
+                        >
+                          <Trash2 className="w-4 h-4 mr-2" />
+                          Delete
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
               ))
             )}
           </div>
+
+          {/* Pagination */}
+          {!isLoading && sortedServices.length > 0 && (
+            <div className="mt-6">
+              <Pagination
+                totalItems={sortedServices.length}
+                itemsPerPage={servicesPerPage}
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+                onItemsPerPageChange={(newSize) => {
+                  setServicesPerPage(newSize);
+                  setCurrentPage(1);
+                }}
+              />
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -992,7 +1096,44 @@ export function ServicesModule({ user }: ServicesModuleProps) {
               </div>
             </div>
 
-           
+            {/* Image URL */}
+            <div className="space-y-1.5">
+              <Label
+                htmlFor="imageUrl"
+                className="text-[#5C4A3A]"
+              >
+                Image URL (optional)
+              </Label>
+              <div className="relative">
+                <ImageIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-[#87765E]" />
+                <Input
+                  id="imageUrl"
+                  type="url"
+                  placeholder="https://example.com/image.jpg"
+                  value={formData.imageUrl}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      imageUrl: e.target.value,
+                    })
+                  }
+                  className="pl-10 border-[#E8DCC8]"
+                />
+              </div>
+              <p className="text-xs text-[#87765E]">
+                Enter a URL to an image hosted online (PNG, JPG,
+                or JPEG)
+              </p>
+              {formData.imageUrl && (
+                <div className="mt-2 rounded-lg overflow-hidden border-2 border-[#E8DCC8] bg-[#FBF7EF]">
+                  <ImageWithFallback
+                    src={formData.imageUrl}
+                    alt="Service image preview"
+                    className="w-full h-auto max-h-[200px] object-contain"
+                  />
+                </div>
+              )}
+            </div>
 
             {/* Upload Image */}
             <div className="space-y-1.5">
@@ -1015,7 +1156,8 @@ export function ServicesModule({ user }: ServicesModuleProps) {
               </div>
               <p className="text-xs text-[#87765E]">
                 Upload an image file (PNG, JPG, WEBP, or GIF -
-                Max 5MB).
+                Max 5MB). Images will be stored on Cloudflare
+                R2.
               </p>
               {imagePreview && (
                 <div className="mt-2 rounded-lg overflow-hidden border-2 border-[#E8DCC8] bg-[#FBF7EF] relative">
@@ -1073,7 +1215,7 @@ export function ServicesModule({ user }: ServicesModuleProps) {
             <Button
               onClick={handleSaveService}
               className="bg-[#DB9D47] hover:bg-[#C88A35] text-white"
-              disabled={isUploading}
+              disabled={isSubmitting}
             >
               {editingService
                 ? "Update Service"

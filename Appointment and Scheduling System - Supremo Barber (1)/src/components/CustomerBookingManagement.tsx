@@ -1,21 +1,44 @@
-import React, { useState, useEffect, useMemo } from "react";
-import { Calendar, Clock, User, X, XCircle, Star, MessageSquare, Edit, Scissors, QrCode, AlertCircle, CheckCircle, CheckCircle2 } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "./ui/dialog";
-import { Button } from "./ui/button";
-import { Textarea } from "./ui/textarea";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
-import { Badge } from "./ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import { Calendar as CalendarPicker } from "./ui/calendar";
-import { Label } from "./ui/label";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "./ui/alert-dialog";
-import { toast } from "sonner@2.0.3";
+import { useState, useEffect, useMemo } from "react";
 import type { Appointment, User as UserType } from "../App";
 import API from "../services/api.service";
 import { SupabaseReviewsService } from "../services/supabase-reviews.service";
 import { PaymentProofUpload, PaymentStatusBadge } from "./PaymentProofUpload";
 import { SupabaseSetupGuide } from "./SupabaseSetupGuide";
-import { FaPesoSign } from "react-icons/fa6";
+import { logPaymentProofUpload } from "../services/audit-notification.service";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
+import { Button } from "./ui/button";
+import { Badge } from "./ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "./ui/alert-dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { Calendar as CalendarPicker } from "./ui/calendar";
+import { Label } from "./ui/label";
+import { Textarea } from "./ui/textarea";
+import {
+  Calendar,
+  Clock,
+  User,
+  MapPin,
+  Scissors,
+  Edit,
+  X,
+  QrCode,
+  Star,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  DollarSign,
+} from "lucide-react";
+import { toast } from "sonner";
 
 // Utility function to parse date string without timezone issues
 const parseLocalDate = (dateString: string): Date => {
@@ -78,7 +101,7 @@ export function CustomerBookingManagement({
         // Create a set of reviewed appointment IDs
         const reviewedIds = new Set(customerReviews.map((r: any) => r.appointmentId));
         setReviewedAppointments(reviewedIds);
-      
+        console.log('📝 Customer reviews loaded:', customerReviews.length);
       } catch (error) {
         console.error('Error fetching customer reviews:', error);
       }
@@ -87,27 +110,30 @@ export function CustomerBookingManagement({
     fetchReviews();
   }, [user.id]);
 
- 
+  // Debug: Log appointments data
+  console.log('🔍 CustomerBookingManagement - All appointments:', appointments.length);
+  console.log('🔍 User ID:', user.id);
+  console.log('🔍 User Role:', user.role);
 
   // Filter appointments for current user
   const userAppointments = useMemo(() => {
     const filtered = appointments.filter(apt => {
-    
+      console.log('🔍 Checking appointment:', apt.id, 'customer_id:', apt.customer_id, 'userId:', apt.userId);
       return apt.userId === user.id || apt.customer_id === user.id;
     });
-  
+    console.log('🔍 Filtered user appointments:', filtered.length);
     return filtered;
   }, [appointments, user.id]);
 
   const upcomingBookings = useMemo(() => {
     const upcoming = userAppointments.filter((b) => b.status === "pending" || b.status === "confirmed" || b.status === "verified");
-   
+    console.log('📅 Upcoming bookings:', upcoming.length, upcoming.map(b => ({ id: b.id, status: b.status, service: b.service })));
     return upcoming;
   }, [userAppointments]);
   
   const pastBookings = useMemo(() => {
     const past = userAppointments.filter((b) => b.status === "completed" || b.status === "cancelled" || b.status === "rejected");
-  
+    console.log('📋 Past bookings:', past.length);
     return past;
   }, [userAppointments]);
 
@@ -227,7 +253,7 @@ export function CustomerBookingManagement({
     setIsRescheduleDialogOpen(true);
   };
 
-  const handleConfirmReschedule = () => {
+  const handleConfirmReschedule = async () => {
     if (!selectedBooking || !newDate || !newTime) {
       toast.error('Please select both date and time');
       return;
@@ -239,13 +265,18 @@ export function CustomerBookingManagement({
       return;
     }
 
+    const formattedDate = `${newDate.getFullYear()}-${String(newDate.getMonth() + 1).padStart(2, '0')}-${String(newDate.getDate()).padStart(2, '0')}`;
+    
+    // OPTIMISTIC UPDATE: Update UI immediately
     const updatedAppointments = appointments.map(apt => {
       if (apt.id === selectedBooking.id) {
         return {
           ...apt,
-          date: `${newDate.getFullYear()}-${String(newDate.getMonth() + 1).padStart(2, '0')}-${String(newDate.getDate()).padStart(2, '0')}`,
+          date: formattedDate,
+          appointment_date: formattedDate,
           time: newTime,
-          rescheduledCount: (apt.rescheduledCount || 0) + 1, // Increment reschedule count
+          appointment_time: newTime,
+          rescheduledCount: (apt.rescheduledCount || 0) + 1,
         };
       }
       return apt;
@@ -253,10 +284,34 @@ export function CustomerBookingManagement({
 
     onUpdateAppointments(updatedAppointments);
     
-  
-    toast.success('Appointment rescheduled successfully! Confirmation email sent. (Note: This appointment can no longer be rescheduled)');
+    toast.success('Appointment rescheduled successfully! Saving to database...');
     setIsRescheduleDialogOpen(false);
     setSelectedBooking(null);
+
+    // Save to database in background
+    try {
+      console.log('📅 Updating appointment in database:', {
+        id: selectedBooking.id,
+        date: formattedDate,
+        time: newTime,
+        rescheduledCount: (selectedBooking.rescheduledCount || 0) + 1,
+      });
+      
+      await API.appointments.update(selectedBooking.id, {
+        appointment_date: formattedDate,
+        appointment_time: newTime,
+        rescheduled_count: (selectedBooking.rescheduledCount || 0) + 1,
+      });
+      
+      console.log('✅ Appointment updated in database successfully');
+      toast.success('Rescheduling confirmed! (Note: This appointment can no longer be rescheduled)');
+    } catch (error: any) {
+      console.error('❌ Failed to update appointment in database:', error);
+      toast.error('Failed to save rescheduling. Please try again or contact support.');
+      
+      // Revert optimistic update on error
+      onUpdateAppointments(appointments);
+    }
   };
 
   const handleCancelBookingClick = (booking: Appointment) => {
@@ -290,7 +345,8 @@ export function CustomerBookingManagement({
 
     onUpdateAppointments(updatedAppointments);
     
-   
+    // Send email notification (placeholder)
+    console.log('📧 Email sent to admin and customer about cancellation');
     
     toast.success('Appointment cancelled successfully');
     setIsCancelDialogOpen(false);
@@ -302,7 +358,14 @@ export function CustomerBookingManagement({
     setIsPaymentDialogOpen(true);
   };
 
-  const handleSubmitPaymentProof = (appointmentId: string, proofUrl: string) => {
+  const handleSubmitPaymentProof = async (appointmentId: string, proofUrl: string) => {
+    // Find the appointment
+    const appointment = appointments.find(apt => apt.id === appointmentId);
+    if (!appointment) {
+      toast.error('Appointment not found');
+      return;
+    }
+
     // Update appointment with payment proof and set status to pending
     const updatedAppointments = appointments.map(apt => {
       if (apt.id === appointmentId) {
@@ -319,9 +382,26 @@ export function CustomerBookingManagement({
 
     onUpdateAppointments(updatedAppointments);
     
-  
+    // In real app, this would save to server
+    console.log('💳 Payment proof submitted for', appointmentId, proofUrl);
     
     toast.success('Payment proof submitted! Waiting for admin verification.');
+    
+    // Send notification to admin about payment proof upload
+    try {
+      await logPaymentProofUpload(
+        user.id,
+        user.name,
+        user.email,
+        appointmentId,
+        proofUrl,
+        appointment.price * 0.5 // Down payment amount (50%)
+      );
+      console.log('✅ Admin notification sent for payment proof upload');
+    } catch (error) {
+      console.error('❌ Failed to send admin notification:', error);
+      // Don't fail the whole operation if notification fails
+    }
   };
 
   const handleRebook = (booking: Appointment) => {
@@ -390,9 +470,9 @@ export function CustomerBookingManagement({
 
     // Create appointment in background
     try {
-   
+      console.log('📅 Creating rebook appointment:', newAppointmentData);
       const createdAppointment = await API.appointments.create(newAppointmentData);
-    
+      console.log('✅ Rebook appointment created:', createdAppointment);
       
       // Add the new appointment to state with the server-generated UUID
       const updatedAppointments = [...appointments, createdAppointment];
@@ -417,7 +497,13 @@ export function CustomerBookingManagement({
     setIsSubmittingReview(true);
 
     try {
- 
+      console.log('📝 Submitting review directly to Supabase:', {
+        appointment_id: selectedBooking.id,
+        customer_id: user.id,
+        barber_id: selectedBooking.barber_id,
+        rating: reviewRating,
+        comment: reviewComment,
+      });
 
       // Submit review directly to Supabase database using only fields that exist
       const reviewData: any = {
@@ -434,7 +520,7 @@ export function CustomerBookingManagement({
       }
 
       const result = await SupabaseReviewsService.create(reviewData);
-    
+      console.log('✅ Review created successfully in Supabase:', result);
 
       // Add appointment ID to reviewed set
       setReviewedAppointments(prev => new Set([...prev, selectedBooking.id]));
@@ -527,7 +613,9 @@ export function CustomerBookingManagement({
                             </span>
                             <span className="flex items-center gap-1">
                               <Calendar className="w-4 h-4" />
-                              {parseLocalDate(booking.date).toLocaleDateString()}
+                            {parseLocalDate(booking.date).toLocaleDateString('en-PH', {
+                              timeZone: 'Asia/Manila',
+                            })}
                             </span>
                             <span className="flex items-center gap-1">
                               <Clock className="w-4 h-4" />
@@ -886,7 +974,7 @@ export function CustomerBookingManagement({
                     <span>Barber: {selectedBooking.barber}</span>
                   </div>
                   <div className="flex items-center gap-2 text-[#DB9D47]">
-                    <FaPesoSign className="w-4 h-4" />
+                    <DollarSign className="w-4 h-4" />
                     <span>₱{selectedBooking.price}</span>
                   </div>
                 </div>

@@ -77,154 +77,190 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const PAGE_SIZE = 20; // Load 20 notifications per page
+  
+  // Virtual scrolling state
+  const [scrollTop, setScrollTop] = useState(0);
+  const ITEM_HEIGHT = 120; // Height of each notification item in pixels
+  const CONTAINER_HEIGHT = 400; // Height of scroll container
+  const OVERSCAN = 3; // Render extra items above/below viewport for smooth scrolling
   
   // Use refs to track fetch function and prevent infinite loops
   const fetchNotificationsRef = useRef<() => Promise<void>>();
   const lastFetchParams = useRef<string>('');
   const isFetchingRef = useRef(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  
+  // Aggressive caching - 5 minutes cache duration
+  const pagesCache = useRef<Map<number, Notification[]>>(new Map());
+  const cacheTimestamp = useRef<Map<number, number>>(new Map()); // Cache timestamp per page
+  const CACHE_DURATION = 300000; // 5 minutes cache (was 30 seconds)
+  const hasInitialDataRef = useRef(false); // Track if we have any data
+  
+  // Track total count from cache
+  const totalCountRef = useRef<number>(0);
 
-  // Fetch notifications and set up real-time subscription
-  useEffect(() => {
-    if (!userId) {
-    
+  // Fetch a specific page of notifications
+  const fetchPage = async (page: number, append: boolean = false) => {
+    if (isFetchingRef.current) {
+      console.log('⏳ NotificationCenter: Already fetching, skipping...');
       return;
     }
     
-  
+    // Check if page is already cached and cache is fresh
+    const now = Date.now();
+    if (pagesCache.current.has(page) && (now - (cacheTimestamp.current.get(page) || 0) < CACHE_DURATION)) {
+      console.log(`💾 NotificationCenter: Using cached page ${page}`);
+      const cachedPage = pagesCache.current.get(page)!;
+      
+      if (append) {
+        setNotifications(prev => [...prev, ...cachedPage]);
+      } else {
+        setNotifications(cachedPage);
+      }
+      hasInitialDataRef.current = true;
+      return;
+    }
     
-    const fetchNotifications = async () => {
-      if (isFetchingRef.current) {
-       
-        return;
+    try {
+      isFetchingRef.current = true;
+      if (append) {
+        setIsLoadingMore(true);
+      } else {
+        setIsLoading(true);
       }
       
-      try {
-        isFetchingRef.current = true;
-        setIsLoading(true);
-        
-    
-        const data = await API.notifications.getByUserId(userId, userRole);
-        const count = await API.notifications.getUnreadCount(userId, userRole);
-        
-     
-        
-        // Ensure data is always an array
-        const notificationsArray = Array.isArray(data) ? data : [];
-        setNotifications(notificationsArray);
-        setUnreadCount(typeof count === 'number' ? count : 0);
-        
-     
-      } catch (error: any) {
-        console.error('❌ NotificationCenter: Error fetching notifications:', error);
-        console.error('❌ NotificationCenter: Error details:', error.message, error.stack);
-        
-        // Set empty state
-        setNotifications([]);
-        setUnreadCount(0);
-      } finally {
-        setIsLoading(false);
-        isFetchingRef.current = false;
+      console.log(`📡 NotificationCenter: Fetching page ${page} for userId:`, userId, 'role:', userRole);
+      
+      // Calculate offset and limit
+      const offset = page * PAGE_SIZE;
+      const limit = PAGE_SIZE;
+      
+      // Fetch paginated data
+      const data = await API.notifications.getByUserId(userId, userRole, limit, offset);
+      
+      console.log(`✅ NotificationCenter: Fetched ${data?.length || 0} notifications for page ${page}`);
+      
+      // Ensure data is always an array
+      const notificationsArray = Array.isArray(data) ? data : [];
+      
+      // Cache this page
+      pagesCache.current.set(page, notificationsArray);
+      cacheTimestamp.current.set(page, now);
+      
+      // Update hasMore flag
+      if (notificationsArray.length < PAGE_SIZE) {
+        setHasMore(false);
+        console.log('📭 NotificationCenter: No more pages to load');
       }
-    };
-    
-    // Store in ref for manual refresh button
-    fetchNotificationsRef.current = fetchNotifications;
-    
-    // Initial fetch
- 
-    fetchNotifications();
-    
-  
-    
-    // For admin users, we need to listen to both personal notifications AND broadcast notifications
-    // Broadcast notifications typically have user_id = 'super-admin', 'broadcast', or 'all-admins'
-    const setupSubscriptions = () => {
-      if (userRole === 'admin') {
-     
-        
-        // Subscription 1: Personal notifications for this admin user
-        const personalChannel = supabase
-          .channel(`notifications-personal-${userId}`)
-          .on(
-            'postgres_changes',
-            {
-              event: '*',
-              schema: 'public',
-              table: 'notifications',
-              filter: `user_id=eq.${userId}`,
-            },
-            async (payload) => {
-           
-              await fetchNotifications();
-            }
-          )
-          .subscribe((status) => {
-          
-          });
-        
-        // Subscription 2: Broadcast notifications for all admins
-        const broadcastChannel = supabase
-          .channel(`notifications-broadcast-admin`)
-          .on(
-            'postgres_changes',
-            {
-              event: '*',
-              schema: 'public',
-              table: 'notifications',
-              filter: `user_id=in.(super-admin,broadcast,all-admins)`,
-            },
-            async (payload) => {
-            
-              await fetchNotifications();
-            }
-          )
-          .subscribe((status) => {
-           
-          });
-        
-        return [personalChannel, broadcastChannel];
+      
+      // Update state
+      if (append) {
+        setNotifications(prev => [...prev, ...notificationsArray]);
       } else {
-        // For customer and barber users, only listen to their personal notifications
-       
-        
-        const channel = supabase
-          .channel(`notifications-${userId}`)
-          .on(
-            'postgres_changes',
-            {
-              event: '*',
-              schema: 'public',
-              table: 'notifications',
-              filter: `user_id=eq.${userId}`,
-            },
-            async (payload) => {
-            
-              await fetchNotifications();
-            }
-          )
-          .subscribe((status) => {
-          
-            if (status === 'SUBSCRIBED') {
-           
-            } else if (status === 'CHANNEL_ERROR') {
-              console.error('❌ NotificationCenter: Subscription error');
-            }
-          });
-        
-        return [channel];
+        setNotifications(notificationsArray);
       }
-    };
+      
+      hasInitialDataRef.current = true;
+      
+      console.log(`💾 NotificationCenter: State updated with page ${page}`);
+    } catch (error: any) {
+      console.error(`❌ NotificationCenter: Error fetching page ${page}:`, error);
+      
+      if (!append) {
+        // Set empty state only if not appending
+        setNotifications([]);
+      }
+    } finally {
+      setIsLoading(false);
+      setIsLoadingMore(false);
+      isFetchingRef.current = false;
+    }
+  };
+
+  // Shared fetch function for initial load
+  const fetchNotifications = async () => {
+    console.log('🔄 NotificationCenter: Refreshing notifications...');
     
-    const channels = setupSubscriptions();
+    // Clear cache and reset pagination
+    pagesCache.current.clear();
+    cacheTimestamp.current.clear();
+    setCurrentPage(0);
+    setHasMore(true);
     
-    // Cleanup subscriptions on unmount
-    return () => {
-   
-      channels.forEach(channel => supabase.removeChannel(channel));
-    };
-  }, [userId, userRole]);
+    // Fetch first page
+    await fetchPage(0, false);
+  };
+
+  // Load more notifications (next page)
+  const loadMore = async () => {
+    if (!hasMore || isLoadingMore || isFetchingRef.current) {
+      console.log('⏸️ NotificationCenter: Cannot load more', { hasMore, isLoadingMore, isFetching: isFetchingRef.current });
+      return;
+    }
+    
+    const nextPage = currentPage + 1;
+    console.log(`📄 NotificationCenter: Loading page ${nextPage}...`);
+    
+    await fetchPage(nextPage, true);
+    setCurrentPage(nextPage);
+  };
+
+  // Handle scroll event - ONLY load more on scroll (LAZY)
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.currentTarget;
+    const scrollPercentage = (target.scrollTop + target.clientHeight) / target.scrollHeight;
+    
+    // Load more when user scrolls to 90% of the container (LAZY - near bottom only)
+    if (scrollPercentage > 0.9 && hasMore && !isLoadingMore && !isFetchingRef.current) {
+      console.log('📜 NotificationCenter: Scroll threshold reached, loading more...');
+      loadMore();
+    }
+  };
+
+  // Load cached data instantly on mount (NO API CALL)
+  useEffect(() => {
+    if (!userId) return;
+    
+    // Check if we have cached data for page 0
+    if (pagesCache.current.has(0)) {
+      console.log('⚡ NotificationCenter: Loading from cache instantly');
+      const cachedPage = pagesCache.current.get(0)!;
+      setNotifications(cachedPage);
+      hasInitialDataRef.current = true;
+    }
+    // NO FETCH on mount - only fetch when user opens dropdown
+  }, [userId]);
+
+  // Fetch when dropdown opens (ONLY if no cache exists)
+  useEffect(() => {
+    if (!isOpen || !userId) return;
+    
+    // If we have cached data, show it instantly
+    if (pagesCache.current.has(0)) {
+      const now = Date.now();
+      const cacheAge = now - (cacheTimestamp.current.get(0) || 0);
+      
+      if (cacheAge < CACHE_DURATION) {
+        console.log('⚡ NotificationCenter: Using cached data (fresh)');
+        const cachedPage = pagesCache.current.get(0)!;
+        setNotifications(cachedPage);
+        hasInitialDataRef.current = true;
+        return; // Don't fetch if cache is fresh
+      }
+    }
+    
+    // No cache or cache expired - fetch data
+    console.log('📡 NotificationCenter: Dropdown opened, fetching data...');
+    fetchPage(0, false);
+  }, [isOpen, userId]);
 
   // Mark notification as read
   const handleMarkAsRead = async (notificationId: string) => {
@@ -232,7 +268,8 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
     const notificationToMark = notifications.find(n => n.id === notificationId);
     if (!notificationToMark || notificationToMark.isRead) return; // Already read or doesn't exist
     
-   
+    console.log('🔵 [NotificationCenter] Marking notification as read:', notificationId);
+    console.log('📋 [NotificationCenter] Notification before:', notificationToMark);
     
     // Update local state immediately
     setNotifications(prev =>
@@ -245,7 +282,8 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
     // Then sync with backend (silently fail if backend has issues)
     try {
       const result = await API.notifications.markAsRead(notificationId);
-      
+      console.log('✅ [NotificationCenter] Backend response:', result);
+      console.log('✅ [NotificationCenter] Notification marked as read in backend');
     } catch (error: any) {
       console.error('❌ [NotificationCenter] Error marking notification as read in backend:', error);
       console.error('❌ [NotificationCenter] Error details:', JSON.stringify(error, null, 2));
@@ -270,7 +308,7 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
     try {
       await API.notifications.markAllAsRead(userId, userRole);
       toast.success('All notifications marked as read');
-    
+      console.log('✅ All notifications marked as read in backend');
     } catch (error: any) {
       console.error('❌ Error marking all as read in backend:', error);
       // UI is already updated, just show a generic success message
@@ -287,7 +325,7 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
       setNotifications(prev => prev.filter(n => n.id !== notificationId));
       
       toast.success('Notification deleted');
-     
+      console.log('✅ Notification deleted');
     } catch (error: any) {
       console.error('❌ Error deleting notification:', error);
       toast.error('Failed to delete notification');
@@ -296,15 +334,18 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
 
   // Handle notification click
   const handleNotificationClick = (notification: Notification) => {
-    // Mark as read
-    if (!notification.isRead) {
-      handleMarkAsRead(notification.id);
-    }
-
-    // Navigate if action URL exists
+    // Navigate immediately for instant response (no lag)
     if (notification.actionUrl && onNavigate) {
       setIsOpen(false);
       onNavigate(notification.actionUrl);
+    }
+
+    // Mark as read in background (async, non-blocking)
+    if (!notification.isRead) {
+      // Use setTimeout to ensure navigation happens first
+      setTimeout(() => {
+        handleMarkAsRead(notification.id);
+      }, 0);
     }
   };
 
@@ -376,6 +417,37 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
     return created.toLocaleDateString();
   };
 
+  // REMOVED: No auto-fetch on hover
+  // REMOVED: No auto-fetch on open
+  // REMOVED: No auto-fetch on stale cache
+  
+  // Only fetch when:
+  // 1. User clicks refresh button
+  // 2. User scrolls to load more
+  // 3. First time ever (no cache exists)
+
+  // Fetch unread count badge ONLY (lightweight) - runs on mount and every 60s
+  useEffect(() => {
+    if (!userId) return;
+    
+    const fetchUnreadCountOnly = async () => {
+      try {
+        const count = await API.notifications.getUnreadCount(userId, userRole);
+        setUnreadCount(typeof count === 'number' ? count : 0);
+      } catch (error) {
+        console.error('❌ Error fetching unread count:', error);
+      }
+    };
+    
+    // Initial fetch
+    fetchUnreadCountOnly();
+    
+    // Poll for unread count only (very lightweight)
+    const pollInterval = setInterval(fetchUnreadCountOnly, 60000); // Every 60 seconds
+    
+    return () => clearInterval(pollInterval);
+  }, [userId, userRole]);
+
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
@@ -395,7 +467,7 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
       
       <DropdownMenuContent
         align="end"
-        className="w-[380px] max-h-[500px] overflow-hidden flex flex-col"
+        className="w-[380px] max-h-[500px] overflow-hidden flex flex-col animate-none data-[state=open]:animate-none data-[state=closed]:animate-none"
       >
         {/* Header */}
         <div className="sticky top-0 bg-white border-b border-[#E8DCC8] p-4 space-y-3 z-10">
@@ -406,7 +478,7 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
             <Button
               variant="ghost"
               size="sm"
-              onClick={fetchNotificationsRef.current}
+              onClick={fetchNotifications}
               disabled={isLoading}
               className="h-8 w-8 p-0"
             >
@@ -450,7 +522,7 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
         </div>
 
         {/* Notifications List */}
-        <div className="overflow-y-auto flex-1">
+        <div className="overflow-y-auto flex-1" ref={scrollContainerRef} onScroll={handleScroll}>
           {isLoading && notifications.length === 0 ? (
             <div className="flex items-center justify-center p-8">
               <RefreshCw className="w-6 h-6 animate-spin text-[#DB9D47]" />
@@ -463,86 +535,103 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
               </p>
             </div>
           ) : (
-            <div className="divide-y divide-[#E8DCC8]">
-              {filteredNotifications.map((notification) => (
-                <div
-                  key={notification.id}
-                  className={`p-4 hover:bg-[#FBF7EF] transition-colors cursor-pointer group relative ${
-                    !notification.isRead ? 'bg-blue-50/30' : ''
-                  }`}
-                  onClick={() => handleNotificationClick(notification)}
-                >
-                  {/* Unread indicator */}
-                  {!notification.isRead && (
-                    <div className="absolute left-2 top-1/2 -translate-y-1/2 w-2 h-2 bg-[#DB9D47] rounded-full" />
-                  )}
+            <>
+              <div className="divide-y divide-[#E8DCC8]">
+                {filteredNotifications.map((notification) => (
+                  <div
+                    key={notification.id}
+                    className={`p-4 hover:bg-[#FBF7EF] transition-colors cursor-pointer group relative ${
+                      !notification.isRead ? 'bg-blue-50/30' : ''
+                    }`}
+                    onClick={() => handleNotificationClick(notification)}
+                  >
+                    {/* Unread indicator */}
+                    {!notification.isRead && (
+                      <div className="absolute left-2 top-1/2 -translate-y-1/2 w-2 h-2 bg-[#DB9D47] rounded-full" />
+                    )}
 
-                  <div className="flex gap-3 pl-4">
-                    {/* Icon */}
-                    <div className={`flex-shrink-0 ${getNotificationColor(notification.type)}`}>
-                      <Bell className="w-5 h-5" />
-                    </div>
-
-                    {/* Content */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2 mb-1">
-                        <h4 className="text-sm font-semibold text-[#5C4A3A] truncate">
-                          {notification.title}
-                        </h4>
-                        <span className="text-xs text-[#87765E] whitespace-nowrap">
-                          {formatRelativeTime(notification.createdAt)}
-                        </span>
+                    <div className="flex gap-3 pl-4">
+                      {/* Icon */}
+                      <div className={`flex-shrink-0 ${getNotificationColor(notification.type)}`}>
+                        <Bell className="w-5 h-5" />
                       </div>
 
-                      <p className="text-sm text-[#87765E] line-clamp-2 mb-2">
-                        {notification.message}
-                      </p>
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2 mb-1">
+                          <h4 className="text-sm font-semibold text-[#5C4A3A] truncate">
+                            {notification.title}
+                          </h4>
+                          <span className="text-xs text-[#87765E] whitespace-nowrap">
+                            {formatRelativeTime(notification.createdAt)}
+                          </span>
+                        </div>
 
-                      {/* Action button */}
-                      {notification.actionUrl && notification.actionLabel && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-xs text-[#DB9D47] hover:text-[#C58A3C] p-0 h-auto font-normal"
-                        >
-                          {notification.actionLabel} →
-                        </Button>
-                      )}
-                    </div>
+                        <p className="text-sm text-[#87765E] line-clamp-2 mb-2">
+                          {notification.message}
+                        </p>
 
-                    {/* Actions */}
-                    <div className="flex-shrink-0 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      {!notification.isRead && (
+                        {/* Action button */}
+                        {notification.actionUrl && notification.actionLabel && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-xs text-[#DB9D47] hover:text-[#C58A3C] p-0 h-auto font-normal"
+                          >
+                            {notification.actionLabel} →
+                          </Button>
+                        )}
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex-shrink-0 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {!notification.isRead && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleMarkAsRead(notification.id);
+                            }}
+                            className="h-6 w-6 p-0"
+                            title="Mark as read"
+                          >
+                            <Eye className="w-3 h-3" />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleMarkAsRead(notification.id);
+                            handleDelete(notification.id);
                           }}
-                          className="h-6 w-6 p-0"
-                          title="Mark as read"
+                          className="h-6 w-6 p-0 hover:text-red-600"
+                          title="Delete"
                         >
-                          <Eye className="w-3 h-3" />
+                          <Trash2 className="w-3 h-3" />
                         </Button>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(notification.id);
-                        }}
-                        className="h-6 w-6 p-0 hover:text-red-600"
-                        title="Delete"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </Button>
+                      </div>
                     </div>
                   </div>
+                ))}
+              </div>
+              
+              {/* Loading More Indicator */}
+              {isLoadingMore && (
+                <div className="flex items-center justify-center p-4 border-t border-[#E8DCC8]">
+                  <RefreshCw className="w-5 h-5 animate-spin text-[#DB9D47] mr-2" />
+                  <span className="text-sm text-[#87765E]">Loading more...</span>
                 </div>
-              ))}
-            </div>
+              )}
+              
+              {/* End of List Indicator */}
+              {!hasMore && notifications.length > 0 && (
+                <div className="flex items-center justify-center p-4 border-t border-[#E8DCC8]">
+                  <span className="text-sm text-[#87765E]">No more notifications</span>
+                </div>
+              )}
+            </>
           )}
         </div>
       </DropdownMenuContent>

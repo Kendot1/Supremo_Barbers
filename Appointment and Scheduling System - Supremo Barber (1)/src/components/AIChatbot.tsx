@@ -13,6 +13,12 @@ import {
   X,
   Loader2,
   User,
+  ImagePlus,
+  Trash2,
+  Calendar,
+  Clock,
+  Scissors,
+  CheckCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { User as UserType, Appointment } from "../App";
@@ -20,30 +26,106 @@ import {
   projectId,
   publicAnonKey,
 } from "../utils/supabase/info.tsx";
+import { ChatBooking } from "./ChatBooking";
+
+interface InteractiveOption {
+  label: string;
+  value: string;
+  description?: string;
+  price?: number;
+  duration?: number;
+}
+
+interface InteractiveMessage {
+  type: "service-selection" | "barber-selection" | "date-selection" | "time-selection" | "booking-summary";
+  options?: InteractiveOption[];
+  data?: any;
+}
 
 interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
+  imageUrl?: string;
+  interactive?: InteractiveMessage;
 }
+
+interface BookingState {
+  service?: { name: string; price: number; duration: number; id: string };
+  barber?: { name: string; id: string };
+  date?: string;
+  time?: string;
+  customer?: { name: string; id: string }; // For admin booking for others
+  paymentProof?: string;
+}
+
+interface Service {
+  id: string;
+  name: string;
+  price: number;
+  duration: number;
+  description?: string;
+}
+
+interface Barber {
+  id: string;
+  name: string;
+  phone?: string;
+}
+
+interface Customer {
+  id: string;
+  name: string;
+  email: string;
+}
+
+type BookingStep = "customer" | "service" | "barber" | "datetime" | "payment" | "complete";
 
 interface AIChatbotProps {
   currentUser: UserType | null;
   appointments?: Appointment[];
+  onAddAppointment?: (appointment: any) => Promise<any>;
 }
 
 export function AIChatbot({
   currentUser,
   appointments,
+  onAddAppointment,
 }: AIChatbotProps) {
+  // DEBUG: Log props on mount and when they change
+  useEffect(() => {
+    console.log("🔍 AIChatbot Props Debug:", {
+      hasCurrentUser: !!currentUser,
+      currentUserName: currentUser?.name,
+      hasAppointments: !!appointments,
+      appointmentsCount: appointments?.length,
+      hasOnAddAppointment: !!onAddAppointment,
+      onAddAppointmentType: typeof onAddAppointment,
+    });
+  }, [currentUser, appointments, onAddAppointment]);
+  
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [isTyping, setIsTyping] = useState(false);
+  const [isBookingMode, setIsBookingMode] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+  const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+  const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+
+  console.log("🤖 AIChatbot rendered with:", { 
+    hasOnAddAppointment: !!onAddAppointment, 
+    currentUser: currentUser?.name,
+    isOpen,
+    isBookingMode,
+    messagesCount: messages.length
+  });
 
   // Scroll to bottom of messages
   const scrollToBottom = () => {
@@ -54,7 +136,7 @@ export function AIChatbot({
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, isTyping]);
+  }, [messages, isLoading]);
 
   // Focus input when chat opens
   useEffect(() => {
@@ -126,8 +208,6 @@ How can I assist you today?`;
   const handleSendMessage = async () => {
     if (!inputMessage.trim() || isLoading) return;
 
-
-
     const userMessage: Message = {
       id: Date.now().toString(),
       role: "user",
@@ -138,7 +218,6 @@ How can I assist you today?`;
     setMessages((prev) => [...prev, userMessage]);
     setInputMessage("");
     setIsLoading(true);
-    setIsTyping(true);
 
     try {
       // Prepare user context data for AI
@@ -248,7 +327,6 @@ How can I assist you today?`;
       setMessages((prev) => [...prev, assistantMessage]);
     } finally {
       setIsLoading(false);
-      setIsTyping(false);
     }
   };
 
@@ -280,6 +358,155 @@ How can I assist you today?`;
       .replace(/\_(.+?)\_/g, "$1") // Remove italic (_text_)
       .replace(/\~\~(.+?)\~\~/g, "$1") // Remove strikethrough (~~text~~)
       .replace(/\`(.+?)\`/g, "$1"); // Remove inline code (`text`)
+  };
+
+  // Handle image upload
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > MAX_FILE_SIZE) {
+        toast.error("File size exceeds 5MB limit.");
+        return;
+      }
+      if (!ALLOWED_IMAGE_TYPES.includes(file.type)) {
+        toast.error("Unsupported file type. Please upload an image.");
+        return;
+      }
+      setSelectedImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Handle image send
+  const handleSendImage = async () => {
+    if (!selectedImage || isLoading) return;
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: "user",
+      content: "Image uploaded",
+      timestamp: new Date(),
+      imageUrl: imagePreview || "",
+    };
+
+    setMessages((prev) => [...prev, userMessage]);
+    setSelectedImage(null);
+    setImagePreview(null);
+    setIsLoading(true);
+
+    try {
+      // Prepare user context data for AI
+      const userContext: any = {
+        userId: currentUser?.id,
+        userName: currentUser?.name,
+        userEmail: currentUser?.email,
+        userRole: currentUser?.role || "guest",
+      };
+
+      // Add appointments data if available
+      if (appointments && appointments.length > 0) {
+        // Filter appointments for current user based on role
+        let userAppointments = appointments;
+
+        if (currentUser?.role === "customer") {
+          userAppointments = appointments.filter(
+            (apt) =>
+              apt.userId === currentUser.id ||
+              apt.customerId === currentUser.id ||
+              apt.customer_id === currentUser.id,
+          );
+        } else if (currentUser?.role === "barber") {
+          userAppointments = appointments.filter(
+            (apt) =>
+              apt.barberId === currentUser.id ||
+              apt.barber_id === currentUser.id,
+          );
+        }
+
+        // Format appointments for AI context (only include relevant fields)
+        userContext.appointments = userAppointments.map(
+          (apt) => ({
+            id: apt.id,
+            service: apt.service || apt.service_name,
+            barber: apt.barber || apt.barber_name,
+            customer:
+              apt.customerName ||
+              apt.customer_name ||
+              apt.customer,
+            date: apt.date || apt.appointment_date,
+            time: apt.time || apt.appointment_time,
+            status: apt.status,
+            price: apt.price || apt.total_amount,
+            paymentStatus:
+              apt.paymentStatus || apt.payment_status,
+          }),
+        );
+      }
+
+      // Call AI backend endpoint using full Supabase Functions URL
+      const response = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/make-server-70e1fc66/api/ai-chat`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${publicAnonKey}`,
+          },
+          body: JSON.stringify({
+            message: "Image uploaded",
+            userContext: userContext,
+            conversationHistory: messages.slice(-10), // Last 10 messages for context
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(
+          "❌ AI API Error:",
+          response.status,
+          errorText,
+        );
+        throw new Error(
+          `Failed to get AI response: ${response.status}`,
+        );
+      }
+
+      const data = await response.json();
+      console.log("✅ AI Response received:", data);
+
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: data.response,
+        timestamp: new Date(),
+      };
+
+      setMessages((prev) => [...prev, assistantMessage]);
+    } catch (error) {
+      console.error("❌ AI Chat error:", error);
+
+      // Fallback to rule-based responses if AI fails
+      const fallbackResponse = generateFallbackResponse(
+        "Image uploaded",
+        currentUser?.role,
+      );
+
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: fallbackResponse,
+        timestamp: new Date(),
+      };
+
+      setMessages((prev) => [...prev, assistantMessage]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -318,13 +545,15 @@ How can I assist you today?`;
                       animate-in slide-in-from-bottom-5 duration-300
                       z-50"
           >
-            <Card className="
+            <Card
+              className="
               border-2 border-[#DB9D47]
               bg-white
               h-full flex flex-col
               rounded-2xl
               overflow-hidden
-            ">
+            "
+            >
               {/* Header */}
               <CardHeader className="bg-[#DB9D47] text-white p-3 sm:p-4 flex-shrink-0">
                 <div className="flex items-center justify-between">
@@ -366,15 +595,18 @@ How can I assist you today?`;
 
               {/* Messages Area */}
               <CardContent className="p-0 flex-1 flex flex-col overflow-hidden">
+              
+
                 {/* Messages Container - scrollable area with max height */}
                 <div className="flex-1 overflow-y-auto p-3 sm:p-4 bg-white space-y-3 sm:space-y-4 min-h-0">
                   {messages.map((message) => (
                     <div
                       key={message.id}
-                      className={`flex items-start gap-2 w-full min-w-0  ${message.role === "user"
+                      className={`flex items-start gap-2 w-full min-w-0  ${
+                        message.role === "user"
                           ? "justify-end"
                           : "justify-start"
-                        }`}
+                      }`}
                     >
                       {/* Bot Avatar - Only show for assistant */}
                       {message.role === "assistant" && (
@@ -396,20 +628,29 @@ How can I assist you today?`;
                           rounded-2xl shadow-md
                           break-words whitespace-pre-wrap
 
-                          ${message.role === "user"
-                            ? "bg-[#DB9D47] text-white self-end"
-                            : "bg-white border border-[#E8DCC8] text-[#2D2D2D] self-start"
+                          ${
+                            message.role === "user"
+                              ? "bg-[#DB9D47] text-white self-end"
+                              : "bg-white border border-[#E8DCC8] text-[#2D2D2D] self-start"
                           }
                         `}
                       >
+                        {message.imageUrl && (
+                          <img
+                            src={message.imageUrl}
+                            alt="Uploaded"
+                            className="mb-2 rounded-lg max-w-full h-auto"
+                          />
+                        )}
                         <p className="text-xs sm:text-sm leading-relaxed whitespace-pre-wrap break-words">
                           {cleanMessageContent(message.content)}
                         </p>
                         <p
-                          className={`text-[10px] sm:text-[12px] mt-1.5 sm:mt-2 ${message.role === "user"
+                          className={`text-[10px] sm:text-[12px] mt-1.5 sm:mt-2 ${
+                            message.role === "user"
                               ? "text-white/70"
                               : "text-[#87765E]"
-                            }`}
+                          }`}
                         >
                           {message.timestamp.toLocaleTimeString(
                             [],
@@ -424,7 +665,7 @@ How can I assist you today?`;
                   ))}
 
                   {/* Typing Indicator */}
-                  {isTyping && (
+                  {isLoading && (
                     <div className="flex gap-2 justify-start">
                       <div className="w-8 h-8 rounded-full bg-[#ffffff] flex items-center justify-center shadow-md">
                         <img
@@ -450,6 +691,37 @@ How can I assist you today?`;
                     </div>
                   )}
 
+                  {/* Interactive Booking Widget */}
+                  {isBookingMode && (
+                    <div className="w-full">
+                      <ChatBooking
+                        currentUser={currentUser}
+                        onAddAppointment={onAddAppointment}
+                        onComplete={(bookingData) => {
+                          setIsBookingMode(false);
+                          const successMsg: Message = {
+                            id: Date.now().toString(),
+                            role: "assistant",
+                            content: "🎉 Booking successful! Your appointment has been saved to the database and sent to Payment Verification. Admin will review your payment proof and approve your booking shortly. You can track your booking status in the 'My Bookings' section. Thank you for choosing Supremo Barber!",
+                            timestamp: new Date(),
+                          };
+                          setMessages((prev) => [...prev, successMsg]);
+                          toast.success("Booking saved to database!");
+                        }}
+                        onCancel={() => {
+                          setIsBookingMode(false);
+                          const cancelMsg: Message = {
+                            id: Date.now().toString(),
+                            role: "assistant",
+                            content: "Booking cancelled. Is there anything else I can help you with?",
+                            timestamp: new Date(),
+                          };
+                          setMessages((prev) => [...prev, cancelMsg]);
+                        }}
+                      />
+                    </div>
+                  )}
+
                   <div ref={messagesEndRef} />
                 </div>
 
@@ -457,12 +729,27 @@ How can I assist you today?`;
                 <div className="flex-shrink-0 px-4 py-2 bg-white border-t border-[#E8DCC8]">
                   <div className="flex gap-2 overflow-x-auto pb-2">
                     <QuickActionButton
-                      onClick={() =>
-                        setInputMessage(
-                          "What are your available time slots?",
-                        )
-                      }
-                      label=" Time Slots"
+                      onClick={() => {
+                        // Start interactive booking
+                        const userMsg: Message = {
+                          id: Date.now().toString(),
+                          role: "user",
+                          content: "I want to book an appointment",
+                          timestamp: new Date(),
+                        };
+                        
+                        const botMsg: Message = {
+                          id: (Date.now() + 1).toString(),
+                          role: "assistant",
+                          content: "Great! Let me help you book an appointment. First, please choose a service:",
+                          timestamp: new Date(),
+                        };
+                        
+                        setMessages((prev) => [...prev, userMsg, botMsg]);
+                        setIsBookingMode(true);
+                        toast.success("Booking started! Follow the steps below.");
+                      }}
+                      label="📅 Book Now"
                     />
                     <QuickActionButton
                       onClick={() =>
@@ -489,31 +776,86 @@ How can I assist you today?`;
 
                 {/* Input Area - Fixed at bottom */}
                 <div className="flex-shrink-0 p-4 bg-white border-t border-[#E8DCC8]">
+                  {/* Image Preview */}
+                  {imagePreview && (
+                    <div className="mb-3 relative inline-block">
+                      <img
+                        src={imagePreview}
+                        alt="Preview"
+                        className="max-w-full h-32 rounded-lg border-2 border-[#DB9D47] object-cover"
+                      />
+                      <Button
+                        onClick={() => {
+                          setSelectedImage(null);
+                          setImagePreview(null);
+                          if (fileInputRef.current) {
+                            fileInputRef.current.value = "";
+                          }
+                        }}
+                        size="sm"
+                        variant="destructive"
+                        className="absolute -top-2 -right-2 h-6 w-6 p-0 rounded-full"
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  )}
                   <div className="flex gap-2">
-                    <Input
-                      ref={inputRef}
-                      value={inputMessage}
-                      onChange={(e) =>
-                        setInputMessage(e.target.value)
-                      }
-                      onKeyDown={handleKeyPress}
-                      placeholder="Ask me anything..."
-                      disabled={isLoading}
-                      className="flex-1 border-[#E8DCC8] focus:border-[#DB9D47]"
-                    />
-                    <Button
-                      onClick={handleSendMessage}
-                      disabled={
-                        !inputMessage.trim() || isLoading
-                      }
-                      className="bg-[#DB9D47] hover:bg-[#C88D3F] text-white px-4"
-                    >
-                      {isLoading ? (
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                      ) : (
-                        <Send className="w-5 h-5" />
-                      )}
-                    </Button>
+                    {imagePreview ? (
+                      <Button
+                        onClick={handleSendImage}
+                        disabled={isLoading}
+                        className="flex-1 bg-[#DB9D47] hover:bg-[#C88D3F] text-white"
+                      >
+                        {isLoading ? (
+                          <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                        ) : (
+                          <Send className="w-5 h-5 mr-2" />
+                        )}
+                        Send Image
+                      </Button>
+                    ) : (
+                      <>
+                        <Input
+                          ref={inputRef}
+                          value={inputMessage}
+                          onChange={(e) =>
+                            setInputMessage(e.target.value)
+                          }
+                          onKeyDown={handleKeyPress}
+                          placeholder="Ask me anything..."
+                          disabled={isLoading}
+                          className="flex-1 border-[#E8DCC8] focus:border-[#DB9D47]"
+                        />
+                        <Button
+                          onClick={handleSendMessage}
+                          disabled={
+                            !inputMessage.trim() || isLoading
+                          }
+                          className="bg-[#DB9D47] hover:bg-[#C88D3F] text-white px-4"
+                        >
+                          {isLoading ? (
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                          ) : (
+                            <Send className="w-5 h-5" />
+                          )}
+                        </Button>
+                        <Button
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={isLoading}
+                          className="bg-[#DB9D47] hover:bg-[#C88D3F] text-white px-4"
+                        >
+                          <ImagePlus className="w-5 h-5" />
+                        </Button>
+                        <input
+                          type="file"
+                          ref={fileInputRef}
+                          accept="image/*"
+                          onChange={handleImageUpload}
+                          className="hidden"
+                        />
+                      </>
+                    )}
                   </div>
                   <p className="text-xs text-[#87765E] mt-2 text-center">
                     Powered by AI • May occasionally make

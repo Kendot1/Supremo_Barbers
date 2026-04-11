@@ -161,7 +161,7 @@ export function CustomerDashboard({
             {/* Logo & Brand */}
             <div className="flex items-center gap-2">
               <img 
-                src="https://pub-86f4b5249e5c4021bb05d46908eeb094.r2.dev/supremo-barber/supremoWebLogo.png"
+                src="figma:asset/c8ec37b0cd5b0cf8df5bb8e6dd694ed894f0e3af.png" 
                 alt="Supremo Barber Logo" 
                 className="h-10 w-10 sm:h-12 sm:w-12"
               />
@@ -278,6 +278,10 @@ export function CustomerDashboard({
                     }
                   } else if (path === '/profile') {
                     setActiveTab('profile');
+                  } else if (path === '/book') {
+                    setActiveTab('book');
+                  } else if (path === '/services') {
+                    setActiveTab('services');
                   }
                 }}
               />
@@ -336,7 +340,7 @@ export function CustomerDashboard({
                   <SheetHeader>
                     <SheetTitle className="text-[#5C4A3A] flex items-center gap-2">
                       <img 
-                        src="https://pub-86f4b5249e5c4021bb05d46908eeb094.r2.dev/supremo-barber/supremoWebLogo.png"
+                        src="figma:asset/c8ec37b0cd5b0cf8df5bb8e6dd694ed894f0e3af.png" 
                         alt="Supremo Barber Logo" 
                         className="h-8 w-8"
                       />

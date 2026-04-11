@@ -16,6 +16,8 @@ import {
 import { Search, Activity, Download, FileText, FileSpreadsheet, TrendingUp, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
 import { exportToCSV } from './utils/exportUtils';
+import { Pagination } from './ui/pagination';
+import { usePagination } from '../hooks/usePagination';
 
 // Match database schema from migration
 interface AuditLog {
@@ -27,7 +29,11 @@ interface AuditLog {
   action: string;
   entityType?: string;
   entityId?: string;
-  description?: string;
+  description?: string; // Legacy field for backwards compatibility
+  details?: { // New JSONB field containing description and metadata
+    description?: string;
+    [key: string]: any;
+  };
   status: 'success' | 'error' | 'warning';
   metadata?: Record<string, any>;
   ipAddress?: string;
@@ -44,6 +50,8 @@ export function AuditLogs({ isActive = true }: AuditLogsProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [isLoading, setIsLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [logsPerPage, setLogsPerPage] = useState(10);
 
   // Fetch audit logs from database
   const fetchLogs = async () => {
@@ -71,13 +79,27 @@ export function AuditLogs({ isActive = true }: AuditLogsProps) {
     }
   }, [isActive]);
 
+  // Extract description from either legacy field or new details JSONB field
+  const getDescription = (log: AuditLog): string => {
+    // Try details.description first (new schema)
+    if (log.details && log.details.description) {
+      return log.details.description;
+    }
+    // Fallback to legacy description field
+    if (log.description) {
+      return log.description;
+    }
+    return '';
+  };
+
   const filteredLogs = logs.filter(log => {
+    const description = getDescription(log);
     const matchesSearch = 
       (log.id?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
       (log.userName?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
       (log.userEmail?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
       (log.action?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
-      (log.description?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
+      (description?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
       (log.entityType?.toLowerCase() || '').includes(searchTerm.toLowerCase());
     const matchesStatus = filterStatus === 'all' || log.status === filterStatus;
     return matchesSearch && matchesStatus;
@@ -103,10 +125,7 @@ export function AuditLogs({ isActive = true }: AuditLogsProps) {
       .join(' ');
   };
 
-  const handleExportPDF = () => {
-    toast.info('PDF export coming soon...');
-  };
-
+ 
   const handleExportCSV = () => {
     const exportData = filteredLogs.map(log => ({
       'Log ID': log.id,
@@ -117,7 +136,7 @@ export function AuditLogs({ isActive = true }: AuditLogsProps) {
       'Action': log.action,
       'Entity Type': log.entityType,
       'Entity ID': log.entityId,
-      'Description': log.description,
+      'Description': getDescription(log),
       'Status': log.status.charAt(0).toUpperCase() + log.status.slice(1),
       'IP Address': log.ipAddress || '',
     }));
@@ -133,6 +152,11 @@ export function AuditLogs({ isActive = true }: AuditLogsProps) {
   const successLogs = logs.filter(l => l.status === 'success').length;
   const pendingLogs = logs.filter(l => l.status === 'warning').length;
   const failedLogs = logs.filter(l => l.status === 'error').length;
+
+  // Get current logs to display
+  const indexOfLastLog = currentPage * logsPerPage;
+  const indexOfFirstLog = indexOfLastLog - logsPerPage;
+  const currentLogs = filteredLogs.slice(indexOfFirstLog, indexOfLastLog);
 
   return (
     <div className="space-y-6">
@@ -195,22 +219,12 @@ export function AuditLogs({ isActive = true }: AuditLogsProps) {
               </div>
             </div>
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button className="bg-[#DB9D47] hover:bg-[#C88A35] text-white">
+              
+                <Button onClick={handleExportCSV} className="bg-[#DB9D47] hover:bg-[#C88A35] text-white">
                   <Download className="w-4 h-4 mr-2" />
                   Export
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={handleExportPDF}>
-                  <FileText className="w-4 h-4 mr-2" />
-                  Export as PDF
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleExportCSV}>
-                  <FileSpreadsheet className="w-4 h-4 mr-2" />
-                  Export as CSV
-                </DropdownMenuItem>
-              </DropdownMenuContent>
+              
             </DropdownMenu>
           </div>
         </CardHeader>
@@ -258,14 +272,14 @@ export function AuditLogs({ isActive = true }: AuditLogsProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredLogs.length === 0 ? (
+              {currentLogs.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center py-8 text-[#87765E]">
                     No audit logs found matching your criteria
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredLogs.map((log, index) => (
+                currentLogs.map((log, index) => (
                   <TableRow key={`audit-log-${log.id || index}`} className="hover:bg-[#FFFDF8]">
                     <TableCell className="text-sm text-[#87765E]">
                       {new Date(log.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
@@ -275,7 +289,7 @@ export function AuditLogs({ isActive = true }: AuditLogsProps) {
                       {log.userName || log.userEmail || log.userId}
                     </TableCell>
                     <TableCell className="text-sm text-[#5C4A3A]">{formatActionName(log.action)}</TableCell>
-                    <TableCell className="text-sm text-[#87765E] hidden lg:table-cell">{log.description}</TableCell>
+                    <TableCell className="text-sm text-[#87765E] hidden lg:table-cell">{getDescription(log)}</TableCell>
                     <TableCell>
                       <Badge variant={getStatusBadgeVariant(log.status)} className="text-xs whitespace-nowrap">
                         {log.status}
@@ -287,6 +301,19 @@ export function AuditLogs({ isActive = true }: AuditLogsProps) {
             </TableBody>
           </Table>
         </div>
+
+        {/* Pagination */}
+        <Pagination
+          totalItems={filteredLogs.length}
+          itemsPerPage={logsPerPage}
+          currentPage={currentPage}
+          totalPages={Math.ceil(filteredLogs.length / logsPerPage)}
+          onPageChange={setCurrentPage}
+          onItemsPerPageChange={(newSize) => {
+            setLogsPerPage(newSize);
+            setCurrentPage(1); // Reset to first page when changing page size
+          }}
+        />
 
         {/* Loading State */}
         {isLoading && (

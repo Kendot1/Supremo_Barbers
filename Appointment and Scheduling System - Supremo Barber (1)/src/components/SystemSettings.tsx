@@ -11,11 +11,12 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Switch } from "./ui/switch";
 import { Separator } from "./ui/separator";
-import { Clock, Award, Bell, Save } from "lucide-react";
+import { Clock, Award, Bell, Save, Database, CheckCircle2, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import API from "../services/api.service";
 import { DatabaseWiper } from "./DatabaseWiper";
 import { ImageUploadTest } from "./ImageUploadTest";
+import { Alert, AlertDescription } from "./ui/alert";
 
 export function SystemSettings() {
   const [settings, setSettings] = useState({
@@ -32,6 +33,7 @@ export function SystemSettings() {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isConnected, setIsConnected] = useState(false);
 
   // Fetch settings from database on mount
   useEffect(() => {
@@ -52,10 +54,13 @@ export function SystemSettings() {
             smsNotifications: data.notifications?.smsEnabled ?? false,
             reminderHours: data.notifications?.reminderHours || 24,
           });
+          setIsConnected(true);
         }
       } catch (error) {
-        console.error('Error fetching settings:', error);
-        toast.error('Using default settings - database not connected');
+        // Silently handle - settings endpoint is optional
+        // Using default settings if backend isn't configured
+        console.log('Settings endpoint not available, using defaults');
+        setIsConnected(false);
       } finally {
         setIsLoading(false);
       }
@@ -88,9 +93,11 @@ export function SystemSettings() {
           reminderHours: settings.reminderHours,
         },
       });
+      setIsConnected(true); // Mark as connected after successful save
       toast.success("Settings saved to database successfully!");
     } catch (error) {
       console.error('Error saving settings:', error);
+      setIsConnected(false);
       toast.error("Failed to save settings to database");
     } finally {
       setIsSaving(false);
@@ -99,6 +106,8 @@ export function SystemSettings() {
 
   return (
     <div className="space-y-6">
+      
+
       {/* Working Hours */}
       <Card>
         <CardHeader>
@@ -290,8 +299,7 @@ export function SystemSettings() {
       </div>
 
 
-      <Separator className="my-8" />
-      <DatabaseWiper />
+     
     </div>
   );
 }

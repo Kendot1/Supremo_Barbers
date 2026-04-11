@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
-import {
-  Eye,
-  EyeOff,
-  User,
-  Lock,
-  Mail,
-  ArrowRight,
+import { 
+  Eye, 
+  EyeOff, 
+  User, 
+  Lock, 
+  Mail, 
+  ArrowRight, 
   CheckCircle2,
   Check,
   ChevronRight,
@@ -29,11 +29,11 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./ui/t
 import { toast } from "sonner@2.0.3";
 import API from "../services/api.service";
 import { projectId, publicAnonKey } from "../utils/supabase/info";
-import {
-  ValidationError,
-  validateLoginForm,
+import { 
+  ValidationError, 
+  validateLoginForm, 
   validateRegistrationForm,
-  getFieldError
+  getFieldError 
 } from "../utils/validation";
 import { validatePassword, getPasswordFeedback } from "../utils/passwordValidator";
 import { logNewDeviceLogin, logUserRegistration, logUserLogin, logFailedLogin } from "../services/audit-notification.service";
@@ -49,7 +49,7 @@ const defaultTab = "login";
 // Password input component
 function PasswordInput({ className, ...props }: React.ComponentPropsWithoutRef<typeof Input>) {
   const [showPassword, setShowPassword] = useState(false);
-
+  
   return (
     <div className="relative">
       <Input
@@ -108,19 +108,19 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
   const [generatedOtp, setGeneratedOtp] = useState("");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
-
+  
   // Email duplicate checking state
   const [isCheckingEmail, setIsCheckingEmail] = useState(false);
   const [emailExists, setEmailExists] = useState(false);
-
+  
   // Username duplicate checking state
   const [isCheckingUsername, setIsCheckingUsername] = useState(false);
   const [usernameExists, setUsernameExists] = useState(false);
-
+  
   // Password strength validation state
   const [passwordStrength, setPasswordStrength] = useState<ReturnType<typeof validatePassword> | null>(null);
   const [resetPasswordStrength, setResetPasswordStrength] = useState<ReturnType<typeof validatePassword> | null>(null);
-
+  
   // OTP Resend Timer (2 minutes = 120 seconds)
   const [resendCooldown, setResendCooldown] = useState(0);
   const [canResend, setCanResend] = useState(false);
@@ -165,7 +165,7 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
   useEffect(() => {
     const savedUsername = localStorage.getItem('rememberedUsername');
     const savedPassword = localStorage.getItem('rememberedPassword');
-
+    
     if (savedUsername && savedPassword) {
       setUsername(savedUsername);
       setPassword(savedPassword);
@@ -178,18 +178,18 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
         console.log('🔍 Testing backend connectivity...');
         console.log('📍 Project ID:', projectId);
         console.log('🔑 Anon Key:', publicAnonKey?.substring(0, 20) + '...');
-
+        
         // Test health endpoint
         const healthUrl = `https://${projectId}.supabase.co/functions/v1/make-server-70e1fc66/health`;
         console.log('🌐 Testing:', healthUrl);
-
+        
         const response = await fetch(healthUrl, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${publicAnonKey}`,
           }
         });
-
+        
         const data = await response.json();
         console.log('✅ Backend health check:', response.status, data);
       } catch (error) {
@@ -284,7 +284,7 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
       // Admins ALWAYS go through 2FA — no device trust for admin accounts.
       if (response.user.role === 'customer') {
         const trustedKey = `trusted_device_${response.user.email.toLowerCase()}`;
-        const trustedTs = localStorage.getItem(`${trustedKey}_ts`);
+        const trustedTs  = localStorage.getItem(`${trustedKey}_ts`);
         const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
 
         // Also check server-side revocation timestamp (set when "Sign Out All Devices" is used).
@@ -406,13 +406,13 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
         if (error.code === "account_locked") {
           errorMessage = error.message || "Your account is temporarily locked due to multiple failed login attempts.";
           errorDuration = 10000; // Show longer for important security message
-
+          
           // Show remaining time if available
           if (error.locked_until) {
             const lockedUntil = new Date(error.locked_until);
             const now = new Date();
             const minutesRemaining = Math.ceil((lockedUntil.getTime() - now.getTime()) / 60000);
-
+            
             if (minutesRemaining > 0) {
               errorMessage = `🔒 Account locked for ${minutesRemaining} minute(s). Too many failed attempts.`;
             }
@@ -445,7 +445,7 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
       }
 
       // Log failed login attempt
-      logFailedLogin(email || username, errorMessage).catch(err =>
+      logFailedLogin(email || username, errorMessage).catch(err => 
         console.error('Failed to log failed login:', err)
       );
 
@@ -543,10 +543,10 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
 
         // Show success message and trigger login IMMEDIATELY
         // toast.success(`Welcome back, ${pendingLoginData.user.name}!`); // Removed per user request
-
+        
         // Call onLogin immediately - don't wait for anything
         onLogin(pendingLoginData.user);
-
+        
         // Note: setIsLoading(false) is in finally block, but UI already changed
       }
     } catch (error) {
@@ -560,17 +560,17 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
   // Resend Login OTP
   const handleResendLoginOTP = async () => {
     setIsLoading(true);
-
+    
     try {
       // Get email from pendingLoginData (set during login)
       const userEmail = pendingLoginData?.user?.email || email;
-
+      
       if (!userEmail) {
         toast.error("Email not found. Please try logging in again.");
         setIsLoading(false);
         return;
       }
-
+      
       // Resend OTP via backend API
       const otpResponse = await fetch(
         `https://${projectId}.supabase.co/functions/v1/make-server-70e1fc66/api/auth/send-otp`,
@@ -603,7 +603,7 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
       toast.success("New verification code sent!", {
         description: "Check your email for the new code"
       });
-
+      
       // Restart 2-minute cooldown timer (120 seconds)
       setLoginResendCooldown(120);
       setLoginCanResend(false);
@@ -616,7 +616,7 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
   };
 
   // ==================== FORGOT PASSWORD HANDLERS ====================
-
+  
   // Step 1: Send OTP to email or username
   const handleForgotPasswordSendOTP = async () => {
     setIsLoading(true);
@@ -632,15 +632,15 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
     try {
       console.log('📧 Sending forgot password request for:', forgotEmail);
       console.log('🌐 Full URL:', `https://${projectId}.supabase.co/functions/v1/make-server-70e1fc66/api/auth/forgot-password`);
-
+      
       // Detect if input is email or username
       const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(forgotEmail);
-      const requestBody = isEmail
+      const requestBody = isEmail 
         ? { email: forgotEmail.toLowerCase() }
         : { username: forgotEmail.toLowerCase() };
-
+      
       console.log('📝 Request body:', requestBody);
-
+      
       const response = await fetch(
         `https://${projectId}.supabase.co/functions/v1/make-server-70e1fc66/api/auth/forgot-password`,
         {
@@ -655,10 +655,10 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
 
       console.log('📨 Response status:', response.status);
       console.log('📨 Response headers:', Object.fromEntries(response.headers.entries()));
-
+      
       const contentType = response.headers.get('content-type');
       let data;
-
+      
       if (contentType && contentType.includes('application/json')) {
         data = await response.json();
         console.log('📨 Response data:', data);
@@ -828,7 +828,7 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
       // Clear session and close dialog
       sessionStorage.removeItem('forgot_password_token');
       toast.success("Password reset successful! Please login with your new password.");
-
+      
       // Reset form and close dialog
       setShowForgotPassword(false);
       setForgotPasswordStep(1);
@@ -894,10 +894,10 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
     }
 
     setIsCheckingEmail(true);
-
+    
     try {
       const response = await API.auth.checkEmailExists(emailToCheck.toLowerCase());
-
+      
       if (response.exists) {
         setEmailExists(true);
         setErrors([
@@ -927,10 +927,10 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
     }
 
     setIsCheckingUsername(true);
-
+    
     try {
       const response = await API.auth.checkUsernameExists(usernameToCheck.toLowerCase());
-
+      
       if (response.exists) {
         setUsernameExists(true);
         setErrors([
@@ -1003,10 +1003,10 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
     // Check if email already exists
     setIsLoading(true);
     setIsCheckingEmail(true);
-
+    
     try {
       const emailCheckResponse = await API.auth.checkEmailExists(email.toLowerCase());
-
+      
       if (emailCheckResponse.exists) {
         setEmailExists(true);
         setErrors([
@@ -1020,7 +1020,7 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
         setIsCheckingEmail(false);
         return;
       }
-
+      
       setEmailExists(false);
     } catch (error) {
       console.error("Error checking email:", error);
@@ -1029,7 +1029,7 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
       setIsCheckingEmail(false);
       return;
     }
-
+    
     setIsCheckingEmail(false);
 
     // Check if username is valid and not taken
@@ -1047,10 +1047,10 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
 
     // Check if username already exists
     setIsCheckingUsername(true);
-
+    
     try {
       const usernameCheckResponse = await API.auth.checkUsernameExists(username.toLowerCase());
-
+      
       if (usernameCheckResponse.exists) {
         setUsernameExists(true);
         setErrors([
@@ -1064,7 +1064,7 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
         setIsCheckingUsername(false);
         return;
       }
-
+      
       setUsernameExists(false);
     } catch (error) {
       console.error("Error checking username:", error);
@@ -1073,7 +1073,7 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
       setIsCheckingUsername(false);
       return;
     }
-
+    
     setIsCheckingUsername(false);
 
     try {
@@ -1196,10 +1196,10 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
 
       setErrors([]);
       toast.success("Email verified successfully!");
-
+      
       // Clear OTP token from session storage after successful verification
       sessionStorage.removeItem('otp_token');
-
+      
       setRegistrationStep(3);
     } catch (error) {
       console.error("OTP verification error:", error);
@@ -1291,7 +1291,7 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
 
   const handleResendOTP = async () => {
     setIsLoading(true);
-
+    
     try {
       // Resend OTP via backend API
       const otpResponse = await fetch(
@@ -1325,7 +1325,7 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
       toast.success("New verification code sent!", {
         description: "Check your email for the new code"
       });
-
+      
       // Restart 2-minute cooldown timer (120 seconds)
       setResendCooldown(120);
       setCanResend(false);
@@ -1350,7 +1350,7 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
             Back to Home
           </Button>
         )}
-
+        
         <div className="text-center mb-4 sm:mb-8">
           <div className="inline-flex items-center justify-center mb-2 sm:mb-4">
             <img
@@ -1895,7 +1895,7 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
                           onChange={(e) => {
                             const newPassword = e.target.value;
                             setPassword(newPassword);
-
+                            
                             // Real-time password validation
                             if (newPassword) {
                               const validation = validatePassword(newPassword, name);
@@ -1903,7 +1903,7 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
                             } else {
                               setPasswordStrength(null);
                             }
-
+                            
                             setErrors(
                               errors.filter(
                                 (e) => e.field !== "password",
@@ -1916,7 +1916,7 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
                               : ""
                           }
                         />
-
+                        
                         {/* Password Strength Indicator */}
                         {password && passwordStrength && (
                           <div className="space-y-2">
@@ -1926,26 +1926,28 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
                                 <span className="text-xs font-medium text-gray-600">
                                   Password Strength
                                 </span>
-                                <span className={`text-xs font-semibold ${passwordStrength.strength === 'strong' ? 'text-green-600' :
-                                    passwordStrength.strength === 'medium' ? 'text-yellow-600' :
-                                      'text-red-600'
-                                  }`}>
+                                <span className={`text-xs font-semibold ${
+                                  passwordStrength.strength === 'strong' ? 'text-green-600' :
+                                  passwordStrength.strength === 'medium' ? 'text-yellow-600' :
+                                  'text-red-600'
+                                }`}>
                                   {passwordStrength.strength === 'strong' ? '✓ Strong' :
-                                    passwordStrength.strength === 'medium' ? '○ Medium' :
-                                      '✗ Weak'}
+                                   passwordStrength.strength === 'medium' ? '○ Medium' :
+                                   '✗ Weak'}
                                 </span>
                               </div>
                               <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                                <div
-                                  className={`h-full transition-all duration-300 ${passwordStrength.strength === 'strong' ? 'bg-green-500' :
-                                      passwordStrength.strength === 'medium' ? 'bg-yellow-500' :
-                                        'bg-red-500'
-                                    }`}
+                                <div 
+                                  className={`h-full transition-all duration-300 ${
+                                    passwordStrength.strength === 'strong' ? 'bg-green-500' :
+                                    passwordStrength.strength === 'medium' ? 'bg-yellow-500' :
+                                    'bg-red-500'
+                                  }`}
                                   style={{ width: `${passwordStrength.score}%` }}
                                 />
                               </div>
                             </div>
-
+                            
                             {/* Issues Only - Critical feedback */}
                             {passwordStrength.issues.length > 0 && (
                               <div className="space-y-1">
@@ -1959,7 +1961,7 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
                             )}
                           </div>
                         )}
-
+                        
                         {getFieldError(errors, "password") && (
                           <p className="text-sm text-red-500">
                             {getFieldError(errors, "password")}
@@ -2010,13 +2012,13 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
                           errors,
                           "confirmPassword",
                         ) && (
-                            <p className="text-sm text-red-500">
-                              {getFieldError(
-                                errors,
-                                "confirmPassword",
-                              )}
-                            </p>
-                          )}
+                          <p className="text-sm text-red-500">
+                            {getFieldError(
+                              errors,
+                              "confirmPassword",
+                            )}
+                          </p>
+                        )}
                       </div>
 
                       <Button
@@ -2544,7 +2546,7 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
                     onChange={(e) => {
                       const newPasswordValue = e.target.value;
                       setNewPassword(newPasswordValue);
-
+                      
                       // Real-time password validation
                       if (newPasswordValue) {
                         const validation = validatePassword(newPasswordValue, forgotEmail.split('@')[0]);
@@ -2552,12 +2554,12 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
                       } else {
                         setResetPasswordStrength(null);
                       }
-
+                      
                       setErrors(errors.filter(e => e.field !== "newPassword"));
                     }}
                     className={getFieldError(errors, "newPassword") ? "border-red-500" : ""}
                   />
-
+                  
                   {/* Password Strength Indicator */}
                   {newPassword && resetPasswordStrength && (
                     <div className="space-y-2">
@@ -2567,26 +2569,28 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
                           <span className="text-xs font-medium text-gray-600">
                             Password Strength
                           </span>
-                          <span className={`text-xs font-semibold ${resetPasswordStrength.strength === 'strong' ? 'text-green-600' :
-                              resetPasswordStrength.strength === 'medium' ? 'text-yellow-600' :
-                                'text-red-600'
-                            }`}>
+                          <span className={`text-xs font-semibold ${
+                            resetPasswordStrength.strength === 'strong' ? 'text-green-600' :
+                            resetPasswordStrength.strength === 'medium' ? 'text-yellow-600' :
+                            'text-red-600'
+                          }`}>
                             {resetPasswordStrength.strength === 'strong' ? '✓ Strong' :
-                              resetPasswordStrength.strength === 'medium' ? '○ Medium' :
-                                '✗ Weak'}
+                             resetPasswordStrength.strength === 'medium' ? '○ Medium' :
+                             '✗ Weak'}
                           </span>
                         </div>
                         <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                          <div
-                            className={`h-full transition-all duration-300 ${resetPasswordStrength.strength === 'strong' ? 'bg-green-500' :
-                                resetPasswordStrength.strength === 'medium' ? 'bg-yellow-500' :
-                                  'bg-red-500'
-                              }`}
+                          <div 
+                            className={`h-full transition-all duration-300 ${
+                              resetPasswordStrength.strength === 'strong' ? 'bg-green-500' :
+                              resetPasswordStrength.strength === 'medium' ? 'bg-yellow-500' :
+                              'bg-red-500'
+                            }`}
                             style={{ width: `${resetPasswordStrength.score}%` }}
                           />
                         </div>
                       </div>
-
+                      
                       {/* Issues Only - Critical feedback */}
                       {resetPasswordStrength.issues.length > 0 && (
                         <div className="space-y-1">
@@ -2600,7 +2604,7 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
                       )}
                     </div>
                   )}
-
+                  
                   {getFieldError(errors, "newPassword") && (
                     <p className="text-sm text-red-500">
                       {getFieldError(errors, "newPassword")}
@@ -2652,3 +2656,6 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
     </div>
   );
 }
+
+// Add default export for lazy loading in App.tsx
+export default LoginPage;

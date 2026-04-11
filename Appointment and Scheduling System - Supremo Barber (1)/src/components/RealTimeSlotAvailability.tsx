@@ -58,6 +58,8 @@ export function RealTimeSlotAvailability() {
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isFetchingAppointments, setIsFetchingAppointments] = useState(false);
+  const [lastClickTime, setLastClickTime] = useState(0);
 
   // Parse time string (HH:MM) to minutes from midnight
   const parseTime = (time: string): number => {
@@ -155,13 +157,13 @@ export function RealTimeSlotAvailability() {
   // Fetch barbers with their availability schedules
   const fetchBarbers = async () => {
     try {
-    
+      console.log('🔍 Fetching barbers...');
       const fetchedBarbers = await API.barbers.getAll();
-     
+      console.log('📋 All barbers from API:', fetchedBarbers);
       
       // Only include active barbers
       const activeBarbers = fetchedBarbers.filter(b => b.status === 'active' || b.isActive !== false);
-     
+      console.log('✅ Active barbers:', activeBarbers);
       
       // Fetch availability for each barber
       const barbersWithAvailability = await Promise.all(
@@ -169,7 +171,7 @@ export function RealTimeSlotAvailability() {
           try {
             // Fetch barber's availability schedule from backend
             const availability = await API.barbers.getAvailability(barber.id || barber._id || '');
-           
+            console.log(`📅 Availability for ${barber.name}:`, availability);
             return {
               ...barber,
               availability: availability || [], // Use real availability or empty array
@@ -185,7 +187,7 @@ export function RealTimeSlotAvailability() {
         })
       );
       
-     
+      console.log('👥 Barbers with availability:', barbersWithAvailability);
       setBarbers(barbersWithAvailability as BarberData[]);
     } catch (error) {
       console.error('Error fetching barbers:', error);
@@ -197,22 +199,28 @@ export function RealTimeSlotAvailability() {
   // Fetch appointments for selected date
   const fetchAppointments = async (date: Date) => {
     try {
-      const dateString = date.toISOString().split('T')[0];
-     
+      // Format date in local timezone (YYYY-MM-DD) to avoid UTC conversion issues
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const dateString = `${year}-${month}-${day}`;
+      
+      console.log('🔍 Fetching appointments for date (local timezone):', dateString);
+      console.log('🌍 User timezone offset:', -date.getTimezoneOffset() / 60, 'hours from UTC');
       
       const allAppointments = await API.appointments.getAll({
         dateFrom: dateString,
         dateTo: dateString,
       });
       
-     
+      console.log('📅 Raw appointments from API:', allAppointments);
       
       // Only include confirmed appointments (pending and confirmed status)
       const relevantAppointments = allAppointments.filter(
         apt => apt.status === 'pending' || apt.status === 'confirmed'
       );
       
-    
+      console.log('✅ Filtered appointments (pending/confirmed):', relevantAppointments);
       
       setAppointments(relevantAppointments);
     } catch (error) {
@@ -351,17 +359,26 @@ export function RealTimeSlotAvailability() {
 
   // Update appointments when date changes
   useEffect(() => {
-    if (selectedDate) {
-      fetchAppointments(selectedDate);
-    }
+    const loadAppointments = async () => {
+      if (selectedDate) {
+        setIsFetchingAppointments(true);
+        await fetchAppointments(selectedDate);
+        setIsFetchingAppointments(false);
+      }
+    };
+    loadAppointments();
   }, [selectedDate]);
 
   // Recalculate slots when barbers, appointments, selected date, or selected barber changes
   useEffect(() => {
-    
+    console.log('🔄 Recalculating slots...');
+    console.log('  - Barbers:', barbers.length);
+    console.log('  - Appointments:', appointments.length);
+    console.log('  - Selected Date:', selectedDate);
+    console.log('  - Selected Barber:', selectedBarber);
     
     const slots = calculateSlotAvailability();
-    
+    console.log('⏰ Generated time slots:', slots);
     setTimeSlots(slots);
   }, [barbers, appointments, selectedBarber, selectedDate]);
 
@@ -374,6 +391,28 @@ export function RealTimeSlotAvailability() {
     }
     setIsRefreshing(false);
     toast.success('Availability updated');
+  };
+
+  // Handle date selection with double-click prevention
+  const handleDateSelect = (date: Date | undefined) => {
+    const now = Date.now();
+    
+    // Prevent double-click (ignore clicks within 300ms)
+    if (now - lastClickTime < 300) {
+      return;
+    }
+    
+    setLastClickTime(now);
+    
+    // If clicking the same date, keep it selected (don't toggle to undefined)
+    if (date && selectedDate && 
+        date.getDate() === selectedDate.getDate() &&
+        date.getMonth() === selectedDate.getMonth() &&
+        date.getFullYear() === selectedDate.getFullYear()) {
+      return; // Don't change selection
+    }
+    
+    setSelectedDate(date);
   };
 
   const getSlotColor = (status: string) => {
@@ -458,7 +497,58 @@ export function RealTimeSlotAvailability() {
         </CardHeader>
       </Card>
 
-      
+      {/* Barber Availability Alert */}
+      {barbers.length > 0 && selectedDate && (
+        <Card className={`border-2 ${
+          workingBarbersCount === 0 
+            ? 'border-red-200 bg-red-50' 
+            : workingBarbersCount < barbers.length 
+            ? 'border-orange-200 bg-orange-50' 
+            : 'border-green-200 bg-green-50'
+        }`}>
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-3">
+              {workingBarbersCount === 0 ? (
+                <XCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
+              ) : workingBarbersCount < barbers.length ? (
+                <AlertCircle className="w-5 h-5 text-orange-600 mt-0.5 flex-shrink-0" />
+              ) : (
+                <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
+              )}
+              <div className="flex-1">
+                <p className={`text-sm font-medium ${
+                  workingBarbersCount === 0 
+                    ? 'text-red-900' 
+                    : workingBarbersCount < barbers.length 
+                    ? 'text-orange-900' 
+                    : 'text-green-900'
+                }`}>
+                  {workingBarbersCount === 0 
+                    ? 'No barbers available' 
+                    : workingBarbersCount < barbers.length 
+                    ? `Limited availability` 
+                    : 'All barbers available'}
+                </p>
+                <p className={`text-xs mt-1 ${
+                  workingBarbersCount === 0 
+                    ? 'text-red-700' 
+                    : workingBarbersCount < barbers.length 
+                    ? 'text-orange-700' 
+                    : 'text-green-700'
+                }`}>
+                  {workingBarbersCount} of {barbers.length} barber{barbers.length !== 1 ? 's' : ''} working on{' '}
+                  {selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+                </p>
+                {selectedBarber !== "any" && !selectedBarberWorkingToday && (
+                  <p className="text-xs mt-2 text-red-700 font-medium">
+                    ⚠️ Selected barber is not available on this day
+                  </p>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Sidebar - Calendar & Filters */}
@@ -477,7 +567,7 @@ export function RealTimeSlotAvailability() {
                 <Calendar
                   mode="single"
                   selected={selectedDate}
-                  onSelect={setSelectedDate}
+                  onSelect={handleDateSelect}
                   className="rounded-md border border-[#E8DCC8] bg-white scale-110 p-4"
                   disabled={(date) => {
                     const today = new Date();
@@ -644,7 +734,14 @@ export function RealTimeSlotAvailability() {
               </div>
             </CardHeader>
             <CardContent>
-              {barbers.length === 0 ? (
+              {isFetchingAppointments ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="text-center">
+                    <Loader2 className="w-8 h-8 animate-spin text-[#DB9D47] mx-auto mb-3" />
+                    <p className="text-[#87765E]">Updating availability...</p>
+                  </div>
+                </div>
+              ) : barbers.length === 0 ? (
                 <div className="text-center py-12 bg-red-50 rounded-lg border-2 border-red-200">
                   <User className="w-12 h-12 mx-auto text-red-400 mb-3" />
                   <p className="text-red-900 font-medium mb-1">
@@ -698,9 +795,11 @@ export function RealTimeSlotAvailability() {
                             key={index}
                             variant="outline"
                             disabled={slot.status === "booked" || slot.status === "closed"}
-                            className={`h-auto py-4 px-3 flex flex-col items-center gap-2 border-2 transition-all ${getSlotColor(
-                              slot.status,
-                            )}`}
+                            className={`h-auto py-4 px-3 flex flex-col items-center gap-2 border-2 transition-all ${
+                              selectedBarber !== "any" && (slot.status === "available" || slot.status === "limited")
+                                ? "bg-green-50 text-green-700 border-green-300 hover:bg-green-100 hover:border-green-400"
+                                : getSlotColor(slot.status)
+                            }`}
                           >
                             <div className="flex items-center gap-1.5">
                               <Clock className="w-4 h-4" />
@@ -747,9 +846,11 @@ export function RealTimeSlotAvailability() {
                             key={index}
                             variant="outline"
                             disabled={slot.status === "booked" || slot.status === "closed"}
-                            className={`h-auto py-4 px-3 flex flex-col items-center gap-2 border-2 transition-all ${getSlotColor(
-                              slot.status,
-                            )}`}
+                            className={`h-auto py-4 px-3 flex flex-col items-center gap-2 border-2 transition-all ${
+                              selectedBarber !== "any" && (slot.status === "available" || slot.status === "limited")
+                                ? "bg-green-50 text-green-700 border-green-300 hover:bg-green-100 hover:border-green-400"
+                                : getSlotColor(slot.status)
+                            }`}
                           >
                             <div className="flex items-center gap-1.5">
                               <Clock className="w-4 h-4" />
@@ -796,9 +897,11 @@ export function RealTimeSlotAvailability() {
                             key={index}
                             variant="outline"
                             disabled={slot.status === "booked" || slot.status === "closed"}
-                            className={`h-auto py-4 px-3 flex flex-col items-center gap-2 border-2 transition-all ${getSlotColor(
-                              slot.status,
-                            )}`}
+                            className={`h-auto py-4 px-3 flex flex-col items-center gap-2 border-2 transition-all ${
+                              selectedBarber !== "any" && (slot.status === "available" || slot.status === "limited")
+                                ? "bg-green-50 text-green-700 border-green-300 hover:bg-green-100 hover:border-green-400"
+                                : getSlotColor(slot.status)
+                            }`}
                           >
                             <div className="flex items-center gap-1.5">
                               <Clock className="w-4 h-4" />

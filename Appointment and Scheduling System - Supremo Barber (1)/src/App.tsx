@@ -12,7 +12,7 @@ import { createNotification } from "./components/NotificationCenter";
 // Lazy load heavy components for code splitting
 // Note: These components use named exports, so we need to wrap them for lazy loading
 const LandingPage = lazy(() => import("./components/LandingPage").then(module => ({ default: module.LandingPage })));
-const LoginPage = lazy(() => import("./components/LoginPage").then(module => ({ default: module.LoginPage })));
+const LoginPage = lazy(() => import("./components/LoginPage"));
 const ImprovedSuperAdminDashboard = lazy(() => import("./components/ImprovedSuperAdminDashboard").then(module => ({ default: module.ImprovedSuperAdminDashboard })));
 const BarberDashboard = lazy(() => import("./components/EnhancedBarberDashboard").then(module => ({ default: module.EnhancedBarberDashboard })));
 const CustomerDashboard = lazy(() => import("./components/CustomerDashboard").then(module => ({ default: module.CustomerDashboard })));
@@ -122,7 +122,7 @@ function App() {
     const validateAndLoadUser = async () => {
       const storedUser = localStorage.getItem('currentUser');
       const storedToken = localStorage.getItem('authToken');
-
+      
       // IMPORTANT: Clear invalid tokens immediately
       if (storedToken) {
         // Check if token is obviously invalid (too short, malformed, etc.)
@@ -134,15 +134,15 @@ function App() {
           return;
         }
       }
-
+      
       if (storedUser && storedToken) {
         try {
           const user = JSON.parse(storedUser);
-
+          
           // Check if login was recent (within last 5 minutes)
           const loginTime = localStorage.getItem('loginTime');
           const isRecentLogin = loginTime && (Date.now() - parseInt(loginTime)) < 5 * 60 * 1000;
-
+          
           if (isRecentLogin) {
             // Trust the token for recent logins (faster)
             setCurrentUser(user);
@@ -180,10 +180,10 @@ function App() {
           localStorage.removeItem('loginTime');
         }
       }
-
+      
       setIsLoading(false);
     };
-
+    
     validateAndLoadUser();
   }, []);
 
@@ -195,7 +195,7 @@ function App() {
     // UI: pending, verified, rejected
     let uiPaymentStatus = 'pending';
     const dbPaymentStatus = apt.payment_status || apt.paymentStatus || 'pending';
-
+    
     if (dbPaymentStatus === 'paid') {
       uiPaymentStatus = 'verified';
     } else if (dbPaymentStatus === 'refunded') {
@@ -223,7 +223,7 @@ function App() {
       paymentStatus: uiPaymentStatus,
       downPaymentPaid: apt.downPaymentPaid !== undefined ? apt.downPaymentPaid : apt.down_payment > 0,
       remainingBalance: apt.remaining_amount || apt.remainingBalance || 0,
-      rescheduledCount: apt.rescheduledCount || 0,
+      rescheduledCount: apt.rescheduled_count || apt.rescheduledCount || 0,
       // Database fields
       customerId: apt.customer_id,
       customer_id: apt.customer_id,
@@ -270,7 +270,7 @@ function App() {
 
     // Only include database fields, not UI-only fields
     const dbData: any = {};
-
+    
     // Map fields to database column names
     if (apt.appointment_date !== undefined) dbData.appointment_date = apt.appointment_date;
     if (apt.appointment_time !== undefined) dbData.appointment_time = apt.appointment_time;
@@ -283,7 +283,8 @@ function App() {
     if (apt.barber_id !== undefined) dbData.barber_id = apt.barber_id;
     if (apt.service_id !== undefined) dbData.service_id = apt.service_id;
     if (apt.customer_id !== undefined) dbData.customer_id = apt.customer_id;
-
+    if (apt.rescheduled_count !== undefined) dbData.rescheduled_count = apt.rescheduled_count;
+    
     return dbData;
   }, []);
 
@@ -292,7 +293,7 @@ function App() {
   const fetchAppointments = useCallback(async (userId?: string, userRole?: UserRole) => {
     try {
       let fetchedAppointments: any[];
-
+      
       if (userRole === 'admin') {
         // Admin sees all appointments
         fetchedAppointments = await API.appointments.getAll();
@@ -306,7 +307,7 @@ function App() {
       } else {
         fetchedAppointments = [];
       }
-
+      
       // Transform appointments to include both database and legacy fields
       // Filter out appointments with invalid UUID format (legacy data cleanup)
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -317,9 +318,9 @@ function App() {
         }
         return true;
       });
-
+      
       const transformedAppointments = validAppointments.map(transformAppointment);
-
+      
       console.log(`✅ Fetched ${transformedAppointments.length} appointments for ${userRole}`);
       setAppointments(transformedAppointments);
     } catch (error) {
@@ -334,20 +335,20 @@ function App() {
   const fetchNotifications = useCallback(async (userId: string) => {
     try {
       const fetchedNotifications = await API.notifications.getByUserId(userId);
-
+      
       // Filter out old test/demo notifications with specific service names
       const filteredNotifications = fetchedNotifications.filter((notif: any) => {
         const message = notif.message || '';
         // Remove old payment verified notifications for test services
-        if (notif.title?.includes('Payment Verified') &&
-          (message.includes('Beard Trim') ||
-            message.includes('Premium Cut') ||
-            message.includes('Gupit Supremo'))) {
+        if (notif.title?.includes('Payment Verified') && 
+            (message.includes('Beard Trim') || 
+             message.includes('Premium Cut') || 
+             message.includes('Gupit Supremo'))) {
           return false;
         }
         return true;
       });
-
+      
       setNotifications(filteredNotifications);
     } catch (error) {
       console.error('Error fetching notifications:', error);
@@ -363,13 +364,13 @@ function App() {
       console.log('🔄 Refreshing user profile from database...');
       const freshUserData = await API.users.getById(userId);
       console.log('✅ Fresh user data received:', freshUserData);
-
+      
       // Update current user state with fresh data
       setCurrentUser(freshUserData);
-
+      
       // Update localStorage with fresh data
       localStorage.setItem('currentUser', JSON.stringify(freshUserData));
-
+      
       console.log('✅ User profile refreshed successfully');
     } catch (error) {
       console.error('❌ Error refreshing user profile:', error);
@@ -381,19 +382,19 @@ function App() {
   const fetchUserData = useCallback(async (userId: string, userRole: UserRole) => {
     try {
       // Refresh user profile first to get latest data (including avatarUrl)
-      refreshUserProfile(userId).catch(err =>
+      refreshUserProfile(userId).catch(err => 
         console.error('Error refreshing user profile:', err)
       );
-
+      
       // Fetch appointments (priority), then notifications in background
       // This speeds up perceived load time
-      fetchAppointments(userId, userRole).catch(err =>
+      fetchAppointments(userId, userRole).catch(err => 
         console.error('Error fetching appointments:', err)
       );
-
+      
       // Fetch notifications after a small delay to not block UI
       setTimeout(() => {
-        fetchNotifications(userId).catch(err =>
+        fetchNotifications(userId).catch(err => 
           console.error('Error fetching notifications:', err)
         );
       }, 100);
@@ -409,17 +410,17 @@ function App() {
 
     // Set up polling interval (every 15 seconds for customers to catch payment verification updates)
     const pollInterval = currentUser.role === 'customer' ? 15000 : 30000; // 15s for customers, 30s for others
-
+    
     const intervalId = setInterval(() => {
       console.log('🔄 Auto-refreshing data for', currentUser.role);
-
+      
       // Refresh appointments to catch payment status changes
-      fetchAppointments(currentUser.id, currentUser.role).catch(err =>
+      fetchAppointments(currentUser.id, currentUser.role).catch(err => 
         console.error('Auto-refresh appointments error:', err)
       );
-
+      
       // Refresh notifications
-      fetchNotifications(currentUser.id).catch(err =>
+      fetchNotifications(currentUser.id).catch(err => 
         console.error('Auto-refresh notifications error:', err)
       );
     }, pollInterval);
@@ -433,11 +434,11 @@ function App() {
     // Store user in localStorage for session persistence
     localStorage.setItem('currentUser', JSON.stringify(user));
     localStorage.setItem('loginTime', Date.now().toString());
-
+    
     // Fetch user's data from database in background (don't wait)
     // This makes login instant while data loads in the background
     fetchUserData(user.id, user.role);
-
+    
     // Log user login in background (don't block UI)
     logUserLogin(user.id, user.role, user.name, user.email);
   }, [fetchUserData]);
@@ -446,19 +447,19 @@ function App() {
   const handleLogout = useCallback(async () => {
     // Store user info for background logging before clearing
     const userToLog = currentUser;
-
+    
     // IMMEDIATELY clear UI state first (instant response < 0.1s)
     setCurrentUser(null);
     setCurrentView("landingpage");
     setAppointments([]);
     setNotifications([]);
     setAuthToken(null);
-
+    
     // Clear localStorage immediately
     localStorage.removeItem('currentUser');
     localStorage.removeItem('authToken');
     localStorage.removeItem('loginTime');
-
+    
     // Background operations (don't await - fire and forget)
     Promise.all([
       // Log user logout in background
@@ -481,39 +482,60 @@ function App() {
   // Handle adding a new appointment
   // Memoized to prevent recreation on every render
   const handleAddAppointment = useCallback(async (appointment: Appointment) => {
+    console.log("🚀 handleAddAppointment called with:", appointment);
     try {
       // Create appointment (main operation)
+      console.log("📡 Calling API.appointments.create...");
       const createdAppointment = await API.appointments.create(appointment);
-
+      console.log("✅ API.appointments.create SUCCESS:", createdAppointment);
+      
       // Transform the returned appointment to include legacy fields for display
       const transformedAppointment = transformAppointment(createdAppointment);
-
+      console.log("🔄 Transformed appointment:", transformedAppointment);
+      
       // OPTIMISTIC UPDATE: Add to state immediately instead of refetching all
-      setAppointments(prev => [...prev, transformedAppointment]);
-
+      setAppointments(prev => {
+        const updated = [...prev, transformedAppointment];
+        console.log("📊 Updated appointments state, now has", updated.length, "appointments");
+        return updated;
+      });
+      
       // Create notifications in parallel (don't wait for them)
       if (currentUser?.role === 'customer') {
+        console.log("📧 Creating notifications for customer booking...");
         Promise.all([
           API.notifications.create(createNotification(
             'super-admin',
             'New Booking Received',
             `${currentUser.name} booked ${appointment.service} with ${appointment.barber} for ${new Date(appointment.date).toLocaleDateString()}.`,
             'normal',
-            { appointmentId: createdAppointment.id, customerId: currentUser.id }
+            { 
+              appointmentId: createdAppointment.id, 
+              customerId: currentUser.id,
+              actionUrl: `/appointments?highlight=${createdAppointment.id}`, // Highlight new appointment
+              actionLabel: 'View Appointment'
+            }
           )),
           API.notifications.create(createNotification(
             appointment.barber,
             'New Appointment Assigned',
             `${currentUser.name} booked ${appointment.service} on ${new Date(appointment.date).toLocaleDateString()} at ${appointment.time}.`,
             'normal',
-            { appointmentId: createdAppointment.id, customerId: currentUser.id }
+            { 
+              appointmentId: createdAppointment.id, 
+              customerId: currentUser.id,
+              actionUrl: `/appointments?highlight=${createdAppointment.id}`, // Highlight new appointment
+              actionLabel: 'View Appointment'
+            }
           ))
-        ]).catch(error => {
-          console.error('Failed to create notifications:', error);
+        ]).then(() => {
+          console.log("✅ Notifications created successfully");
+        }).catch(error => {
+          console.error('❌ Failed to create notifications:', error);
           // Don't fail the booking if notifications fail
         });
       }
-
+      
       // Log appointment creation in background (don't block UI)
       if (currentUser) {
         logAppointmentCreated(
@@ -530,13 +552,17 @@ function App() {
             time: appointment.time,
             price: appointment.price,
           }
-        ).catch(err => console.error('Failed to log appointment creation:', err));
+        ).then(() => {
+          console.log("✅ Audit log created");
+        }).catch(err => console.error('❌ Failed to log appointment creation:', err));
       }
-
+      
+      console.log("✅ handleAddAppointment COMPLETE, returning:", createdAppointment);
       // Return the created appointment with database ID
       return createdAppointment;
     } catch (error) {
-      console.error('Error adding appointment:', error);
+      console.error('❌ ERROR in handleAddAppointment:', error);
+      toast.error(`Failed to create appointment: ${error.message || 'Please try again'}`);
       throw error;
     }
   }, [currentUser, transformAppointment]);
@@ -559,7 +585,7 @@ function App() {
           console.warn(`Skipping update for appointment with invalid UUID: ${apt.id}`);
           continue;
         }
-
+        
         const dbData = transformAppointmentToDatabase(apt);
         await API.appointments.update(apt.id, dbData);
       }
@@ -568,7 +594,7 @@ function App() {
       if (currentUser) {
         await fetchAppointments(currentUser.id, currentUser.role);
       }
-
+      
       toast.success('Appointments updated successfully');
     } catch (error) {
       console.error('Error updating appointments:', error);
@@ -651,7 +677,7 @@ function App() {
   // IMPORTANT: This must be called before any conditional returns (Rules of Hooks)
   const userNotifications = useMemo(() => {
     if (!currentUser) return [];
-
+    
     return notifications.filter(n => {
       if (currentUser.role === 'admin') {
         return n.userId === 'admin' || n.userId === currentUser.id;
@@ -704,7 +730,7 @@ function App() {
           <Suspense fallback={<LoadingFallback />}>
             <TermsAndConditions onBack={() => startTransition(() => setCurrentView("landingpage"))} />
           </Suspense>
-          <AIChatbot currentUser={currentUser} />
+          <AIChatbot currentUser={currentUser} appointments={appointments} onAddAppointment={handleAddAppointment} />
           <Toaster />
         </>
       );
@@ -716,7 +742,7 @@ function App() {
           <Suspense fallback={<LoadingFallback />}>
             <PrivacyPolicy onBack={() => startTransition(() => setCurrentView("landingpage"))} />
           </Suspense>
-          <AIChatbot currentUser={currentUser} />
+          <AIChatbot currentUser={currentUser} appointments={appointments} onAddAppointment={handleAddAppointment} />
           <Toaster />
         </>
       );
@@ -824,7 +850,7 @@ function App() {
   return (
     <>
       {renderDashboard()}
-      <AIChatbot currentUser={currentUser} appointments={appointments} />
+      <AIChatbot currentUser={currentUser} appointments={appointments} onAddAppointment={handleAddAppointment} />
       <Toaster />
     </>
   );

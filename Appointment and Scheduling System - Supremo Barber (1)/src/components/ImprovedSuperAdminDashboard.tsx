@@ -103,13 +103,13 @@ export function ImprovedSuperAdminDashboard({
   // Auto-refresh appointments and users every 30 seconds
   useEffect(() => {
     const refreshInterval = setInterval(async () => {
-    
+      console.log("🔄 Auto-refreshing admin dashboard data...");
 
       // Refresh appointments if callback provided
       if (onRefreshAppointments) {
         try {
           await onRefreshAppointments();
-        
+          console.log("✅ Appointments refreshed");
         } catch (error) {
           console.error("❌ Failed to refresh appointments:", error);
         }
@@ -119,7 +119,7 @@ export function ImprovedSuperAdminDashboard({
       try {
         const data = await API.users.getAll();
         setUsers(data);
-    
+        console.log("✅ Users refreshed");
       } catch (error) {
         console.error("❌ Failed to refresh users:", error);
       }
@@ -132,7 +132,7 @@ export function ImprovedSuperAdminDashboard({
 
   // Manual refresh function
   const handleManualRefresh = async () => {
- 
+    console.log("🔄 Manual refresh triggered...");
 
     // Refresh appointments
     if (onRefreshAppointments) {
@@ -224,7 +224,11 @@ export function ImprovedSuperAdminDashboard({
 
   return (
     <div className="min-h-screen bg-[#FFFDF8] flex flex-col">
-      
+      {/* Notification Toast System */}
+      <NotificationToast
+        notifications={notifications}
+        userId={user.id}
+      />
 
       <div className="flex flex-1">
         {/* Sidebar - Hidden on mobile, visible on desktop */}
@@ -336,11 +340,31 @@ export function ImprovedSuperAdminDashboard({
                   userId={user.id}
                   userRole="admin"
                   onNavigate={(url) => {
-                    // Map the URL to dashboard tabs
-                    if (url === '/appointments') {
-                      setActiveTab('appointments');
-                    } else if (url === '/profile') {
+                    // Parse URL and extract query parameters
+                    const [path, queryString] = url.split('?');
+                    const params = new URLSearchParams(queryString || '');
+                    
+                    // Map the URL to dashboard tabs (Admin uses 'bookings', not 'appointments')
+                    if (path === '/appointments' || path === '/bookings') {
+                      setActiveTab('bookings');
+                    } else if (path === '/payment-verification' || path === '/payments') {
+                      setActiveTab('payments');
+                    } else if (path === '/profile' || path === '/settings') {
                       setActiveTab('settings');
+                    } else if (path === '/services') {
+                      setActiveTab('services');
+                    } else if (path === '/barbers') {
+                      setActiveTab('barbers');
+                    } else if (path === '/customers') {
+                      setActiveTab('customers');
+                    } else if (path === '/analytics' || path === '/overview') {
+                      setActiveTab('overview');
+                    } else if (path === '/revenue') {
+                      setActiveTab('revenue');
+                    } else if (path === '/reviews') {
+                      setActiveTab('reviews');
+                    } else if (path === '/audit-logs' || path === '/logs') {
+                      setActiveTab('logs');
                     }
                   }}
                 />
