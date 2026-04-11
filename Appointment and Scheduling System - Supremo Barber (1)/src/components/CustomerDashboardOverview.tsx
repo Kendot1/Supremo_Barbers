@@ -85,7 +85,7 @@ export function CustomerDashboardOverview({
   useEffect(() => {
     const fetchFavorites = async () => {
       if (!user.id) return;
-      
+
       try {
         const favorites = await API.favorites.getAll(user.id);
         const favoriteIds = favorites.map((f: any) => f.serviceId);
@@ -122,14 +122,14 @@ export function CustomerDashboardOverview({
   // Toggle favorite with API integration
   const toggleFavorite = async (serviceId: string, e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent card click
-    
+
     if (!user.id) {
       toast.error("Please login to add favorites");
       return;
     }
 
     const isFavorite = favoriteServices.includes(serviceId);
-    
+
     // OPTIMISTIC UPDATE: Update UI immediately for instant feedback
     if (isFavorite) {
       setFavoriteServices(prev => prev.filter(id => id !== serviceId));
@@ -154,7 +154,7 @@ export function CustomerDashboardOverview({
       } catch (error) {
         console.error("Error toggling favorite:", error);
         toast.error("Failed to update favorites");
-        
+
         // REVERT optimistic update on error
         if (isFavorite) {
           setFavoriteServices(prev => [...prev, serviceId]);
@@ -177,7 +177,7 @@ export function CustomerDashboardOverview({
   const upcomingAppointments = userAppointments
     .filter(
       (apt) =>
-        apt.status === "verified",
+        apt.status === "pending" || apt.status === "verified",
     )
     .sort(
       (a, b) =>
@@ -223,9 +223,9 @@ export function CustomerDashboardOverview({
         const todayAppointments = appointments.filter(
           (apt) => {
             const isToday = apt.date === today || apt.appointment_date === today;
-            const isActive = apt.status === 'pending' || 
-                            apt.status === 'confirmed' || 
-                            apt.status === 'upcoming';
+            const isActive = apt.status === 'pending' ||
+              apt.status === 'confirmed' ||
+              apt.status === 'upcoming';
             return isToday && isActive;
           }
         );
@@ -293,12 +293,12 @@ export function CustomerDashboardOverview({
   // Handle cancel appointment
   const handleCancelAppointment = async () => {
     if (!selectedBooking) return;
-    
+
     try {
       setIsCancelling(true);
-      
+
       const appointmentId = selectedBooking.id || selectedBooking._id;
-      
+
       // Validate UUID format
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       if (!uuidRegex.test(appointmentId)) {
@@ -307,13 +307,13 @@ export function CustomerDashboardOverview({
         setIsCancelling(false);
         return;
       }
-      
+
       console.log('🚀 Cancelling appointment:', {
         userId: user.id,
         appointmentId,
         API_cancel_exists: typeof API.appointments?.cancel
       });
-      
+
       // Try using the cancel endpoint, fallback to update if not available
       try {
         if (API.appointments && typeof API.appointments.cancel === 'function') {
@@ -328,29 +328,33 @@ export function CustomerDashboardOverview({
           console.log('⚠️ Using fallback update method');
           await API.appointments.update(appointmentId, {
             status: 'cancelled',
-            cancellationReason: 'Cancelled by customer',
-            cancelledBy: user.id,
-            cancelledAt: new Date().toISOString()
+
+            payment_status: 'refunded',
           });
         }
       } catch (apiError: any) {
         console.error('API Error:', apiError);
         throw apiError;
       }
-      
+
       // Update the appointments list locally
       if (onUpdateAppointments && selectedBooking) {
-        const updatedAppointments = appointments.map(apt => 
-          apt.id === selectedBooking.id 
-            ? { ...apt, status: 'cancelled' as const }
+        const updatedAppointments = appointments.map(apt =>
+          apt.id === selectedBooking.id
+            ? {
+              ...apt,
+              status: 'cancelled' as const,
+              paymentStatus: 'rejected' as const,
+              payment_status: 'refunded' as const,
+            }
             : apt
         );
         onUpdateAppointments(updatedAppointments);
       }
-      
+
       // Show success message
       toast.success('Appointment cancelled successfully');
-      
+
       // Close dialog after a brief delay to show success state
       setTimeout(() => {
         setIsDialogOpen(false);
@@ -498,11 +502,11 @@ export function CustomerDashboardOverview({
                   </div>
                   {selectedBooking.paymentStatus ===
                     "pending" && (
-                    <p className="text-sm text-[#DB9D47]">
-                      50% down payment required ₱
-                      {(selectedBooking.price * 0.5).toFixed(2)}
-                    </p>
-                  )}
+                      <p className="text-sm text-[#DB9D47]">
+                        50% down payment required ₱
+                        {(selectedBooking.price * 0.5).toFixed(2)}
+                      </p>
+                    )}
                 </div>
 
                 {/* Action Buttons */}
@@ -566,58 +570,56 @@ export function CustomerDashboardOverview({
           </CardHeader>
           <CardContent className="space-y-3 overflow-hidden">
             {upcomingAppointments.length > 0 ? (
-              <div 
-                className="space-y-2 overflow-y-auto overflow-x-hidden pr-2 scrollbar-thin scrollbar-thumb-[#DB9D47] scrollbar-track-[#FBF7EF]" 
-                style={{ 
-                  maxHeight: '350px',
+              <div
+                className="space-y-2 overflow-y-auto overflow-x-hidden pr-2 scrollbar-thin scrollbar-thumb-[#DB9D47] scrollbar-track-[#FBF7EF]"
+                style={{
+                  maxHeight: '320px',
                   scrollbarWidth: 'thin',
                   scrollbarColor: '#DB9D47 #FBF7EF'
                 }}
               >
                 {upcomingAppointments.map((booking) => (
-                    <div
-                      key={booking.id}
-                      className="p-2 rounded-lg bg-[#FBF7EF] border border-[#E8DCC8] hover:shadow-md hover:border-[#DB9D47] transition-all cursor-pointer flex-shrink-0"
-                      onClick={() =>
-                        handleBookingClick(booking)
-                      }
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 flex-1 min-w-0">
-                          <Scissors className="w-3.5 h-3.5 text-[#DB9D47] flex-shrink-0" />
-                          <div className="min-w-0 flex-1">
-                            <h4 className="text-[#5C4A3A] text-xs font-medium truncate">
-                              {booking.service}
-                            </h4>
-                            <div className="flex items-center gap-2 text-[10px] text-[#87765E] mt-0.5">
-                              <span className="flex items-center gap-1">
-                                <Calendar className="w-2.5 h-2.5" />
-                                {booking.date}
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <Clock className="w-2.5 h-2.5" />
-                                {booking.time}
-                              </span>
-                            </div>
+                  <div
+                    key={booking.id}
+                    className="p-2 rounded-lg bg-[#FBF7EF] border border-[#E8DCC8] hover:shadow-md hover:border-[#DB9D47] transition-all cursor-pointer flex-shrink-0"
+                    onClick={() =>
+                      handleBookingClick(booking)
+                    }
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <Scissors className="w-3.5 h-3.5 text-[#DB9D47] flex-shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <h4 className="text-[#5C4A3A] text-xs font-medium truncate">
+                            {booking.service}
+                          </h4>
+                          <div className="flex items-center gap-2 text-[10px] text-[#87765E] mt-0.5">
+                            <span className="flex items-center gap-1">
+                              <Calendar className="w-2.5 h-2.5" />
+                              {booking.date}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Clock className="w-2.5 h-2.5" />
+                              {booking.time}
+                            </span>
                           </div>
                         </div>
-                        <Badge
-                          variant={
-                            booking.status === "confirmed"
-                              ? "default"
-                              : "secondary"
-                          }
-                          className={
-                            booking.status === "confirmed"
-                              ? "bg-[#94A670] text-[10px] px-1.5 py-0"
-                              : "text-[10px] px-1.5 py-0"
-                          }
-                        >
-                          {booking.status}
-                        </Badge>
                       </div>
+                      <Badge
+                        variant="secondary"
+                        className={
+                          booking.status === "verified"
+                            ? "bg-green-100 text-green-700 border-green-200 px-1.5 py-0"
+                            : booking.status === "pending"
+                              ? "bg-orange-100 text-orange-700 border-orange-200 px-1.5 py-0"
+                              : "text-[10px] px-1.5 py-0"
+                        }
+                      >
+                        {booking.status}
+                      </Badge>
                     </div>
-                  ))}
+                  </div>
+                ))}
               </div>
             ) : (
               <div className="text-center py-6 text-[#87765E]">
@@ -666,9 +668,9 @@ export function CustomerDashboardOverview({
                 <p className="text-sm">Loading slots...</p>
               </div>
             ) : availableSlots.length > 0 ? (
-              <div 
-                className="space-y-2 overflow-y-auto overflow-x-hidden pr-2 scrollbar-thin scrollbar-thumb-[#DB9D47] scrollbar-track-[#FBF7EF]" 
-                style={{ 
+              <div
+                className="space-y-2 overflow-y-auto overflow-x-hidden pr-2 scrollbar-thin scrollbar-thumb-[#DB9D47] scrollbar-track-[#FBF7EF]"
+                style={{
                   maxHeight: '320px',
                   scrollbarWidth: 'thin',
                   scrollbarColor: '#DB9D47 #FBF7EF'
@@ -790,11 +792,10 @@ export function CustomerDashboardOverview({
                         aria-label="Add to favorites"
                       >
                         <Heart
-                          className={`w-5 h-5 transition-colors ${
-                            favoriteServices.includes(service.id || service._id)
-                              ? "text-red-500 fill-current"
-                                : "text-[#87765E] hover:text-[#DB9D47]"
-                          }`}
+                          className={`w-5 h-5 transition-colors ${favoriteServices.includes(service.id || service._id)
+                            ? "text-red-500 fill-current"
+                            : "text-[#87765E] hover:text-[#DB9D47]"
+                            }`}
                         />
                       </button>
                     </div>
@@ -805,7 +806,7 @@ export function CustomerDashboardOverview({
                       <p className="text-sm text-[#87765E] mb-3 line-clamp-2">
                         {service.description}
                       </p>
-                      
+
                       <div className="flex items-center justify-between mb-3 pb-3 border-b border-[#E8DCC8]">
                         <span className="flex items-center gap-1 text-sm text-[#87765E]">
                           <Clock className="w-4 h-4" />
@@ -815,7 +816,7 @@ export function CustomerDashboardOverview({
                           ₱{service.price}
                         </span>
                       </div>
-                      
+
                       <Button
                         onClick={(e) => {
                           e.stopPropagation();

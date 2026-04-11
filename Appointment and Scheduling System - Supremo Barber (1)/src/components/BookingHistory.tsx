@@ -16,6 +16,7 @@ import {
 import { Calendar, Clock, User, Scissors, XCircle, Star, Search, Filter } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Appointment } from '../App';
+import API from '../services/api.service';
 
 // Utility function to parse date string without timezone issues
 const parseLocalDate = (dateString: string): Date => {
@@ -36,23 +37,46 @@ export function BookingHistory({ userId, appointments, onUpdateAppointments }: B
   const [rating, setRating] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterBarber, setFilterBarber] = useState('all');
+  const [isCancelling, setIsCancelling] = useState(false);
 
   // Get unique barbers from appointments
   const barbers = Array.from(new Set(appointments.map(apt => apt.barber)));
 
-  const handleCancelBooking = () => {
+  const handleCancelBooking = async () => {
     if (!selectedBooking) return;
 
-    const updatedBookings = appointments.map(b => 
-      b.id === selectedBooking.id 
-        ? { ...b, status: 'cancelled' as const, canCancel: false } 
-        : b
-    );
-    
-    onUpdateAppointments(updatedBookings);
-    setCancelDialogOpen(false);
-    setSelectedBooking(null);
-    toast.success('Booking cancelled. No refund will be issued.');
+    setIsCancelling(true);
+    try {
+      // Update the database directly with both status and payment_status
+      await API.appointments.update(selectedBooking.id, {
+        status: 'cancelled',
+        payment_status: 'refunded',
+      });
+
+      // Update local state to reflect the change immediately
+      const updatedBookings = appointments.map(b =>
+        b.id === selectedBooking.id
+          ? {
+              ...b,
+              status: 'cancelled' as const,
+              paymentStatus: 'rejected' as const,  // camelCase for UI
+              payment_status: 'refunded' as const,  // snake_case for DB sync
+              canCancel: false
+            }
+          : b
+      );
+
+      onUpdateAppointments(updatedBookings);
+      setCancelDialogOpen(false);
+      setSelectedBooking(null);
+
+      toast.success('Booking cancelled. No refund will be issued.');
+    } catch (error) {
+      console.error('❌ Error cancelling booking:', error);
+      toast.error('Failed to cancel booking. Please try again.');
+    } finally {
+      setIsCancelling(false);
+    }
   };
 
   const handleRateService = () => {
@@ -312,8 +336,8 @@ export function BookingHistory({ userId, appointments, onUpdateAppointments }: B
             <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>
               Keep Booking
             </Button>
-            <Button variant="destructive" onClick={handleCancelBooking}>
-              Cancel Anyway
+            <Button variant="destructive" onClick={handleCancelBooking} disabled={isCancelling}>
+              {isCancelling ? 'Cancelling...' : 'Cancel Anyway'}
             </Button>
           </DialogFooter>
         </DialogContent>

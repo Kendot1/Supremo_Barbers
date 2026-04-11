@@ -330,27 +330,40 @@ export function CustomerBookingManagement({
     setIsCancelDialogOpen(true);
   };
 
-  const handleConfirmCancel = () => {
+  const handleConfirmCancel = async () => {
     if (!selectedBooking) return;
 
-    const updatedAppointments = appointments.map(apt => {
-      if (apt.id === selectedBooking.id) {
-        return {
-          ...apt,
-          status: 'cancelled' as const,
-        };
-      }
-      return apt;
-    });
+    try {
+      // Update the database directly with both status and payment_status
+      await API.appointments.update(selectedBooking.id, {
+        status: 'cancelled',
+        payment_status: 'refunded',
+      });
 
-    onUpdateAppointments(updatedAppointments);
-    
-    // Send email notification (placeholder)
-    console.log('📧 Email sent to admin and customer about cancellation');
-    
-    toast.success('Appointment cancelled successfully');
-    setIsCancelDialogOpen(false);
-    setSelectedBooking(null);
+      const updatedAppointments = appointments.map(apt => {
+        if (apt.id === selectedBooking.id) {
+          return {
+            ...apt,
+            status: 'cancelled' as const,
+            paymentStatus: 'rejected' as const,  // camelCase for UI
+            payment_status: 'refunded' as const,  // snake_case for DB sync
+          };
+        }
+        return apt;
+      });
+
+      onUpdateAppointments(updatedAppointments);
+      
+      // Send email notification (placeholder)
+      console.log('📧 Email sent to admin and customer about cancellation');
+      
+      toast.success('Appointment cancelled successfully');
+      setIsCancelDialogOpen(false);
+      setSelectedBooking(null);
+    } catch (error) {
+      console.error('❌ Error cancelling booking:', error);
+      toast.error('Failed to cancel appointment. Please try again.');
+    }
   };
 
   const handlePaymentProof = (booking: Appointment) => {
