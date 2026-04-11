@@ -1,8 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
-import { 
-  Calendar, 
-  Clock, 
-  History, 
+import {
+  Calendar,
+  Clock,
+  History,
   Home,
   UserCircle,
   Scissors,
@@ -13,13 +13,13 @@ import {
 } from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
-import { 
-  Sheet, 
-  SheetContent, 
-  SheetDescription, 
-  SheetHeader, 
-  SheetTitle, 
-  SheetTrigger 
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger
 } from './ui/sheet';
 import {
   DropdownMenu,
@@ -67,11 +67,11 @@ interface CustomerDashboardProps {
   onSetPreSelectedServiceIds?: (serviceIds: string[]) => void;
 }
 
-export function CustomerDashboard({ 
-  user, 
-  onLogout, 
-  appointments, 
-  onAddAppointment, 
+export function CustomerDashboard({
+  user,
+  onLogout,
+  appointments,
+  onAddAppointment,
   onUpdateAppointments,
   onUserUpdate,
   notifications,
@@ -110,15 +110,15 @@ export function CustomerDashboard({
   }, [preSelectedSlot]);
 
   // Filter appointments for current user
-  const userAppointments = useMemo(() => 
+  const userAppointments = useMemo(() =>
     appointments.filter(apt => apt.userId === user.id || apt.customer_id === user.id),
     [appointments, user.id]
   );
 
   // Count upcoming bookings (only verified appointments)
-  const upcomingCount = useMemo(() => 
-    userAppointments.filter(apt => 
-      apt.status === 'verified'
+  const upcomingCount = useMemo(() =>
+    userAppointments.filter(apt =>
+      apt.status === "pending" || apt.status === "verified"
     ).length,
     [userAppointments]
   );
@@ -126,21 +126,21 @@ export function CustomerDashboard({
   // Calculate total spent based on payment status
   const totalSpent = useMemo(() => {
     let total = 0;
-    
+
     userAppointments.forEach(apt => {
       const amount = apt.total_amount || apt.price || 0;
-      
+
       // If payment is verified (50% down payment paid)
       if (apt.paymentStatus === 'verified' || apt.payment_status === 'verified') {
         total += amount * 0.5; // Add 50%
       }
-      
+
       // If appointment is completed (full payment made)
       if (apt.status === 'completed') {
         total += amount * 0.5; // Add remaining 50%
       }
     });
-    
+
     return total;
   }, [userAppointments]);
 
@@ -153,16 +153,16 @@ export function CustomerDashboard({
     <div className="min-h-screen bg-[#FFFDF8]">
       {/* Notification Toast System */}
       <NotificationToast notifications={notifications} userId={user.id} />
-      
+
       {/* Navigation - Aligned with Landing Page */}
       <nav className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-b border-[#E8DCC8] z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo & Brand */}
             <div className="flex items-center gap-2">
-              <img 
-                src="figma:asset/c8ec37b0cd5b0cf8df5bb8e6dd694ed894f0e3af.png" 
-                alt="Supremo Barber Logo" 
+              <img
+                src="https://pub-86f4b5249e5c4021bb05d46908eeb094.r2.dev/supremo-barber/supremoWebLogo.png"
+                alt="Supremo Barber Logo"
                 className="h-10 w-10 sm:h-12 sm:w-12"
               />
               <div>
@@ -175,45 +175,43 @@ export function CustomerDashboard({
             <div className="hidden lg:flex items-center gap-6">
               <button
                 onClick={() => setActiveTab('home')}
-                className={`text-sm transition-all pb-1 border-b-2 cursor-pointer ${
-                  activeTab === 'home' 
-                    ? 'border-[#DB9D47] text-[#DB9D47]' 
-                    : 'border-transparent text-[#87765E] hover:text-[#DB9D47] hover:border-[#DB9D47]'
-                }`}
+                className={`text-sm transition-all pb-1 border-b-2 cursor-pointer ${activeTab === 'home'
+                  ? 'border-[#DB9D47] text-[#DB9D47]'
+                  : 'border-transparent text-[#87765E] hover:text-[#DB9D47] hover:border-[#DB9D47]'
+                  }`}
               >
                 Home
               </button>
-              
+
               {/* Bookings Dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
-                    className={`flex items-center gap-1 text-sm transition-all pb-1 border-b-2 cursor-pointer ${
-                      activeTab === 'book' || activeTab === 'slots' || activeTab === 'manage'
-                        ? 'border-[#DB9D47] text-[#DB9D47]' 
-                        : 'border-transparent text-[#87765E] hover:text-[#DB9D47] hover:border-[#DB9D47]'
-                    }`}
+                    className={`flex items-center gap-1 text-sm transition-all pb-1 border-b-2 cursor-pointer ${activeTab === 'book' || activeTab === 'slots' || activeTab === 'manage'
+                      ? 'border-[#DB9D47] text-[#DB9D47]'
+                      : 'border-transparent text-[#87765E] hover:text-[#DB9D47] hover:border-[#DB9D47]'
+                      }`}
                   >
                     Bookings
                     <ChevronDown className="w-3 h-3" />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="start" className="w-56 bg-white border-[#E8DCC8]">
-                  <DropdownMenuItem 
+                  <DropdownMenuItem
                     onClick={() => setActiveTab('book')}
                     className="cursor-pointer focus:bg-[#FBF7EF] focus:text-[#5C4A3A]"
                   >
                     <CalendarPlus className="w-4 h-4 mr-2 text-[#DB9D47]" />
                     Book Appointment
                   </DropdownMenuItem>
-                  <DropdownMenuItem 
+                  <DropdownMenuItem
                     onClick={() => setActiveTab('slots')}
                     className="cursor-pointer focus:bg-[#FBF7EF] focus:text-[#5C4A3A]"
                   >
                     <Clock className="w-4 h-4 mr-2 text-[#94A670]" />
                     View Slots
                   </DropdownMenuItem>
-                  <DropdownMenuItem 
+                  <DropdownMenuItem
                     onClick={() => setActiveTab('manage')}
                     className="cursor-pointer focus:bg-[#FBF7EF] focus:text-[#5C4A3A]"
                   >
@@ -225,21 +223,19 @@ export function CustomerDashboard({
 
               <button
                 onClick={() => setActiveTab('services')}
-                className={`text-sm transition-all pb-1 border-b-2 cursor-pointer ${
-                  activeTab === 'services' 
-                    ? 'border-[#DB9D47] text-[#DB9D47]' 
-                    : 'border-transparent text-[#87765E] hover:text-[#DB9D47] hover:border-[#DB9D47]'
-                }`}
+                className={`text-sm transition-all pb-1 border-b-2 cursor-pointer ${activeTab === 'services'
+                  ? 'border-[#DB9D47] text-[#DB9D47]'
+                  : 'border-transparent text-[#87765E] hover:text-[#DB9D47] hover:border-[#DB9D47]'
+                  }`}
               >
                 Services
               </button>
               <button
                 onClick={() => setActiveTab('profile')}
-                className={`text-sm transition-all pb-1 border-b-2 cursor-pointer ${
-                  activeTab === 'profile'
-                    ? 'border-[#DB9D47] text-[#DB9D47]'
-                    : 'border-transparent text-[#87765E] hover:text-[#DB9D47] hover:border-[#DB9D47]'
-                }`}
+                className={`text-sm transition-all pb-1 border-b-2 cursor-pointer ${activeTab === 'profile'
+                  ? 'border-[#DB9D47] text-[#DB9D47]'
+                  : 'border-transparent text-[#87765E] hover:text-[#DB9D47] hover:border-[#DB9D47]'
+                  }`}
               >
                 Profile
               </button>
@@ -266,7 +262,7 @@ export function CustomerDashboard({
                   const [path, queryString] = url.split('?');
                   const params = new URLSearchParams(queryString || '');
                   const highlightId = params.get('highlight');
-                  
+
                   // Map the URL to dashboard tabs
                   if (path === '/appointments') {
                     setActiveTab('manage');
@@ -285,8 +281,8 @@ export function CustomerDashboard({
                   }
                 }}
               />
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 size="sm"
                 onClick={onLogout}
                 className="border-[#E8DCC8] text-[#5C4A3A] hover:bg-[#FBF7EF] cursor-pointer"
@@ -324,12 +320,12 @@ export function CustomerDashboard({
                   }
                 }}
               />
-              
+
               {/* Hamburger Menu */}
               <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
                 <SheetTrigger asChild>
-                  <Button 
-                    variant="ghost" 
+                  <Button
+                    variant="ghost"
                     size="sm"
                     className="text-[#5C4A3A] hover:bg-[#FBF7EF]"
                   >
@@ -339,9 +335,9 @@ export function CustomerDashboard({
                 <SheetContent side="right" className="w-[280px] bg-white border-l border-[#E8DCC8]">
                   <SheetHeader>
                     <SheetTitle className="text-[#5C4A3A] flex items-center gap-2">
-                      <img 
-                        src="figma:asset/c8ec37b0cd5b0cf8df5bb8e6dd694ed894f0e3af.png" 
-                        alt="Supremo Barber Logo" 
+                      <img
+                        src="https://pub-86f4b5249e5c4021bb05d46908eeb094.r2.dev/supremo-barber/supremoWebLogo.png"
+                        alt="Supremo Barber Logo"
                         className="h-8 w-8"
                       />
                       Menu
@@ -350,7 +346,7 @@ export function CustomerDashboard({
                       Navigate through your dashboard
                     </SheetDescription>
                   </SheetHeader>
-                  
+
                   <div className="mt-6 flex flex-col gap-2">
                     {/* Menu Items */}
                     <button
@@ -358,11 +354,10 @@ export function CustomerDashboard({
                         setActiveTab('home');
                         setMobileMenuOpen(false);
                       }}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm transition-colors ${
-                        activeTab === 'home' 
-                          ? 'bg-[#DB9D47] text-white' 
-                          : 'text-[#5C4A3A] hover:bg-[#FBF7EF]'
-                      }`}
+                      className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm transition-colors ${activeTab === 'home'
+                        ? 'bg-[#DB9D47] text-white'
+                        : 'text-[#5C4A3A] hover:bg-[#FBF7EF]'
+                        }`}
                     >
                       <Home className="w-5 h-5" />
                       <span>Home</span>
@@ -371,11 +366,10 @@ export function CustomerDashboard({
                     {/* Bookings Collapsible */}
                     <Collapsible>
                       <CollapsibleTrigger className="w-full">
-                        <div className={`flex items-center justify-between px-4 py-3 rounded-lg text-sm transition-colors ${
-                          activeTab === 'book' || activeTab === 'slots' || activeTab === 'manage'
-                            ? 'bg-[#DB9D47] text-white' 
-                            : 'text-[#5C4A3A] hover:bg-[#FBF7EF]'
-                        }`}>
+                        <div className={`flex items-center justify-between px-4 py-3 rounded-lg text-sm transition-colors ${activeTab === 'book' || activeTab === 'slots' || activeTab === 'manage'
+                          ? 'bg-[#DB9D47] text-white'
+                          : 'text-[#5C4A3A] hover:bg-[#FBF7EF]'
+                          }`}>
                           <div className="flex items-center gap-3">
                             <CalendarPlus className="w-5 h-5" />
                             <span>Bookings</span>
@@ -389,11 +383,10 @@ export function CustomerDashboard({
                             setActiveTab('book');
                             setMobileMenuOpen(false);
                           }}
-                          className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-colors ${
-                            activeTab === 'book' 
-                              ? 'bg-[#DB9D47]/20 text-[#DB9D47]' 
-                              : 'text-[#87765E] hover:bg-[#FBF7EF]'
-                          }`}
+                          className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-colors ${activeTab === 'book'
+                            ? 'bg-[#DB9D47]/20 text-[#DB9D47]'
+                            : 'text-[#87765E] hover:bg-[#FBF7EF]'
+                            }`}
                         >
                           <CalendarPlus className="w-4 h-4" />
                           <span>Book Appointment</span>
@@ -403,11 +396,10 @@ export function CustomerDashboard({
                             setActiveTab('slots');
                             setMobileMenuOpen(false);
                           }}
-                          className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-colors ${
-                            activeTab === 'slots' 
-                              ? 'bg-[#94A670]/20 text-[#94A670]' 
-                              : 'text-[#87765E] hover:bg-[#FBF7EF]'
-                          }`}
+                          className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-colors ${activeTab === 'slots'
+                            ? 'bg-[#94A670]/20 text-[#94A670]'
+                            : 'text-[#87765E] hover:bg-[#FBF7EF]'
+                            }`}
                         >
                           <Clock className="w-4 h-4" />
                           <span>View Slots</span>
@@ -417,11 +409,10 @@ export function CustomerDashboard({
                             setActiveTab('manage');
                             setMobileMenuOpen(false);
                           }}
-                          className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-colors ${
-                            activeTab === 'manage' 
-                              ? 'bg-[#D98555]/20 text-[#D98555]' 
-                              : 'text-[#87765E] hover:bg-[#FBF7EF]'
-                          }`}
+                          className={`w-full flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-colors ${activeTab === 'manage'
+                            ? 'bg-[#D98555]/20 text-[#D98555]'
+                            : 'text-[#87765E] hover:bg-[#FBF7EF]'
+                            }`}
                         >
                           <History className="w-4 h-4" />
                           <span>My Bookings</span>
@@ -434,11 +425,10 @@ export function CustomerDashboard({
                         setActiveTab('services');
                         setMobileMenuOpen(false);
                       }}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm transition-colors ${
-                        activeTab === 'services' 
-                          ? 'bg-[#DB9D47] text-white' 
-                          : 'text-[#5C4A3A] hover:bg-[#FBF7EF]'
-                      }`}
+                      className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm transition-colors ${activeTab === 'services'
+                        ? 'bg-[#DB9D47] text-white'
+                        : 'text-[#5C4A3A] hover:bg-[#FBF7EF]'
+                        }`}
                     >
                       <Scissors className="w-5 h-5" />
                       <span>Services</span>
@@ -449,11 +439,10 @@ export function CustomerDashboard({
                         setActiveTab('profile');
                         setMobileMenuOpen(false);
                       }}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm transition-colors ${
-                        activeTab === 'profile' 
-                          ? 'bg-[#DB9D47] text-white' 
-                          : 'text-[#5C4A3A] hover:bg-[#FBF7EF]'
-                      }`}
+                      className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm transition-colors ${activeTab === 'profile'
+                        ? 'bg-[#DB9D47] text-white'
+                        : 'text-[#5C4A3A] hover:bg-[#FBF7EF]'
+                        }`}
                     >
                       <UserCircle className="w-5 h-5" />
                       <span>Profile</span>
@@ -512,7 +501,7 @@ export function CustomerDashboard({
         {/* Content based on active tab */}
         <div>
           {activeTab === 'home' && (
-            <CustomerDashboardOverview 
+            <CustomerDashboardOverview
               user={user}
               appointments={appointments}
               onNavigate={setActiveTab}
@@ -532,7 +521,7 @@ export function CustomerDashboard({
               onBookingComplete={async (bookedServiceIds) => {
                 setActiveTab('manage');
                 setPreSelectedSlot(null);
-                
+
                 // Remove booked services from favorites
                 if (bookedServiceIds && bookedServiceIds.length > 0) {
                   try {
@@ -580,8 +569,8 @@ export function CustomerDashboard({
           )}
 
           {activeTab === 'services' && (
-            <ServicesShowcase 
-              onBookService={() => setActiveTab('book')} 
+            <ServicesShowcase
+              onBookService={() => setActiveTab('book')}
               onServiceClick={(serviceId) => {
                 if (onSetPreSelectedService) {
                   onSetPreSelectedService(serviceId);
