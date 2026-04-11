@@ -229,7 +229,7 @@ export function BookingReservationModule({ appointments, onUpdateAppointments }:
               <Calendar className="w-4 h-4 md:w-5 md:h-5 text-[#DB9D47]" />
             </div>
             <div className="text-lg md:text-2xl text-[#5C4A3A] mb-0.5 md:mb-1">
-              {appointments.filter((b) => b.status === "upcoming").length}
+              { appointments.filter( (b) => b.status === "verified" && b.payment_status === "paid" ).length }
             </div>
             <p className="text-xs md:text-sm text-[#87765E]">Upcoming</p>
           </CardContent>
