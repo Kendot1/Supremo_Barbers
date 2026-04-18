@@ -26,13 +26,13 @@ import {
   Clock,
   User,
   Scissors,
-  DollarSign,
   X,
   ChevronLeft,
   ChevronRight,
   CalendarDays,
   List,
 } from "lucide-react";
+import { FaPesoSign } from "react-icons/fa6";
 import type { Appointment } from "../App";
 import { cn } from "./ui/utils";
 

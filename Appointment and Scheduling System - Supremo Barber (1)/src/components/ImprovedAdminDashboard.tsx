@@ -1,6 +1,7 @@
 import { AdminToolsPage } from './AdminToolsPage';
 import { ReportsAnalytics } from './ReportsAnalytics';
 import { LocalBackendBanner } from './LocalBackendBanner';
+import { FaPesoSign } from 'react-icons/fa6';
 
 // Mock data for demonstration
 const mockServices = [
@@ -27,7 +28,7 @@ export function ImprovedAdminDashboard() {
     { label: "Today's Bookings", value: todayBookings.length.toString(), icon: Calendar, color: 'bg-[#DB9D47]' },
     { label: 'Pending Approvals', value: pendingApprovals.toString(), icon: Clock, color: 'bg-[#D98555]' },
     { label: 'Completed Today', value: completedToday.length.toString(), icon: CheckCircle2, color: 'bg-[#94A670]' },
-    { label: "Today's Revenue", value: `₱${todayRevenue.toLocaleString()}`, icon: DollarSign, color: 'bg-[#B89968]' },
+    { label: "Today's Revenue", value: `₱${todayRevenue.toLocaleString()}`, icon: FaPesoSign, color: 'bg-[#B89968]' },
   ];
 
   const menuItems = [

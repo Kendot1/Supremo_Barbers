@@ -52,7 +52,6 @@ import {
   CheckCircle2,
   XCircle,
   Clock,
-  DollarSign,
   Calendar as CalendarIcon,
   User,
   Scissors,
@@ -66,6 +65,7 @@ import {
   Loader2,
   Download,
 } from "lucide-react";
+import { FaPesoSign } from "react-icons/fa6";
 import { toast } from "sonner";
 import type { Appointment } from "../App";
 import { Textarea } from "./ui/textarea";
@@ -241,6 +241,7 @@ export function PaymentVerification({
               await API.appointments.update(apt.id, {
                 status: 'cancelled',
                 notes: `Auto-cancelled: Payment not verified before appointment date (${apt.date})`,
+                cancellation_reason: 'Payment not verified before appointment date',
               });
 
               // Update local state

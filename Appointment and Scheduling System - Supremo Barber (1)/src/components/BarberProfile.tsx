@@ -5,7 +5,8 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
-import { User, Mail, Phone, Save, Calendar, DollarSign, Star, Scissors, Clock, Loader2, AlertTriangle, Camera, Upload } from 'lucide-react';
+import { User, Mail, Phone, Save, Calendar, Star, Scissors, Clock, Loader2, AlertTriangle, Camera, Upload } from 'lucide-react';
+import { FaPesoSign } from 'react-icons/fa6';
 import { toast } from 'sonner@2.0.3';
 import {
   AlertDialog,
@@ -389,7 +390,7 @@ export function BarberProfile({ user, appointments, onUserUpdate }: BarberProfil
         <Card className="border-[#E8DCC8]">
           <CardContent className="pt-6">
             <div className="flex items-center gap-3 mb-2">
-              <DollarSign className="w-5 h-5 text-[#D98555]" />
+              <FaPesoSign className="w-5 h-5 text-[#D98555]" />
               <p className="text-sm text-[#87765E]">Total Earnings</p>
             </div>
             <p className="text-2xl text-[#5C4A3A]">₱{totalEarnings.toLocaleString()}</p>

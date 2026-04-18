@@ -26,13 +26,13 @@ import {
 import {
   TrendingUp,
   Users,
-  DollarSign,
   Calendar,
   AlertCircle,
   Receipt,
   CheckCircle,
   ArrowRight,
 } from "lucide-react";
+import { FaPesoSign } from "react-icons/fa6";
 import { Alert, AlertDescription } from "./ui/alert";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -576,7 +576,7 @@ export function AnalyticsOverview({
                 stroke="#3b82f6"
                 fill="#3b82f6"
                 fillOpacity={0.2}
-                name="Revenue ($)"
+                name="Revenue (₱)"
               />
               <Area
                 type="monotone"

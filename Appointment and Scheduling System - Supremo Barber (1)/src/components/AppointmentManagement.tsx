@@ -3,6 +3,7 @@ import type { Appointment as AppointmentType, User } from '../App';
 import { PasswordConfirmationDialog } from './PasswordConfirmationDialog';
 import { logAppointmentStatusUpdate } from '../services/audit-notification.service';
 import API from '../services/api.service';
+import { FaPesoSign } from 'react-icons/fa6';
 
 // Utility function to parse date string without timezone issues
 const parseLocalDate = (dateString: string): Date => {
@@ -370,7 +371,7 @@ export function AppointmentManagement({ user }: AppointmentManagementProps = {})
               Calendar View
             </TabsTrigger>
             <TabsTrigger value="payments" className="data-[state=active]:bg-[#DB9D47] data-[state=active]:text-white">
-              <DollarSign className="w-4 h-4 mr-2" />
+              <FaPesoSign className="w-4 h-4 mr-2" />
               Payment Verification
             </TabsTrigger>
           </TabsList>

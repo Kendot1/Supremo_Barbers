@@ -394,6 +394,11 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
       profile_updated: 'text-gray-600',
       password_changed: 'text-orange-600',
       
+      // Security notifications
+      new_device_login: 'text-red-600',
+      security_alert: 'text-red-600',
+      sign_out_all_devices: 'text-orange-600',
+      
       // Barber notifications
       barber_created: 'text-blue-600',
       barber_deleted: 'text-red-600',

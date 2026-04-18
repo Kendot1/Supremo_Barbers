@@ -10,13 +10,15 @@ import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
 import {
   Clock,
-  DollarSign,
   Scissors,
   Star,
   Loader2,
   CheckCircle2,
   Heart,
+  CalendarCheck,
 } from "lucide-react";
+import type { Appointment } from "../App";
+import { FaPesoSign } from "react-icons/fa6";
 import { toast } from "sonner@2.0.3";
 import API from "../services/api.service";
 import { favoriteEvents } from "../utils/favoriteEvents";
@@ -152,11 +154,19 @@ export function ServicesShowcase({
   onBookService,
   onServiceClick,
   userId,
+  appointments = [],
 }: {
   onBookService?: () => void;
   onServiceClick?: (serviceId: string) => void;
   userId?: string;
+  appointments?: Appointment[];
 }) {
+  // Get user's active appointments for "Already Booked" detection
+  const userActiveBookings = appointments.filter(
+    (apt) =>
+      (apt.userId === userId || apt.customer_id === userId) &&
+      (apt.status === 'pending' || apt.status === 'verified' || apt.status === 'confirmed' || apt.status === 'upcoming')
+  );
   const [services, setServices] = useState<Service[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [favoriteServices, setFavoriteServices] = useState<string[]>([]);
@@ -188,7 +198,7 @@ export function ServicesShowcase({
   useEffect(() => {
     const fetchFavorites = async () => {
       if (!userId) return;
-      
+
       try {
         const favorites = await API.favorites.getAll(userId);
         const favoriteIds = favorites.map((f: any) => f.serviceId);
@@ -225,7 +235,18 @@ export function ServicesShowcase({
 
   const handleBookService = (e: React.MouseEvent, service: Service) => {
     e.stopPropagation(); // Prevent any parent click handlers
-    
+
+    // Block booking if user already has an active booking for this service
+    const alreadyBooked = userActiveBookings.some(
+      (apt) => apt.service === service.name
+    );
+    if (alreadyBooked) {
+      toast.error("You already have an active booking for this service.", {
+        description: "Please wait for your current appointment to complete before booking again.",
+      });
+      return;
+    }
+
     const serviceId = (service.id || service._id)?.toString() || "";
 
     if (onServiceClick) {
@@ -243,14 +264,14 @@ export function ServicesShowcase({
 
   const handleToggleFavorite = async (e: React.MouseEvent, serviceId: string) => {
     e.stopPropagation(); // Prevent card selection when clicking favorite
-    
+
     if (!userId) {
       toast.error("Please login to add favorites");
       return;
     }
 
     const isFavorite = favoriteServices.includes(serviceId);
-    
+
     // OPTIMISTIC UPDATE: Update UI immediately for instant feedback
     if (isFavorite) {
       setFavoriteServices(prev => prev.filter(id => id !== serviceId));
@@ -275,7 +296,7 @@ export function ServicesShowcase({
       } catch (error) {
         console.error("Error toggling favorite:", error);
         toast.error("Failed to update favorites");
-        
+
         // REVERT optimistic update on error
         if (isFavorite) {
           setFavoriteServices(prev => [...prev, serviceId]);
@@ -322,11 +343,16 @@ export function ServicesShowcase({
               const serviceId = (service.id || service._id)?.toString() || "";
               const isFavorite = favoriteServices.includes(serviceId);
               const isToggling = togglingFavoriteId === serviceId;
-              
+
+              // Check if user already has an active booking for this service
+              const hasActiveBooking = userActiveBookings.some(
+                (apt) => apt.service === service.name
+              );
+
               return (
                 <Card
                   key={serviceId}
-                  className="relative transition-all overflow-hidden hover:shadow-md border-2 border-[#E8DCC8] hover:border-[#DB9D47]/40 cursor-pointer group"
+                  className={`relative transition-all overflow-hidden hover:shadow-md border-2 ${hasActiveBooking ? 'border-gray-300 bg-gray-50/30' : 'border-[#E8DCC8] hover:border-[#DB9D47]/40'} cursor-pointer group`}
                 >
                   <div className="relative h-48 overflow-hidden">
                     <img
@@ -336,14 +362,21 @@ export function ServicesShowcase({
                         "https://images.unsplash.com/photo-1503951914875-452162b0f3f1"
                       }
                       alt={service.name}
-                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      className={`w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 ${hasActiveBooking ? 'opacity-75' : ''}`}
                     />
-                    
-                    {/* Available Badge */}
-                    <Badge className="absolute top-3 left-3 bg-green-600 text-white hover:bg-green-600">
-                      Available
-                    </Badge>
-                    
+
+                    {/* Status Badge */}
+                    {hasActiveBooking ? (
+                      <Badge className="absolute top-3 left-3 bg-gray-600 text-white hover:bg-gray-600 z-10">
+                        <CheckCircle2 className="w-3 h-3 mr-1" />
+                        Already Booked
+                      </Badge>
+                    ) : (
+                      <Badge className="absolute top-3 left-3 bg-green-600 text-white hover:bg-green-600">
+                        Available
+                      </Badge>
+                    )}
+
                     {/* Favorite Button - Always show for logged-in users */}
                     {userId && (
                       <button
@@ -355,25 +388,24 @@ export function ServicesShowcase({
                           <Loader2 className="w-5 h-5 text-[#DB9D47] animate-spin" />
                         ) : (
                           <Heart
-                            className={`w-5 h-5 transition-colors ${
-                              isFavorite
-                                ? "text-red-500 fill-current"
-                                : "text-[#87765E] hover:text-[#DB9D47]"
-                            }`}
+                            className={`w-5 h-5 transition-colors ${isFavorite
+                              ? "text-red-500 fill-current"
+                              : "text-[#87765E] hover:text-[#DB9D47]"
+                              }`}
                           />
                         )}
                       </button>
                     )}
-                    
+
                     {/* Popular Badge */}
-                    {service.popular && (
+                    {service.popular && !hasActiveBooking && (
                       <Badge className="absolute bottom-3 left-3 bg-[#DB9D47] text-white hover:bg-[#DB9D47]">
                         <Star className="w-3 h-3 mr-1 fill-current" />
                         Popular
                       </Badge>
                     )}
                   </div>
-                  
+
                   <CardContent className="pt-4 pb-4">
                     <h3 className="text-lg text-[#5C4A3A] mb-2 group-hover:text-[#DB9D47] transition-colors">
                       {service.name}
@@ -381,7 +413,7 @@ export function ServicesShowcase({
                     <p className="text-sm text-[#87765E] mb-3 line-clamp-2">
                       {service.description}
                     </p>
-                    
+
                     <div className="flex items-center justify-between mb-3 pb-3 border-b border-[#E8DCC8]">
                       <span className="flex items-center gap-1 text-sm text-[#87765E]">
                         <Clock className="w-4 h-4" />
@@ -391,13 +423,23 @@ export function ServicesShowcase({
                         ₱{service.price}
                       </span>
                     </div>
-                    
-                    <Button
-                      className="w-full bg-[#DB9D47] hover:bg-[#C88A35] text-white cursor-pointer transition-all hover:shadow-md"
-                      onClick={(e) => handleBookService(e, service)}
-                    >
-                      Book Now
-                    </Button>
+
+                    {hasActiveBooking ? (
+                      <Button
+                        disabled
+                        className="w-full bg-gray-600 text-white cursor-not-allowed opacity-80"
+                      >
+                        <CheckCircle2 className="w-4 h-4 mr-2" />
+                        Already Booked
+                      </Button>
+                    ) : (
+                      <Button
+                        className="w-full bg-[#DB9D47] hover:bg-[#C88A35] text-white cursor-pointer transition-all hover:shadow-md"
+                        onClick={(e) => handleBookService(e, service)}
+                      >
+                        Book Now
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               );

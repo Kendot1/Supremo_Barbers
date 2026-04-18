@@ -186,14 +186,14 @@ export function CustomerProfile({
   const handleSaveProfile = async () => {
     setShowProfileConfirm(false);
     setLoading(true);
-    
+
     try {
       console.log('🔍 DEBUG - Full user object:', user);
       console.log('🔍 DEBUG - User ID:', user.id);
       console.log('🔍 DEBUG - User ID type:', typeof user.id);
       console.log('🔍 DEBUG - User email:', user.email);
       console.log('🔍 DEBUG - localStorage currentUser:', localStorage.getItem('currentUser'));
-      
+
       // First, verify the user exists in the database
       try {
         console.log('🔍 DEBUG - Attempting to fetch user with ID:', user.id);
@@ -206,7 +206,7 @@ export function CustomerProfile({
           status: verifyError.status,
           stack: verifyError.stack
         });
-        
+
         // If user doesn't exist, show helpful error
         if (verifyError.message?.includes('User not found') || verifyError.message?.includes('404')) {
           toast.error('Account sync issue detected', {
@@ -217,13 +217,13 @@ export function CustomerProfile({
           setProfilePassword("");
           return;
         }
-        
+
         // Re-throw other errors
         throw verifyError;
       }
-      
+
       const emailChanged = profile.email.toLowerCase() !== user.email.toLowerCase();
-      
+
       // If email changed, use changeEmail API with password
       if (emailChanged) {
         if (!profilePassword) {
@@ -233,7 +233,7 @@ export function CustomerProfile({
           setLoading(false);
           return;
         }
-        
+
         // Validate email format
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(profile.email)) {
@@ -242,7 +242,7 @@ export function CustomerProfile({
           setProfilePassword("");
           return;
         }
-        
+
         // TEMPORARY WORKAROUND: Try changeEmail first, if it fails use regular update
         try {
           // Call change email API
@@ -250,7 +250,7 @@ export function CustomerProfile({
             newEmail: profile.email,
             password: profilePassword,
           });
-          
+
           // Update other fields separately if they changed
           if (profile.name !== user.name || profile.phone !== user.phone) {
             try {
@@ -263,17 +263,17 @@ export function CustomerProfile({
               // Continue anyway, email was changed successfully
             }
           }
-          
+
           toast.success("Profile updated successfully!", {
             description: `Your email has been changed to ${result.newEmail}`
           });
-          
+
           // Log the changes (don't fail if logging fails)
           const changes = [];
           if (emailChanged) changes.push("email");
           if (profile.name !== user.name) changes.push("name");
           if (profile.phone !== user.phone) changes.push("phone");
-          
+
           if (changes.length > 0) {
             try {
               await logProfileUpdate(
@@ -288,7 +288,7 @@ export function CustomerProfile({
               // Don't fail the whole operation if logging fails
             }
           }
-          
+
           if (onUserUpdate) {
             onUserUpdate({
               ...user,
@@ -297,18 +297,18 @@ export function CustomerProfile({
               phone: profile.phone,
             });
           }
-          
+
           // Clear password
           setProfilePassword("");
-          
+
         } catch (emailChangeError: any) {
           console.error("Change email API failed, trying regular update:", emailChangeError);
-          
+
           // Check for duplicate email error
-          if (emailChangeError.message?.includes('duplicate key') || 
-              emailChangeError.message?.includes('users_email_key') ||
-              emailChangeError.message?.includes('already registered') ||
-              emailChangeError.message?.includes('email is already in use')) {
+          if (emailChangeError.message?.includes('duplicate key') ||
+            emailChangeError.message?.includes('users_email_key') ||
+            emailChangeError.message?.includes('already registered') ||
+            emailChangeError.message?.includes('email is already in use')) {
             toast.error("Email already in use", {
               description: "This email address is already registered to another account. Please use a different email."
             });
@@ -316,20 +316,20 @@ export function CustomerProfile({
             setProfilePassword("");
             return;
           }
-          
-       
-          
+
+
+
           await API.users.update(user.id, {
             name: profile.name,
             email: profile.email,
             phone: profile.phone,
           });
-          
+
           const changes = [];
           if (emailChanged) changes.push("email");
           if (profile.name !== user.name) changes.push("name");
           if (profile.phone !== user.phone) changes.push("phone");
-          
+
           if (changes.length > 0) {
             try {
               await logProfileUpdate(
@@ -343,11 +343,11 @@ export function CustomerProfile({
               console.error("Error logging profile update:", logError);
             }
           }
-          
+
           toast.success("Profile updated successfully!", {
             description: "Your personal information has been saved."
           });
-          
+
           if (onUserUpdate) {
             onUserUpdate({
               ...user,
@@ -356,10 +356,10 @@ export function CustomerProfile({
               phone: profile.phone,
             });
           }
-          
+
           setProfilePassword("");
         }
-        
+
       } else {
         // No email change, use regular update
         await API.users.update(user.id, {
@@ -367,11 +367,11 @@ export function CustomerProfile({
           email: profile.email,
           phone: profile.phone,
         });
-        
+
         const changes = [];
         if (profile.name !== user.name) changes.push("name");
         if (profile.phone !== user.phone) changes.push("phone");
-        
+
         if (changes.length > 0) {
           try {
             await logProfileUpdate(
@@ -386,11 +386,11 @@ export function CustomerProfile({
             // Don't fail the whole operation if logging fails
           }
         }
-        
+
         toast.success("Profile updated successfully!", {
           description: "Your personal information has been saved."
         });
-        
+
         if (onUserUpdate) {
           onUserUpdate({
             ...user,
@@ -426,7 +426,7 @@ export function CustomerProfile({
       toast.error("New passwords do not match");
       return;
     }
-    
+
     // Comprehensive password validation
     const passwordValidation = validatePassword(passwordData.newPassword, user.name);
     if (!passwordValidation.isValid) {
@@ -808,7 +808,7 @@ export function CustomerProfile({
                 toast.error("New passwords do not match");
                 return;
               }
-              
+
               // Comprehensive password validation
               const passwordValidation = validatePassword(passwordData.newPassword, user.name);
               if (!passwordValidation.isValid) {
@@ -817,7 +817,7 @@ export function CustomerProfile({
                 });
                 return;
               }
-              
+
               setShowPasswordConfirm(true);
             }}
             disabled={passwordLoading}
@@ -835,48 +835,7 @@ export function CustomerProfile({
         </CardContent>
       </Card>
 
-      {/* Account Statistics */}
-      <Card className="border-[#E8DCC8]">
-        <CardHeader>
-          <CardTitle className="text-[#5C4A3A]">
-            Account Statistics
-          </CardTitle>
-          <CardDescription className="text-[#87765E]">
-            Your activity summary
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="p-4 bg-[#FBF7EF] rounded-lg border border-[#E8DCC8]">
-              <div className="flex items-center gap-3 mb-2">
-                <Calendar className="w-5 h-5 text-[#DB9D47]" />
-                <p className="text-sm text-[#87765E]">
-                  Total Visits
-                </p>
-              </div>
-              <p className="text-2xl text-[#5C4A3A]">12</p>
-            </div>
-            <div className="p-4 bg-[#FBF7EF] rounded-lg border border-[#E8DCC8]">
-              <div className="flex items-center gap-3 mb-2">
-                <FaPesoSign className="w-5 h-5 text-[#94A670]" />
-                <p className="text-sm text-[#87765E]">
-                  Amount Spent
-                </p>
-              </div>
-              <p className="text-2xl text-[#5C4A3A]">₱2,700</p>
-            </div>
-            <div className="p-4 bg-[#FBF7EF] rounded-lg border border-[#E8DCC8]">
-              <div className="flex items-center gap-3 mb-2">
-                <Award className="w-5 h-5 text-[#D98555]" />
-                <p className="text-sm text-[#87765E]">
-                  Member Status
-                </p>
-              </div>
-              <p className="text-2xl text-[#5C4A3A]">Active</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+
 
       {/* Security & Devices */}
       <Card className="border-[#E8DCC8]">
@@ -1039,22 +998,22 @@ export function CustomerProfile({
                 <>
                   <div className="p-3 bg-amber-50 border border-amber-200 rounded-md">
                     <div className="flex items-start gap-2">
-                     
+
                       <div className="text-sm text-amber-900">
-                       
+
                         <p>
                           <span className="font-medium">Current:</span> {user.email}
                         </p>
                         <p>
                           <span className="font-medium">New:</span> {profile.email}
                         </p>
-                       
+
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="space-y-2">
-                   
+
                     <PasswordInput
                       id="profilePassword"
                       value={profilePassword}

@@ -15,12 +15,11 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from './ui/select';
 import { UserPlus, Search, Edit, Trash2, CheckCircle2, XCircle, Loader2, Users, UserCheck, UserPlus as UserPlusIcon, Download } from 'lucide-react';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 import { PasswordConfirmationDialog } from './PasswordConfirmationDialog';
 import API from '../services/api.service';
 import {
   exportToCSV,
-  formatDateForExport,
 } from './utils/exportUtils';
 import { Pagination } from './ui/pagination';
 
@@ -29,9 +28,9 @@ interface UserData {
   name: string;
   email: string;
   role: string;
-  status: 'active' | 'inactive';
+  isActive: boolean;
   joinDate: string;
-  createdAt: string; // Add raw createdAt for calculations
+  createdAt: string;
 }
 
 export function UserManagement() {
@@ -68,15 +67,15 @@ export function UserManagement() {
       const fetchedUsers = await API.users.getAll();
       // Format users to match UserData interface - FILTER FOR CUSTOMERS ONLY
       const formattedUsers = fetchedUsers
-        .filter((user: any) => user.role === 'customer') // Only fetch customers
+        .filter((user: any) => user.role === 'customer')
         .map((user: any) => ({
           id: user.id || user._id,
           name: user.name,
           email: user.email,
           role: user.role,
-          status: user.status || 'active',
-          createdAt: user.createdAt || new Date().toISOString(),
-          joinDate: user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', { 
+          isActive: user.isActive !== undefined ? user.isActive : (user.is_active !== undefined ? user.is_active : true),
+          createdAt: user.createdAt || user.created_at || new Date().toISOString(),
+          joinDate: (user.createdAt || user.created_at) ? new Date(user.createdAt || user.created_at).toLocaleDateString('en-US', { 
             year: 'numeric', 
             month: 'short', 
             day: 'numeric' 
@@ -98,7 +97,7 @@ export function UserManagement() {
 
   // Calculate analytics
   const totalCustomers = users.length;
-  const activeCustomers = users.filter(user => user.status === 'active').length;
+  const activeCustomers = users.filter(user => user.isActive).length;
   
   // New customers (joined within last 30 days)
   const thirtyDaysAgo = new Date();
@@ -109,14 +108,14 @@ export function UserManagement() {
   }).length;
 
   const filteredUsers = users.filter(user => {
+    const statusText = user.isActive ? 'active' : 'inactive';
     const matchesSearch = 
       user.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.role.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.status.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      statusText.includes(searchTerm.toLowerCase()) ||
       user.joinDate.includes(searchTerm);
-    // Removed role filtering since we only have customers now
     return matchesSearch;
   });
 
@@ -168,15 +167,17 @@ export function UserManagement() {
         const user = users.find(u => u.id === passwordConfirmation.userId);
         if (!user) return;
 
-        // Update user status in database
-        await API.users.update(passwordConfirmation.userId, {
-          status: user.status === 'active' ? 'inactive' : 'active',
-        });
+        // Use the proper suspend/unsuspend API endpoints
+        if (user.isActive) {
+          await API.users.suspend(passwordConfirmation.userId);
+          toast.success(`${user.name}'s account has been deactivated`);
+        } else {
+          await API.users.unsuspend(passwordConfirmation.userId);
+          toast.success(`${user.name}'s account has been reactivated`);
+        }
 
-        // Refresh users list
+        // Refresh users list from database
         await fetchUsers();
-        
-        toast.success('User status updated in database');
       } catch (error) {
         console.error('Error updating user status:', error);
         toast.error('Failed to update user status');
@@ -202,15 +203,22 @@ export function UserManagement() {
   };
 
   const handleExportToCSV = () => {
-    const formattedUsers = users.map(user => ({
-      ID: user.id,
-      Name: user.name,
-      Email: user.email,
-      Role: user.role,
-      Status: user.status,
-      'Join Date': formatDateForExport(user.joinDate),
+    if (filteredUsers.length === 0) {
+      toast.error('No customers to export');
+      return;
+    }
+
+    const headers = ['ID', 'Name', 'Email', 'Role', 'Status', 'Join Date'];
+    const formattedUsers = filteredUsers.map(user => ({
+      'ID': user.id,
+      'Name': user.name,
+      'Email': user.email,
+      'Role': user.role,
+      'Status': user.isActive ? 'Active' : 'Inactive',
+      'Join Date': user.joinDate,
     }));
-    exportToCSV(formattedUsers, 'customers');
+    exportToCSV(formattedUsers, headers, 'customers');
+    toast.success(`Exported ${formattedUsers.length} customers to CSV`);
   };
 
   const indexOfLastUser = currentPage * usersPerPage;
@@ -365,13 +373,13 @@ export function UserManagement() {
                     <TableCell>{user.name}</TableCell>
                     <TableCell>{user.email}</TableCell>
                     <TableCell>
-                      <Badge variant={user.status === 'active' ? 'default' : 'secondary'}>
-                        {user.status === 'active' ? (
+                      <Badge variant={user.isActive ? 'default' : 'secondary'} className={user.isActive ? 'bg-green-100 text-green-700 border-green-200' : 'bg-red-100 text-red-700 border-red-200'}>
+                        {user.isActive ? (
                           <CheckCircle2 className="w-3 h-3 mr-1" />
                         ) : (
                           <XCircle className="w-3 h-3 mr-1" />
                         )}
-                        {user.status}
+                        {user.isActive ? 'Active' : 'Inactive'}
                       </Badge>
                     </TableCell>
                     <TableCell>{user.joinDate}</TableCell>
@@ -380,9 +388,10 @@ export function UserManagement() {
                         <Button
                           variant="ghost"
                           size="sm"
+                          className={user.isActive ? 'text-red-600 hover:text-red-700 hover:bg-red-50' : 'text-green-600 hover:text-green-700 hover:bg-green-50'}
                           onClick={() => handleToggleStatus(user.id)}
                         >
-                          {user.status === 'active' ? 'Deactivate' : 'Activate'}
+                          {user.isActive ? 'Deactivate' : 'Activate'}
                         </Button>
                         <Button
                           variant="ghost"

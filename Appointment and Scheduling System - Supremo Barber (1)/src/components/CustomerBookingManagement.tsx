@@ -4,7 +4,7 @@ import API from "../services/api.service";
 import { SupabaseReviewsService } from "../services/supabase-reviews.service";
 import { PaymentProofUpload, PaymentStatusBadge } from "./PaymentProofUpload";
 import { SupabaseSetupGuide } from "./SupabaseSetupGuide";
-import { logPaymentProofUpload } from "../services/audit-notification.service";
+import { logPaymentProofUpload, logAppointmentCancelledByCustomer, logAppointmentRescheduledByCustomer } from "../services/audit-notification.service";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
@@ -36,8 +36,8 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
-  DollarSign,
 } from "lucide-react";
+import { FaPesoSign } from "react-icons/fa6";
 import { toast } from "sonner";
 
 // Utility function to parse date string without timezone issues
@@ -55,9 +55,9 @@ interface CustomerBookingManagementProps {
   highlightedAppointmentId?: string | null;
 }
 
-export function CustomerBookingManagement({ 
-  user, 
-  appointments, 
+export function CustomerBookingManagement({
+  user,
+  appointments,
   onUpdateAppointments,
   onNavigateToBooking,
   onSetPreSelectedService,
@@ -77,6 +77,8 @@ export function CustomerBookingManagement({
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [reviewedAppointments, setReviewedAppointments] = useState<Set<string>>(new Set());
   const [showRlsError, setShowRlsError] = useState(false);
+  const [cancellationReason, setCancellationReason] = useState("");
+  const [selectedCancelReason, setSelectedCancelReason] = useState("");
 
   // Scroll to highlighted appointment
   useEffect(() => {
@@ -106,7 +108,7 @@ export function CustomerBookingManagement({
         console.error('Error fetching customer reviews:', error);
       }
     };
-    
+
     fetchReviews();
   }, [user.id]);
 
@@ -130,7 +132,7 @@ export function CustomerBookingManagement({
     console.log('📅 Upcoming bookings:', upcoming.length, upcoming.map(b => ({ id: b.id, status: b.status, service: b.service })));
     return upcoming;
   }, [userAppointments]);
-  
+
   const pastBookings = useMemo(() => {
     const past = userAppointments.filter((b) => b.status === "completed" || b.status === "cancelled" || b.status === "rejected");
     console.log('📋 Past bookings:', past.length);
@@ -217,12 +219,12 @@ export function CustomerBookingManagement({
   const canModifyBooking = (bookingDate: string): { canModify: boolean; daysUntil: number } => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     const appointmentDate = new Date(bookingDate);
     appointmentDate.setHours(0, 0, 0, 0);
-    
+
     const daysUntil = Math.ceil((appointmentDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-    
+
     return {
       canModify: daysUntil >= 2, // At least 2 days in advance
       daysUntil
@@ -231,10 +233,10 @@ export function CustomerBookingManagement({
 
   const handleReschedule = (booking: Appointment) => {
     const { canModify, daysUntil } = canModifyBooking(booking.date);
-    
+
     if (!canModify) {
       toast.error(
-        daysUntil === 0 
+        daysUntil === 0
           ? 'Cannot reschedule same-day appointments'
           : `Rescheduling requires at least 2 days notice. Your appointment is in ${daysUntil} day(s).`
       );
@@ -242,11 +244,11 @@ export function CustomerBookingManagement({
     }
 
     // Check if booking has already been rescheduled
-    if (booking.rescheduledCount && booking.rescheduledCount >= 1) {
+    if ((booking.rescheduledCount ?? 0) >= 1) {
       toast.error('This appointment has already been rescheduled once. You cannot reschedule it again.');
       return;
     }
-    
+
     setSelectedBooking(booking);
     setNewDate(parseLocalDate(booking.date));
     setNewTime(booking.time);
@@ -266,8 +268,10 @@ export function CustomerBookingManagement({
     }
 
     const formattedDate = `${newDate.getFullYear()}-${String(newDate.getMonth() + 1).padStart(2, '0')}-${String(newDate.getDate()).padStart(2, '0')}`;
-    
-    // OPTIMISTIC UPDATE: Update UI immediately
+
+    const newRescheduledCount = (selectedBooking.rescheduledCount || 0) + 1;
+
+    // Update appointments — onUpdateAppointments handles both state + DB sync
     const updatedAppointments = appointments.map(apt => {
       if (apt.id === selectedBooking.id) {
         return {
@@ -276,56 +280,64 @@ export function CustomerBookingManagement({
           appointment_date: formattedDate,
           time: newTime,
           appointment_time: newTime,
-          rescheduledCount: (apt.rescheduledCount || 0) + 1,
+          rescheduledCount: newRescheduledCount,
         };
       }
       return apt;
     });
 
-    onUpdateAppointments(updatedAppointments);
-    
-    toast.success('Appointment rescheduled successfully! Saving to database...');
     setIsRescheduleDialogOpen(false);
     setSelectedBooking(null);
 
-    // Save to database in background
     try {
-      console.log('📅 Updating appointment in database:', {
-        id: selectedBooking.id,
-        date: formattedDate,
-        time: newTime,
-        rescheduledCount: (selectedBooking.rescheduledCount || 0) + 1,
-      });
-      
-      await API.appointments.update(selectedBooking.id, {
-        appointment_date: formattedDate,
-        appointment_time: newTime,
-        rescheduled_count: (selectedBooking.rescheduledCount || 0) + 1,
-      });
-      
-      console.log('✅ Appointment updated in database successfully');
-      toast.success('Rescheduling confirmed! (Note: This appointment can no longer be rescheduled)');
+      // onUpdateAppointments syncs to DB via App.tsx handleUpdateAppointments
+      await onUpdateAppointments(updatedAppointments);
+
+      // Send notifications to admin and barber about reschedule
+      try {
+        await logAppointmentRescheduledByCustomer(
+          user.id,
+          user.name,
+          user.email,
+          selectedBooking.id,
+          {
+            service: selectedBooking.service || selectedBooking.service_name || 'Unknown Service',
+            barber: selectedBooking.barber || selectedBooking.barber_name || 'Unknown Barber',
+            barberId: selectedBooking.barber_id || '',
+            oldDate: selectedBooking.date || selectedBooking.appointment_date || '',
+            oldTime: selectedBooking.time || selectedBooking.appointment_time || '',
+            newDate: formattedDate,
+            newTime: newTime,
+          }
+        );
+        console.log('✅ Reschedule notifications sent to admin and barber');
+      } catch (notifError) {
+        console.error('❌ Failed to send reschedule notifications:', notifError);
+      }
+
+      if (newRescheduledCount >= 1) {
+        toast.success('Appointment rescheduled! Note: This appointment can no longer be rescheduled.');
+      } else {
+        toast.success('Appointment rescheduled successfully!');
+      }
     } catch (error: any) {
-      console.error('❌ Failed to update appointment in database:', error);
-      toast.error('Failed to save rescheduling. Please try again or contact support.');
-      
-      // Revert optimistic update on error
-      onUpdateAppointments(appointments);
+      console.error('❌ Failed to reschedule appointment:', error);
+      toast.error('Reschedule limit exceeded. Please try again or contact support.');
     }
   };
 
   const handleCancelBookingClick = (booking: Appointment) => {
     const { canModify, daysUntil } = canModifyBooking(booking.date);
-    
+
     if (!canModify) {
       toast.error(
-        daysUntil === 0 
+        daysUntil === 0
           ? 'Cannot cancel same-day appointments'
           : `Cancellation requires at least 2 days notice. Your appointment is in ${daysUntil} day(s).`
       );
       return;
     }
-    
+
     setSelectedBooking(booking);
     setIsCancelDialogOpen(true);
   };
@@ -333,11 +345,32 @@ export function CustomerBookingManagement({
   const handleConfirmCancel = async () => {
     if (!selectedBooking) return;
 
+    if (!cancellationReason.trim() && selectedCancelReason !== 'other') {
+      if (!selectedCancelReason) {
+        toast.error('Please select a reason for cancellation.');
+        return;
+      }
+    }
+
+    if (selectedCancelReason === 'other' && !cancellationReason.trim()) {
+      toast.error('Please provide your reason for cancellation.');
+      return;
+    }
+
+    // Build the final reason string
+    const finalReason = selectedCancelReason === 'other'
+      ? cancellationReason.trim()
+      : selectedCancelReason;
+
     try {
-      // Update the database directly with both status and payment_status
+      const cancelledAt = new Date().toISOString();
+
+      // Update the database directly with status, payment_status, and cancellation reason
       await API.appointments.update(selectedBooking.id, {
         status: 'cancelled',
         payment_status: 'refunded',
+        notes: `Customer cancelled: ${finalReason}`,
+        cancellation_reason: finalReason,
       });
 
       const updatedAppointments = appointments.map(apt => {
@@ -347,19 +380,43 @@ export function CustomerBookingManagement({
             status: 'cancelled' as const,
             paymentStatus: 'rejected' as const,  // camelCase for UI
             payment_status: 'refunded' as const,  // snake_case for DB sync
+            cancellationReason: finalReason,
+            cancelledBy: user.name,
+            cancelledAt,
+            notes: `Customer cancelled: ${finalReason}`,
           };
         }
         return apt;
       });
 
       onUpdateAppointments(updatedAppointments);
-      
-      // Send email notification (placeholder)
-      console.log('📧 Email sent to admin and customer about cancellation');
-      
+
+      // Send notifications to admin and barber about cancellation
+      try {
+        await logAppointmentCancelledByCustomer(
+          user.id,
+          user.name,
+          user.email,
+          selectedBooking.id,
+          {
+            service: selectedBooking.service || selectedBooking.service_name || 'Unknown Service',
+            barber: selectedBooking.barber || selectedBooking.barber_name || 'Unknown Barber',
+            barberId: selectedBooking.barber_id || '',
+            date: selectedBooking.date || selectedBooking.appointment_date || '',
+            time: selectedBooking.time || selectedBooking.appointment_time || '',
+            reason: finalReason,
+          }
+        );
+        console.log('✅ Cancellation notifications sent to admin and barber');
+      } catch (notifError) {
+        console.error('❌ Failed to send cancellation notifications:', notifError);
+      }
+
       toast.success('Appointment cancelled successfully');
       setIsCancelDialogOpen(false);
       setSelectedBooking(null);
+      setCancellationReason('');
+      setSelectedCancelReason('');
     } catch (error) {
       console.error('❌ Error cancelling booking:', error);
       toast.error('Failed to cancel appointment. Please try again.');
@@ -394,12 +451,11 @@ export function CustomerBookingManagement({
     });
 
     onUpdateAppointments(updatedAppointments);
-    
-    // In real app, this would save to server
-    console.log('💳 Payment proof submitted for', appointmentId, proofUrl);
-    
-    toast.success('Payment proof submitted! Waiting for admin verification.');
-    
+
+
+
+
+
     // Send notification to admin about payment proof upload
     try {
       await logPaymentProofUpload(
@@ -445,7 +501,7 @@ export function CustomerBookingManagement({
     }
 
     const formattedDate = `${newDate.getFullYear()}-${String(newDate.getMonth() + 1).padStart(2, '0')}-${String(newDate.getDate()).padStart(2, '0')}`;
-    
+
     // Create a new appointment with the same service but new date/time
     // Use the same format as BookingFlow.tsx
     const newAppointmentData = {
@@ -486,7 +542,7 @@ export function CustomerBookingManagement({
       console.log('📅 Creating rebook appointment:', newAppointmentData);
       const createdAppointment = await API.appointments.create(newAppointmentData);
       console.log('✅ Rebook appointment created:', createdAppointment);
-      
+
       // Add the new appointment to state with the server-generated UUID
       const updatedAppointments = [...appointments, createdAppointment];
       onUpdateAppointments(updatedAppointments);
@@ -541,7 +597,7 @@ export function CustomerBookingManagement({
       toast.success('Thank you for your review! It has been submitted successfully.');
     } catch (error: any) {
       console.error('❌ Error submitting review to Supabase:', error);
-      
+
       // Show user-friendly error with setup instructions
       if (error.message && error.message.includes('Row-Level Security')) {
         toast.error(
@@ -583,7 +639,7 @@ export function CustomerBookingManagement({
             <div className="text-center py-12">
               <Calendar className="w-12 h-12 text-[#E8DCC8] mx-auto mb-4" />
               <p className="text-[#87765E] mb-4">No upcoming appointments</p>
-              <Button 
+              <Button
                 className="bg-[#DB9D47] hover:bg-[#C88A35] text-white"
                 onClick={onNavigateToBooking}
               >
@@ -599,11 +655,10 @@ export function CustomerBookingManagement({
                   <div
                     key={booking.id}
                     id={`appointment-${booking.id}`}
-                    className={`p-5 rounded-lg transition-all duration-500 ${
-                      isHighlighted
-                        ? 'bg-gradient-to-br from-[#FFF3C4] via-[#FBF7EF] to-white border-3 border-[#DB9D47] shadow-xl ring-4 ring-[#DB9D47]/30 animate-pulse'
-                        : 'bg-gradient-to-br from-[#FBF7EF] to-white border-2 border-[#E8DCC8] hover:shadow-lg'
-                    }`}
+                    className={`p-5 rounded-lg transition-all duration-500 ${isHighlighted
+                      ? 'bg-gradient-to-br from-[#FFF3C4] via-[#FBF7EF] to-white border-3 border-[#DB9D47] shadow-xl ring-4 ring-[#DB9D47]/30 animate-pulse'
+                      : 'bg-gradient-to-br from-[#FBF7EF] to-white border-2 border-[#E8DCC8] hover:shadow-lg'
+                      }`}
                   >
                     {/* Just Verified Badge */}
                     {isHighlighted && (
@@ -626,23 +681,24 @@ export function CustomerBookingManagement({
                             </span>
                             <span className="flex items-center gap-1">
                               <Calendar className="w-4 h-4" />
-                            {parseLocalDate(booking.date).toLocaleDateString('en-PH', {
-                              timeZone: 'Asia/Manila',
-                            })}
+                              {parseLocalDate(booking.date).toLocaleDateString('en-PH', {
+                                timeZone: 'Asia/Manila',
+                              })}
                             </span>
                             <span className="flex items-center gap-1">
                               <Clock className="w-4 h-4" />
                               {booking.time}
                             </span>
                           </div>
-                          
+
+
                           {/* Payment Status Badge */}
                           {booking.paymentProof && booking.paymentStatus && (
                             <div className="mt-2">
                               <PaymentStatusBadge status={booking.paymentStatus} />
                             </div>
                           )}
-                          
+
                           {/* Rejection Reason Display */}
                           {(booking.status === 'rejected' || booking.paymentStatus === 'rejected') && booking.rejectionReason && (
                             <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
@@ -656,7 +712,7 @@ export function CustomerBookingManagement({
                               </p>
                             </div>
                           )}
-                          
+
                           {/* Also check notes field for rejection reason */}
                           {(booking.status === 'rejected' || booking.paymentStatus === 'rejected') && !booking.rejectionReason && booking.notes && booking.notes.includes('Payment rejected') && (
                             <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
@@ -682,28 +738,41 @@ export function CustomerBookingManagement({
                         {/* Payment proof submission/resubmission logic */}
                         {/* Show button ONLY if: no payment proof, OR pending (allow resubmit), OR rejected (allow resubmit) */}
                         {/* Hide button when verified/paid */}
-                        {(!booking.paymentProof || booking.paymentStatus === 'pending' || booking.paymentStatus === 'rejected') && 
-                         booking.paymentStatus !== 'verified' && (
+                        {(!booking.paymentProof || booking.paymentStatus === 'pending' || booking.paymentStatus === 'rejected') &&
+                          booking.paymentStatus !== 'verified' && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="border-[#94A670] text-[#94A670] hover:bg-[#94A670] hover:text-white"
+                              onClick={() => handlePaymentProof(booking)}
+                            >
+                              <QrCode className="w-4 h-4 mr-1" />
+                              Resubmit Payment
+                            </Button>
+                          )}
+                        {/* Reschedule button - disabled if already rescheduled once */}
+                        {(booking.rescheduledCount ?? 0) >= 1 ? (
                           <Button
                             variant="outline"
                             size="sm"
-                            className="border-[#94A670] text-[#94A670] hover:bg-[#94A670] hover:text-white"
-                            onClick={() => handlePaymentProof(booking)}
+                            className="border-gray-300 text-gray-400 cursor-not-allowed opacity-60"
+                            disabled
+                            title="This appointment has already been rescheduled once"
                           >
-                            <QrCode className="w-4 h-4 mr-1" />
-                            Resubmit Payment
+                            <Edit className="w-4 h-4 mr-1" />
+                            Rescheduled
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-[#DB9D47] text-[#DB9D47] hover:bg-[#DB9D47] hover:text-white"
+                            onClick={() => handleReschedule(booking)}
+                          >
+                            <Edit className="w-4 h-4 mr-1" />
+                            Reschedule
                           </Button>
                         )}
-                        {/* Always show reschedule and cancel buttons regardless of payment status */}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="border-[#DB9D47] text-[#DB9D47] hover:bg-[#DB9D47] hover:text-white"
-                          onClick={() => handleReschedule(booking)}
-                        >
-                          <Edit className="w-4 h-4 mr-1" />
-                          Reschedule
-                        </Button>
                         <Button
                           variant="outline"
                           size="sm"
@@ -737,69 +806,94 @@ export function CustomerBookingManagement({
               const statusConfig = getStatusConfig(booking.status);
               const hasReviewed = reviewedAppointments.has(booking.id);
               const canReview = booking.status === "completed" && !hasReviewed;
+
+              // Extract cancellation reason from cancellationReason field or notes field
+              const cancelReason = booking.cancellationReason ||
+                (booking.notes && booking.notes.startsWith('Customer cancelled: ')
+                  ? booking.notes.replace('Customer cancelled: ', '')
+                  : null);
+
               return (
                 <div
                   key={booking.id}
-                  className="flex items-center justify-between p-4 rounded-lg bg-[#FBF7EF] border border-[#E8DCC8]"
+                  className="p-4 rounded-lg bg-[#FBF7EF] border border-[#E8DCC8]"
                 >
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#DB9D47]/50 to-[#D98555]/50 flex items-center justify-center">
-                      <Scissors className="w-5 h-5 text-[#DB9D47]" />
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4 flex-1">
+                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#DB9D47]/50 to-[#D98555]/50 flex items-center justify-center flex-shrink-0">
+                        <Scissors className="w-5 h-5 text-[#DB9D47]" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-[#5C4A3A]">{booking.service}</p>
+                        <p className="text-sm text-[#87765E]">
+                          {parseLocalDate(booking.date).toLocaleDateString()} • {booking.time}
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex-1">
-                      <p className="text-[#5C4A3A]">{booking.service}</p>
-                      <p className="text-sm text-[#87765E]">
-                        {parseLocalDate(booking.date).toLocaleDateString()} • {booking.time}
-                      </p>
-                      
-                      {/* Rejection Reason Display for Past Bookings */}
-                      {(booking.status === 'rejected' || booking.paymentStatus === 'rejected') && booking.rejectionReason && (
-                        <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs">
-                          <p className="font-semibold text-red-700 flex items-center gap-1">
-                            <AlertCircle className="w-3 h-3" />
-                            Rejected:
-                          </p>
-                          <p className="text-red-600">{booking.rejectionReason}</p>
-                        </div>
+                    <div className="flex items-center gap-2">
+                      <p className="text-[#87765E]">₱{booking.price}</p>
+                      <Badge variant="outline" className={statusConfig.color}>
+                        {statusConfig.label}
+                      </Badge>
+                      {canReview && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="border-yellow-500 text-yellow-600 hover:bg-yellow-500 hover:text-white"
+                          onClick={() => handleOpenReviewDialog(booking)}
+                        >
+                          <Star className="w-4 h-4 mr-1" />
+                          Review
+                        </Button>
                       )}
-                      
-                      {/* Also check notes field for rejection reason */}
-                      {(booking.status === 'rejected' || booking.paymentStatus === 'rejected') && !booking.rejectionReason && booking.notes && booking.notes.includes('Payment rejected') && (
-                        <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded text-xs">
-                          <p className="font-semibold text-red-700 flex items-center gap-1">
-                            <AlertCircle className="w-3 h-3" />
-                            Rejected:
-                          </p>
-                          <p className="text-red-600">{booking.notes.replace('Payment rejected: ', '')}</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <p className="text-[#87765E]">₱{booking.price}</p>
-                    <Badge variant="outline" className={statusConfig.color}>
-                      {statusConfig.label}
-                    </Badge>
-                    {canReview && (
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        className="border-yellow-500 text-yellow-600 hover:bg-yellow-500 hover:text-white"
-                        onClick={() => handleOpenReviewDialog(booking)}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-[#DB9D47] text-[#DB9D47] hover:bg-[#DB9D47] hover:text-white"
+                        onClick={() => handleRebook(booking)}
                       >
-                        <Star className="w-4 h-4 mr-1" />
-                        Review
+                        Rebook
                       </Button>
-                    )}
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="border-[#DB9D47] text-[#DB9D47] hover:bg-[#DB9D47] hover:text-white"
-                      onClick={() => handleRebook(booking)}
-                    >
-                      Rebook
-                    </Button>
+                    </div>
                   </div>
+
+
+
+                  {/* Rejection Reason Display for Past Bookings */}
+                  {(booking.status === 'rejected' || booking.paymentStatus === 'rejected') && booking.rejectionReason && (
+                    <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                      <p className="text-xs font-semibold text-red-700 flex items-center gap-1 mb-1">
+                        <AlertCircle className="w-3 h-3" />
+                        Rejected:
+                      </p>
+                      <p className="text-xs text-red-600">{booking.rejectionReason}</p>
+                    </div>
+                  )}
+
+                  {/* Also check notes field for rejection reason */}
+                  {(booking.status === 'rejected' || booking.paymentStatus === 'rejected') && !booking.rejectionReason && booking.notes && booking.notes.includes('Payment rejected') && (
+                    <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                      <p className="text-xs font-semibold text-red-700 flex items-center gap-1 mb-1">
+                        <AlertCircle className="w-3 h-3" />
+                        Rejected:
+                      </p>
+                      <p className="text-xs text-red-600">{booking.notes.replace('Payment rejected: ', '')}</p>
+                    </div>
+                  )}
+
+                  {/* Cancellation Reason Display */}
+                  {booking.status === 'cancelled' && cancelReason && (
+                    <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                      <p className="text-xs font-semibold text-red-700 flex items-center gap-1 mb-1">
+                        <XCircle className="w-3 h-3" />
+                        Cancellation Reason:
+                      </p>
+                      <p className="text-xs text-red-600">{cancelReason}</p>
+                      {booking.cancelledBy && (
+                        <p className="text-xs text-red-400 mt-1 italic">Cancelled by: {booking.cancelledBy}</p>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -909,7 +1003,7 @@ export function CustomerBookingManagement({
             <Button variant="outline" onClick={() => setIsRescheduleDialogOpen(false)}>
               Cancel
             </Button>
-            <Button 
+            <Button
               className="bg-[#DB9D47] hover:bg-[#C88A35] text-white"
               onClick={handleConfirmReschedule}
               disabled={!newDate || !newTime}
@@ -921,30 +1015,116 @@ export function CustomerBookingManagement({
       </Dialog>
 
       {/* Cancel Confirmation Dialog */}
-      <AlertDialog open={isCancelDialogOpen} onOpenChange={setIsCancelDialogOpen}>
-        <AlertDialogContent>
+      <AlertDialog open={isCancelDialogOpen} onOpenChange={(open) => {
+        setIsCancelDialogOpen(open);
+        if (!open) {
+          setCancellationReason('');
+          setSelectedCancelReason('');
+        }
+      }}>
+        <AlertDialogContent className="max-w-md">
           <AlertDialogHeader>
-            <AlertDialogTitle>Cancel Appointment?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to cancel this appointment? This action cannot be undone, but the cancelled booking will remain in your history.
+            <AlertDialogTitle className="text-[#5C4A3A] flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-red-600" />
+              Cancel Appointment
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-[#87765E]">
+              Please select or provide a reason for cancellation. This helps us improve our service.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          {selectedBooking && (
-            <div className="p-4 rounded-lg bg-[#FBF7EF] border border-[#E8DCC8] my-4">
-              <p className="text-sm text-[#87765E] mb-1">Appointment Details</p>
-              <p className="text-[#5C4A3A]">{selectedBooking.service}</p>
-              <p className="text-sm text-[#87765E]">
-                {parseLocalDate(selectedBooking.date).toLocaleDateString()} at {selectedBooking.time}
-              </p>
+
+          <div className="space-y-4 py-4">
+            {/* Appointment Details */}
+            {selectedBooking && (
+              <div className="p-3 rounded-lg bg-[#FBF7EF] border border-[#E8DCC8]">
+                <p className="text-xs text-[#87765E] mb-1">Appointment Details</p>
+                <p className="text-sm text-[#5C4A3A] font-medium">{selectedBooking.service}</p>
+                <p className="text-xs text-[#87765E]">
+                  {parseLocalDate(selectedBooking.date).toLocaleDateString()} at {selectedBooking.time}
+                </p>
+                <p className="text-xs text-[#87765E]">with {selectedBooking.barber}</p>
+              </div>
+            )}
+
+            {/* Cancellation Reason Dropdown */}
+            <div className="space-y-2">
+              <Label htmlFor="customer-cancel-reason" className="text-[#5C4A3A]">
+                Cancellation Reason <span className="text-red-600">*</span>
+              </Label>
+              <Select
+                value={selectedCancelReason}
+                onValueChange={(value) => {
+                  setSelectedCancelReason(value);
+                  if (value !== 'other') {
+                    setCancellationReason('');
+                  }
+                }}
+              >
+                <SelectTrigger id="customer-cancel-reason" className="border-[#E8DCC8]">
+                  <SelectValue placeholder="Select a reason..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Schedule conflict">Schedule Conflict</SelectItem>
+                  <SelectItem value="Change of mind">Change of Mind</SelectItem>
+                  <SelectItem value="Financial reasons">Financial Reasons</SelectItem>
+                  <SelectItem value="Found another barber">Found Another Barber</SelectItem>
+                  <SelectItem value="Emergency">Personal Emergency</SelectItem>
+                  <SelectItem value="Health reasons">Health Reasons</SelectItem>
+                  <SelectItem value="Transportation issue">Transportation Issue</SelectItem>
+                  <SelectItem value="Weather conditions">Weather Conditions</SelectItem>
+                  <SelectItem value="other">Other (Please specify)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-          )}
-          <AlertDialogFooter>
-            <AlertDialogCancel>Keep Appointment</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleConfirmCancel}
-              className="bg-[#E57373] hover:bg-[#D63F3F] text-white"
+
+            {/* Custom Reason Input */}
+            {selectedCancelReason === 'other' && (
+              <div className="space-y-2">
+                <Label htmlFor="customer-custom-reason" className="text-[#5C4A3A]">
+                  Please specify your reason <span className="text-red-600">*</span>
+                </Label>
+                <Textarea
+                  id="customer-custom-reason"
+                  value={cancellationReason}
+                  onChange={(e) => setCancellationReason(e.target.value)}
+                  placeholder="Enter your reason for cancellation..."
+                  className="border-[#E8DCC8] min-h-[80px] focus:border-[#DB9D47] focus:ring-[#DB9D47] resize-none overflow-y-auto break-words"
+                  style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}
+                  maxLength={300}
+                  rows={3}
+                />
+                <p className="text-xs text-[#87765E] text-right">{cancellationReason.length}/300</p>
+              </div>
+            )}
+
+            {/* Info Note */}
+            {selectedCancelReason && (
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 flex gap-2">
+                <AlertCircle className="w-4 h-4 text-orange-600 flex-shrink-0 mt-0.5" />
+                <div className="text-sm text-orange-800">
+                  <p className="font-medium">Important:</p>
+                  <p className="mt-1">
+                    Down payments are non-refundable upon cancellation. Your cancellation reason will be recorded.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <AlertDialogFooter className="gap-2">
+            <AlertDialogCancel
+              className="border-[#E8DCC8] hover:bg-[#FBF7EF]"
+              onClick={() => { setCancellationReason(''); setSelectedCancelReason(''); }}
             >
-              Yes, Cancel Appointment
+              Go Back
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmCancel}
+              disabled={!selectedCancelReason || (selectedCancelReason === 'other' && !cancellationReason.trim())}
+              className="bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <XCircle className="w-4 h-4 mr-2" />
+              Confirm Cancellation
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -987,7 +1167,7 @@ export function CustomerBookingManagement({
                     <span>Barber: {selectedBooking.barber}</span>
                   </div>
                   <div className="flex items-center gap-2 text-[#DB9D47]">
-                    <DollarSign className="w-4 h-4" />
+                    <FaPesoSign className="w-4 h-4" />
                     <span>₱{selectedBooking.price}</span>
                   </div>
                 </div>
@@ -1076,7 +1256,7 @@ export function CustomerBookingManagement({
             <Button variant="outline" onClick={() => setIsRebookDialogOpen(false)}>
               Cancel
             </Button>
-            <Button 
+            <Button
               className="bg-[#DB9D47] hover:bg-[#C88A35] text-white"
               onClick={handleConfirmRebook}
               disabled={!newDate || !newTime}
@@ -1118,11 +1298,10 @@ export function CustomerBookingManagement({
                         className="focus:outline-none transition-all hover:scale-110"
                       >
                         <Star
-                          className={`w-8 h-8 cursor-pointer ${
-                            rating <= reviewRating 
-                              ? 'fill-[#DB9D47] text-[#DB9D47]' 
-                              : 'text-gray-300'
-                          }`}
+                          className={`w-8 h-8 cursor-pointer ${rating <= reviewRating
+                            ? 'fill-[#DB9D47] text-[#DB9D47]'
+                            : 'text-gray-300'
+                            }`}
                         />
                       </button>
                     ))}
@@ -1156,7 +1335,7 @@ export function CustomerBookingManagement({
             <Button variant="outline" onClick={() => setIsReviewDialogOpen(false)}>
               Cancel
             </Button>
-            <Button 
+            <Button
               className="bg-[#DB9D47] hover:bg-[#C88A35] text-white"
               onClick={handleSubmitReview}
               disabled={isSubmittingReview || !reviewRating || !reviewComment}

@@ -3,17 +3,19 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Input } from './ui/input';
-import { 
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
+import { Label } from './ui/label';
+import { Textarea } from './ui/textarea';
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from './ui/table';
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, 
+  Dialog, DialogContent, DialogDescription, DialogFooter,
   DialogHeader, DialogTitle
 } from './ui/dialog';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from './ui/select';
-import { Calendar, Clock, User, Scissors, XCircle, Star, Search, Filter } from 'lucide-react';
+import { Calendar, Clock, User, Scissors, XCircle, Star, Search, Filter, Edit, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Appointment } from '../App';
 import API from '../services/api.service';
@@ -38,6 +40,8 @@ export function BookingHistory({ userId, appointments, onUpdateAppointments }: B
   const [searchQuery, setSearchQuery] = useState('');
   const [filterBarber, setFilterBarber] = useState('all');
   const [isCancelling, setIsCancelling] = useState(false);
+  const [cancellationReason, setCancellationReason] = useState('');
+  const [selectedCancelReason, setSelectedCancelReason] = useState('');
 
   // Get unique barbers from appointments
   const barbers = Array.from(new Set(appointments.map(apt => apt.barber)));
@@ -45,30 +49,51 @@ export function BookingHistory({ userId, appointments, onUpdateAppointments }: B
   const handleCancelBooking = async () => {
     if (!selectedBooking) return;
 
+    if (!selectedCancelReason) {
+      toast.error('Please select a reason for cancellation.');
+      return;
+    }
+
+    if (selectedCancelReason === 'other' && !cancellationReason.trim()) {
+      toast.error('Please provide your reason for cancellation.');
+      return;
+    }
+
+    // Build the final reason string
+    const finalReason = selectedCancelReason === 'other'
+      ? cancellationReason.trim()
+      : selectedCancelReason;
+
     setIsCancelling(true);
     try {
-      // Update the database directly with both status and payment_status
+      // Update the database directly with both status, payment_status, and cancellation reason
       await API.appointments.update(selectedBooking.id, {
         status: 'cancelled',
         payment_status: 'refunded',
+        notes: `Customer cancelled: ${finalReason}`,
+        cancellation_reason: finalReason,
       });
 
       // Update local state to reflect the change immediately
       const updatedBookings = appointments.map(b =>
         b.id === selectedBooking.id
           ? {
-              ...b,
-              status: 'cancelled' as const,
-              paymentStatus: 'rejected' as const,  // camelCase for UI
-              payment_status: 'refunded' as const,  // snake_case for DB sync
-              canCancel: false
-            }
+            ...b,
+            status: 'cancelled' as const,
+            paymentStatus: 'rejected' as const,  // camelCase for UI
+            payment_status: 'refunded' as const,  // snake_case for DB sync
+            cancellationReason: finalReason,
+            notes: `Customer cancelled: ${finalReason}`,
+            canCancel: false
+          }
           : b
       );
 
       onUpdateAppointments(updatedBookings);
       setCancelDialogOpen(false);
       setSelectedBooking(null);
+      setCancellationReason('');
+      setSelectedCancelReason('');
 
       toast.success('Booking cancelled. No refund will be issued.');
     } catch (error) {
@@ -107,8 +132,8 @@ export function BookingHistory({ userId, appointments, onUpdateAppointments }: B
   const filteredAppointments = appointments.filter(apt => {
     // Format date for better search experience
     const formattedDate = parseLocalDate(apt.date).toLocaleDateString();
-    
-    const matchesSearch = 
+
+    const matchesSearch =
       apt.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
       apt.service.toLowerCase().includes(searchQuery.toLowerCase()) ||
       apt.barber.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -117,7 +142,7 @@ export function BookingHistory({ userId, appointments, onUpdateAppointments }: B
       apt.time.toLowerCase().includes(searchQuery.toLowerCase()) ||
       apt.price.toString().includes(searchQuery);
     const matchesBarber = filterBarber === 'all' || apt.barber === filterBarber;
-    
+
     return matchesSearch && matchesBarber;
   });
 
@@ -198,23 +223,49 @@ export function BookingHistory({ userId, appointments, onUpdateAppointments }: B
                       </TableCell>
                       <TableCell>
                         <div>
-                          ₱{booking.price}
+
                         </div>
                       </TableCell>
                       <TableCell className="text-right">
-                        {booking.canCancel && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedBooking(booking);
-                              setCancelDialogOpen(true);
-                            }}
-                          >
-                            <XCircle className="w-4 h-4 mr-1" />
-                            Cancel
-                          </Button>
-                        )}
+                        <div className="flex items-center justify-end gap-2">
+                          {/* Reschedule button - disabled if already rescheduled once */}
+                          {(booking.rescheduledCount ?? 0) >= 1 ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="border-gray-300 text-gray-400 cursor-not-allowed opacity-60"
+                              disabled
+                              title="This appointment has already been rescheduled once"
+                            >
+                              <Edit className="w-4 h-4 mr-1" />
+                              Rescheduled
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                toast.info('Please use the Manage Bookings tab to reschedule.');
+                              }}
+                            >
+                              <Edit className="w-4 h-4 mr-1" />
+                              Reschedule
+                            </Button>
+                          )}
+                          {booking.canCancel && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedBooking(booking);
+                                setCancelDialogOpen(true);
+                              }}
+                            >
+                              <XCircle className="w-4 h-4 mr-1" />
+                              Cancel
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -248,12 +299,28 @@ export function BookingHistory({ userId, appointments, onUpdateAppointments }: B
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {pastBookings.map((booking) => (
+                  {pastBookings.map((booking) => {
+                    // Extract cancellation reason from cancellationReason field or notes field
+                    const cancelReason = booking.cancellationReason ||
+                      (booking.notes && booking.notes.startsWith('Customer cancelled: ')
+                        ? booking.notes.replace('Customer cancelled: ', '')
+                        : null);
+
+                    return (
                     <TableRow key={booking.id}>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Scissors className="w-4 h-4 text-slate-400" />
-                          {booking.service}
+                          <div>
+                            {booking.service}
+                            {/* Cancellation Reason Display */}
+                            {booking.status === 'cancelled' && cancelReason && (
+                              <div className="mt-1 text-xs text-red-500 flex items-start gap-1">
+                                <AlertCircle className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                                <span>Reason: {cancelReason}</span>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -281,7 +348,8 @@ export function BookingHistory({ userId, appointments, onUpdateAppointments }: B
                         )}
                       </TableCell>
                     </TableRow>
-                  ))}
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
@@ -290,54 +358,119 @@ export function BookingHistory({ userId, appointments, onUpdateAppointments }: B
       </Card>
 
       {/* Cancel Confirmation Dialog */}
-      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
-        <DialogContent>
+      <Dialog open={cancelDialogOpen} onOpenChange={(open) => {
+        setCancelDialogOpen(open);
+        if (!open) {
+          setCancellationReason('');
+          setSelectedCancelReason('');
+        }
+      }}>
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Cancel Booking</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to cancel this appointment?
+            <DialogTitle className="text-slate-800 flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-red-600" />
+              Cancel Booking
+            </DialogTitle>
+            <DialogDescription className="text-slate-500">
+              Please select or provide a reason for cancellation. This helps us improve our service.
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-              <p className="text-sm text-red-800 font-semibold mb-1">
-                No Refund Policy
-              </p>
-              <p className="text-sm text-red-700">
-                Please note that all bookings are non-refundable. Your down payment will not be refunded if you cancel this appointment.
-              </p>
-            </div>
+
+          <div className="space-y-4 py-4">
+            {/* Appointment Details */}
             {selectedBooking && (
-              <div className="p-4 bg-slate-50 rounded-lg border border-slate-200 space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-slate-600">Service:</span>
-                  <span className="text-slate-900">{selectedBooking.service}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-600">Barber:</span>
-                  <span className="text-slate-900">{selectedBooking.barber}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-600">Date:</span>
-                  <span className="text-slate-900">{selectedBooking.date}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-600">Time:</span>
-                  <span className="text-slate-900">{selectedBooking.time}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-600">Down Payment Paid:</span>
-                  <span className="text-slate-900">₱{(selectedBooking.price * 0.5).toFixed(2)}</span>
+              <div className="p-3 rounded-lg bg-slate-50 border border-slate-200">
+                <p className="text-xs text-slate-500 mb-1">Appointment Details</p>
+                <p className="text-sm text-slate-800 font-medium">{selectedBooking.service}</p>
+                <p className="text-xs text-slate-500">
+                  {selectedBooking.date} at {selectedBooking.time}
+                </p>
+                <p className="text-xs text-slate-500">with {selectedBooking.barber}</p>
+                <p className="text-xs text-slate-500 mt-1">Down Payment: ₱{(selectedBooking.price * 0.5).toFixed(2)}</p>
+              </div>
+            )}
+
+            {/* Cancellation Reason Dropdown */}
+            <div className="space-y-2">
+              <Label htmlFor="history-cancel-reason" className="text-slate-700">
+                Cancellation Reason <span className="text-red-600">*</span>
+              </Label>
+              <Select
+                value={selectedCancelReason}
+                onValueChange={(value) => {
+                  setSelectedCancelReason(value);
+                  if (value !== 'other') {
+                    setCancellationReason('');
+                  }
+                }}
+              >
+                <SelectTrigger id="history-cancel-reason" className="border-slate-200">
+                  <SelectValue placeholder="Select a reason..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Schedule conflict">Schedule Conflict</SelectItem>
+                  <SelectItem value="Change of mind">Change of Mind</SelectItem>
+                  <SelectItem value="Financial reasons">Financial Reasons</SelectItem>
+                  <SelectItem value="Found another barber">Found Another Barber</SelectItem>
+                  <SelectItem value="Emergency">Personal Emergency</SelectItem>
+                  <SelectItem value="Health reasons">Health Reasons</SelectItem>
+                  <SelectItem value="Transportation issue">Transportation Issue</SelectItem>
+                  <SelectItem value="Weather conditions">Weather Conditions</SelectItem>
+                  <SelectItem value="other">Other (Please specify)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Custom Reason Input */}
+            {selectedCancelReason === 'other' && (
+              <div className="space-y-2">
+                <Label htmlFor="history-custom-reason" className="text-slate-700">
+                  Please specify your reason <span className="text-red-600">*</span>
+                </Label>
+                <Textarea
+                  id="history-custom-reason"
+                  value={cancellationReason}
+                  onChange={(e) => setCancellationReason(e.target.value)}
+                  placeholder="Enter your reason for cancellation..."
+                  className="border-slate-200 min-h-[80px] resize-none overflow-y-auto break-words"
+                  style={{ wordBreak: 'break-word', overflowWrap: 'break-word' }}
+                  maxLength={300}
+                  rows={3}
+                />
+                <p className="text-xs text-slate-400 text-right">{cancellationReason.length}/300</p>
+              </div>
+            )}
+
+            {/* Info Note */}
+            {selectedCancelReason && (
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 flex gap-2">
+                <AlertCircle className="w-4 h-4 text-orange-600 flex-shrink-0 mt-0.5" />
+                <div className="text-sm text-orange-800">
+                  <p className="font-medium">Important:</p>
+                  <p className="mt-1">
+                    Down payments are non-refundable upon cancellation. Your cancellation reason will be recorded.
+                  </p>
                 </div>
               </div>
             )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>
-              Keep Booking
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => {
+              setCancelDialogOpen(false);
+              setCancellationReason('');
+              setSelectedCancelReason('');
+            }}>
+              Go Back
             </Button>
-            <Button variant="destructive" onClick={handleCancelBooking} disabled={isCancelling}>
-              {isCancelling ? 'Cancelling...' : 'Cancel Anyway'}
+            <Button
+              variant="destructive"
+              onClick={handleCancelBooking}
+              disabled={isCancelling || !selectedCancelReason || (selectedCancelReason === 'other' && !cancellationReason.trim())}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              <XCircle className="w-4 h-4 mr-2" />
+              {isCancelling ? 'Cancelling...' : 'Confirm Cancellation'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -361,11 +494,10 @@ export function BookingHistory({ userId, appointments, onUpdateAppointments }: B
                   className="focus:outline-none"
                 >
                   <Star
-                    className={`w-10 h-10 ${
-                      star <= rating
-                        ? 'fill-yellow-400 text-yellow-400'
-                        : 'text-slate-300'
-                    }`}
+                    className={`w-10 h-10 ${star <= rating
+                      ? 'fill-yellow-400 text-yellow-400'
+                      : 'text-slate-300'
+                      }`}
                   />
                 </button>
               ))}

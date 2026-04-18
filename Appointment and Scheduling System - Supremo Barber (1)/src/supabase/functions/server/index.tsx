@@ -1567,6 +1567,29 @@ app.post("/make-server-70e1fc66/api/auth/login", async (c) => {
       );
     }
 
+    // Check if account is deactivated by admin
+    if (profile.is_active === false) {
+      // Log deactivated login attempt (FIRE-AND-FORGET)
+      createAuditLogAsync(adminClient, {
+        user_id: profile.id,
+        username: profile.username,
+        email: profile.email,
+        action: "login_blocked",
+        resource: "auth",
+        details: { reason: "account_deactivated" },
+        status: "blocked",
+      });
+
+      return c.json(
+        {
+          success: false,
+          error: "Your account has been deactivated. Please contact the administrator for assistance.",
+          code: "account_deactivated",
+        },
+        403,
+      );
+    }
+
     // Reset failed login attempts on successful login (PARALLEL - don't block response)
     fireAndForget(
       Promise.all([

@@ -139,6 +139,8 @@ import {
   logPasswordChange,
   logProfileUpdate,
   logAvatarUpload,
+  logAppointmentCompleted,
+  logAppointmentCancelledByBarber,
 } from "../services/audit-notification.service";
 
 interface BarberDashboardProps {
@@ -643,20 +645,24 @@ export function EnhancedBarberDashboard({
         (apt) => apt.id === appointmentId,
       );
 
-      // Create notification for customer
-      if (appointment && appointment.userId) {
+      // Send proper audit log + notifications to customer and admin
+      if (appointment) {
         try {
-          await API.notifications.create({
-            userId: appointment.userId,
-            type: "appointment_completed",
-            title: "Appointment Completed",
-            message: `Your appointment with ${user.name} has been completed. You can now leave a review!`,
-            timestamp: new Date().toISOString(),
-            isRead: false,
-            actionUrl: `/appointments?highlight=${appointmentId}`, // Highlight completed appointment
-            actionLabel: "View Appointment",
-          });
-          console.log('✅ Notification sent to customer');
+          await logAppointmentCompleted(
+            user.id,
+            user.name,
+            user.email,
+            appointmentId,
+            {
+              service: appointment.service || appointment.service_name || 'Unknown Service',
+              customerId: appointment.userId || appointment.customer_id || '',
+              customerName: appointment.customerName || 'Customer',
+              date: appointment.date || appointment.appointment_date || '',
+              time: appointment.time || appointment.appointment_time || '',
+              price: appointment.price || appointment.total_amount || 0,
+            }
+          );
+          console.log('✅ Completion notifications sent to customer and admin');
         } catch (notifError) {
           console.warn(
             "Failed to create notification:",
@@ -903,7 +909,7 @@ export function EnhancedBarberDashboard({
       // Update in database
       await API.appointments.update(selectedAppointment.id, {
         status: "cancelled",
-        cancellationReason: finalReason,
+        cancellation_reason: finalReason,
         cancelledBy: user.name,
         cancelledAt: new Date().toISOString(),
       });
@@ -922,38 +928,28 @@ export function EnhancedBarberDashboard({
       );
       onUpdateAppointments(updatedAppointments);
 
-      // Create notifications
-      if (selectedAppointment.userId) {
-        try {
-          // Notification to customer
-          await API.notifications.create({
-            userId: selectedAppointment.userId,
-            type: "appointment_cancelled",
-            title: "Appointment Cancelled by Barber",
-            message: `Your appointment with ${user.name} on ${selectedAppointment.date} at ${selectedAppointment.time} has been cancelled. Reason: ${finalReason}`,
-            timestamp: new Date().toISOString(),
-            isRead: false,
-            actionUrl: `/appointments?highlight=${selectedAppointment.id}`,
-            actionLabel: "View Appointments",
-          });
-
-          // Notification to barber for record
-          await API.notifications.create({
-            userId: user.id,
-            type: "appointment_cancelled",
-            title: "Appointment Cancelled",
-            message: `Appointment with ${selectedAppointment.customer || selectedAppointment.customerName || "Customer"} has been cancelled. Reason: ${finalReason}`,
-            timestamp: new Date().toISOString(),
-            isRead: false,
-            actionUrl: `/appointments?highlight=${selectedAppointment.id}`,
-            actionLabel: "View Appointments",
-          });
-        } catch (notifError) {
-          console.warn(
-            "Failed to create notifications:",
-            notifError,
-          );
-        }
+      // Send proper audit log + notifications to customer and admin
+      try {
+        await logAppointmentCancelledByBarber(
+          user.id,
+          user.name,
+          user.email,
+          selectedAppointment.id,
+          {
+            service: selectedAppointment.service || selectedAppointment.service_name || 'Unknown Service',
+            customerId: selectedAppointment.userId || selectedAppointment.customer_id || '',
+            customerName: selectedAppointment.customer || selectedAppointment.customerName || 'Customer',
+            date: selectedAppointment.date || selectedAppointment.appointment_date || '',
+            time: selectedAppointment.time || selectedAppointment.appointment_time || '',
+            reason: finalReason,
+          }
+        );
+        console.log('✅ Cancellation notifications sent to customer and admin');
+      } catch (notifError) {
+        console.warn(
+          "Failed to create notifications:",
+          notifError,
+        );
       }
 
       toast.success("Appointment cancelled successfully");
@@ -993,18 +989,37 @@ export function EnhancedBarberDashboard({
       );
 
       // Create notification for customer
-      if (appointment && appointment.userId) {
+      if (appointment) {
         try {
-          await API.notifications.create({
-            userId: appointment.userId,
-            type: "appointment_confirmed",
-            title: "Appointment Confirmed",
-            message: `Your appointment with ${user.name} on ${appointment.date} at ${appointment.time} has been confirmed.`,
-            timestamp: new Date().toISOString(),
-            isRead: false,
+          const { createNotification } = await import('../services/audit-notification.service');
+          
+          // Notify customer
+          await createNotification({
+            userId: appointment.userId || appointment.customer_id || '',
+            userRole: 'customer',
+            type: 'appointment_confirmed',
+            title: '✅ Appointment Confirmed',
+            message: `Great news! Your appointment for ${appointment.service || appointment.service_name || 'your service'} with ${user.name} on ${new Date(appointment.date).toLocaleDateString()} at ${appointment.time} has been confirmed.`,
+            relatedId: appointmentId,
+            relatedType: 'appointment',
             actionUrl: `/appointments?highlight=${appointmentId}`,
-            actionLabel: "View Appointment",
+            actionLabel: 'View Appointment',
           });
+
+          // Notify admin
+          await createNotification({
+            userId: 'admin',
+            userRole: 'admin',
+            type: 'appointment_confirmed',
+            title: 'Appointment Confirmed by Barber',
+            message: `${user.name} confirmed ${appointment.customerName || 'customer'}'s ${appointment.service || appointment.service_name || 'appointment'} on ${new Date(appointment.date).toLocaleDateString()} at ${appointment.time}`,
+            relatedId: appointmentId,
+            relatedType: 'appointment',
+            actionUrl: '/appointments',
+            actionLabel: 'View Appointments',
+          });
+
+          console.log('✅ Confirmation notifications sent to customer and admin');
         } catch (notifError) {
           console.warn(
             "Failed to create notification:",
@@ -1046,19 +1061,38 @@ export function EnhancedBarberDashboard({
         (apt) => apt.id === appointmentId,
       );
 
-      // Create notification for customer
-      if (appointment && appointment.userId) {
+      // Create notification for customer and admin
+      if (appointment) {
         try {
-          await API.notifications.create({
-            userId: appointment.userId,
-            type: "appointment_rejected",
-            title: "Appointment Request Declined",
-            message: `Unfortunately, your appointment request with ${user.name} on ${appointment.date} at ${appointment.time} has been declined. Please try booking another time slot.`,
-            timestamp: new Date().toISOString(),
-            isRead: false,
+          const { createNotification } = await import('../services/audit-notification.service');
+          
+          // Notify customer
+          await createNotification({
+            userId: appointment.userId || appointment.customer_id || '',
+            userRole: 'customer',
+            type: 'appointment_rejected',
+            title: '❌ Appointment Request Declined',
+            message: `Unfortunately, your appointment for ${appointment.service || appointment.service_name || 'your service'} with ${user.name} on ${new Date(appointment.date).toLocaleDateString()} at ${appointment.time} has been declined. Please try booking another time slot.`,
+            relatedId: appointmentId,
+            relatedType: 'appointment',
             actionUrl: `/appointments?highlight=${appointment.id}`,
-            actionLabel: "View Appointments",
+            actionLabel: 'Book New Appointment',
           });
+
+          // Notify admin
+          await createNotification({
+            userId: 'admin',
+            userRole: 'admin',
+            type: 'appointment_rejected',
+            title: 'Appointment Rejected by Barber',
+            message: `${user.name} rejected ${appointment.customerName || 'customer'}'s ${appointment.service || appointment.service_name || 'appointment'} on ${new Date(appointment.date).toLocaleDateString()} at ${appointment.time}`,
+            relatedId: appointmentId,
+            relatedType: 'appointment',
+            actionUrl: '/appointments',
+            actionLabel: 'View Appointments',
+          });
+
+          console.log('✅ Rejection notifications sent to customer and admin');
         } catch (notifError) {
           console.warn(
             "Failed to create notification:",

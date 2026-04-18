@@ -7,13 +7,13 @@ import {
   CardTitle,
 } from "./ui/card";
 import {
-  DollarSign,
   TrendingUp,
   Award,
   Calendar,
   Star,
   CheckCircle2,
 } from "lucide-react";
+import { FaPesoSign } from "react-icons/fa6";
 import {
   ChartContainer,
   ChartTooltip,
@@ -361,7 +361,7 @@ export function BarberEarningsOverview({
     {
       label: "Total Earnings",
       value: `₱${stats.totalEarnings}`,
-      icon: DollarSign,
+      icon: FaPesoSign,
       color: "bg-[#94A670]",
       trend: "+8%",
       trendUp: true,

@@ -25,7 +25,6 @@ import {
 } from "./ui/select";
 import { Alert, AlertDescription } from "./ui/alert";
 import {
-  DollarSign,
   TrendingUp,
   Award,
   Calendar,
@@ -36,6 +35,7 @@ import {
   Download,
   Loader2,
 } from "lucide-react";
+import { FaPesoSign } from "react-icons/fa6";
 import {
   ChartContainer,
   ChartTooltip,

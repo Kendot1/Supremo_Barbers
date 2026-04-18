@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 // Supremo Barber GCash QR Code
-import qrImage from "figma:asset/9e9607467fe5e63f10eba24035950a8a0e4b1e0f.png";
+import qrImage from "asset/qrCode.png";
+import gcash from "asset/gcash.png";
 import API from "../services/api.service";
 import {
   Card,
@@ -237,6 +238,7 @@ export function BookingFlow({
   >(null);
   const [isUploadingProof, setIsUploadingProof] =
     useState(false);
+  const [pendingProofFile, setPendingProofFile] = useState<File | null>(null);
   const [showFinalConfirmation, setShowFinalConfirmation] =
     useState(false);
   const [isSubmittingBooking, setIsSubmittingBooking] = useState(false);
@@ -358,7 +360,7 @@ export function BookingFlow({
       // Set the date and time
       setSelectedDate(preSelectedSlot.date);
       setSelectedTime(preSelectedSlot.time);
-      
+
       // Try to find and select the barber by name
       const barberToSelect = barbers.find(
         (b) => b.name === preSelectedSlot.barberName
@@ -366,7 +368,7 @@ export function BookingFlow({
       if (barberToSelect) {
         setSelectedBarber(barberToSelect);
       }
-      
+
       // Clear the pre-selection after processing
       if (onClearPreSelectedSlot) {
         onClearPreSelectedSlot();
@@ -389,6 +391,16 @@ export function BookingFlow({
     return totalHours * 60 + minutes;
   };
 
+  // Helper to convert minutes since midnight back to time string (e.g. 630 -> "10:30 AM")
+  const minutesToTime = (totalMinutes: number): string => {
+    let hours = Math.floor(totalMinutes / 60);
+    const mins = totalMinutes % 60;
+    const period = hours >= 12 ? "PM" : "AM";
+    if (hours > 12) hours -= 12;
+    if (hours === 0) hours = 12;
+    return `${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")} ${period}`;
+  };
+
   // Helper to get service duration by name
   const getServiceDuration = (serviceName: string): number => {
     const service = services.find(
@@ -409,11 +421,11 @@ export function BookingFlow({
 
     return appointments.some((apt) => {
       // Only consider active appointments (not cancelled or completed)
-      const isActiveAppointment = 
-        apt.status === 'pending' || 
-        apt.status === 'confirmed' || 
+      const isActiveAppointment =
+        apt.status === 'pending' ||
+        apt.status === 'confirmed' ||
         apt.status === 'upcoming';
-      
+
       if (
         apt.barber !== selectedBarber.name ||
         apt.date !== dateString ||
@@ -451,7 +463,7 @@ export function BookingFlow({
     for (let i = 0; i < 30; i++) {
       const checkDate = new Date(today);
       checkDate.setDate(today.getDate() + i);
-      
+
       // Skip Sundays (day 0)
       if (checkDate.getDay() === 0) continue;
 
@@ -463,11 +475,11 @@ export function BookingFlow({
         const bookingEnd = bookingStart + selectedService.duration;
 
         const isBooked = appointments.some((apt) => {
-          const isActiveAppointment = 
-            apt.status === 'pending' || 
-            apt.status === 'confirmed' || 
+          const isActiveAppointment =
+            apt.status === 'pending' ||
+            apt.status === 'confirmed' ||
             apt.status === 'upcoming';
-          
+
           if (
             apt.barber !== selectedBarber.name ||
             apt.date !== dateString ||
@@ -496,11 +508,11 @@ export function BookingFlow({
           const bookingEnd = bookingStart + selectedService.duration;
 
           const isBooked = appointments.some((apt) => {
-            const isActiveAppointment = 
-              apt.status === 'pending' || 
-              apt.status === 'confirmed' || 
+            const isActiveAppointment =
+              apt.status === 'pending' ||
+              apt.status === 'confirmed' ||
               apt.status === 'upcoming';
-            
+
             if (
               apt.barber !== selectedBarber.name ||
               apt.date !== dateString ||
@@ -588,22 +600,74 @@ export function BookingFlow({
       return;
 
     setIsSubmittingBooking(true);
-    
+
     try {
+      // Check for duplicate appointments (same customer + same service that is still active)
+      const activeStatuses = ['pending', 'confirmed', 'verified', 'upcoming'];
+      const duplicateServices = selectedServices.filter(service => {
+        return appointments.some(apt => {
+          const isCurrentCustomer = apt.userId === user.id || apt.customer_id === user.id;
+          const isSameService = apt.service === service.name || apt.service_id === service.id;
+          const isActive = activeStatuses.includes(apt.status);
+          return isCurrentCustomer && isSameService && isActive;
+        });
+      });
+
+      if (duplicateServices.length > 0) {
+        const serviceNames = duplicateServices.map(s => s.name).join(', ');
+        toast.error(`You already have an active booking for: ${serviceNames}. Please cancel or wait for it to complete before booking again.`);
+        setIsSubmittingBooking(false);
+        return;
+      }
+
+      // Upload payment proof to Cloudflare R2 NOW (only after user confirmed booking)
+      let finalProofUrl = uploadedProofUrl;
+      if (pendingProofFile && !finalProofUrl) {
+        try {
+          setIsUploadingProof(true);
+          const formData = new FormData();
+          formData.append("file", pendingProofFile);
+          formData.append("type", "payment-proof");
+
+          const result = await API.uploadImage(formData);
+          finalProofUrl = result.url;
+          setUploadedProofUrl(finalProofUrl);
+          toast.success("Payment proof uploaded successfully!");
+        } catch (uploadError) {
+          console.error("Error uploading payment proof:", uploadError);
+          toast.error("Failed to upload payment proof. Please try again.");
+          setIsSubmittingBooking(false);
+          setIsUploadingProof(false);
+          return;
+        } finally {
+          setIsUploadingProof(false);
+        }
+      }
+
       // Calculate total price for all services
       const totalPrice = selectedServices.reduce((sum, service) => sum + service.price, 0);
       const totalDownPayment = totalPrice * 0.5;
       const totalRemaining = totalPrice * 0.5;
 
-      // Create appointments for all selected services
-      const appointmentPromises = selectedServices.map(async (service) => {
+      // Calculate staggered appointment times based on each service's actual duration
+      // Each subsequent service starts after the previous one finishes
+      const dateString = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`;
+      let currentStartMinutes = timeToMinutes(selectedTime);
+      const serviceTimeMappings = selectedServices.map((service) => {
+        const appointmentTime = minutesToTime(currentStartMinutes);
+        currentStartMinutes += service.duration; // Next service starts after this one finishes
+        return { service, appointmentTime };
+      });
+
+      // Create appointments for all selected services with staggered times
+      const appointmentPromises = serviceTimeMappings.map(async ({ service, appointmentTime }) => {
         const newAppointment: any = {
           // Don't set ID - let database generate UUID
           customer_id: user.id,
           barber_id: selectedBarber.id,
           service_id: service.id,
-          appointment_date: `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`,
-          appointment_time: selectedTime,
+          appointment_date: dateString,
+          appointment_time: appointmentTime,
           total_amount: service.price,
           down_payment: service.price * 0.5,
           remaining_amount: service.price * 0.5,
@@ -614,12 +678,12 @@ export function BookingFlow({
           userId: user.id,
           service: service.name,
           barber: selectedBarber.name,
-          date: `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`,
-          time: selectedTime,
+          date: dateString,
+          time: appointmentTime,
           price: service.price,
           canCancel: true,
           customerName: user.name,
-          paymentProof: uploadedProofUrl || uploadedProof || undefined,
+          paymentProof: finalProofUrl || uploadedProof || undefined,
           paymentStatus: "pending",
           downPaymentPaid: true,
           remainingBalance: service.price * 0.5,
@@ -629,14 +693,14 @@ export function BookingFlow({
         const createdAppointment = await onAddAppointment(newAppointment);
 
         // Create payment record if proof exists
-        if (uploadedProofUrl && createdAppointment?.id) {
+        if (finalProofUrl && createdAppointment?.id) {
           try {
             const paymentData = {
               appointment_id: createdAppointment.id,
               amount: service.price * 0.5,
               payment_type: "downpayment",
               payment_method: "gcash",
-              proof_url: uploadedProofUrl,
+              proof_url: finalProofUrl,
             };
 
             await API.payments.create(paymentData);
@@ -660,7 +724,7 @@ export function BookingFlow({
       setShowQRPayment(false);
       setShowFinalConfirmation(false);
       setIsSubmittingBooking(false);
-      
+
       toast.success(
         `${selectedServices.length} service(s) booked! Waiting for payment verification by admin.`,
       );
@@ -674,7 +738,8 @@ export function BookingFlow({
       setSelectedTime("");
       setUploadedProof(null);
       setUploadedProofUrl(null);
-      
+      setPendingProofFile(null);
+
       // Pass booked service IDs to parent for favorites removal
       onBookingComplete(bookedServiceIds);
     } catch (error) {
@@ -835,91 +900,113 @@ export function BookingFlow({
             ) : (
               <ScrollArea className="h-[480px] pr-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {services.map((service) => (
-                    <Card
-                      key={service.id}
-                      onClick={() =>
-                        handleServiceSelect(service.id)
-                      }
-                      className={cn(
-                        "border-2 cursor-pointer transition-all hover:shadow-md relative overflow-hidden",
-                        selectedServices.some(s => s.id === service.id)
-                          ? "border-[#DB9D47] shadow-lg ring-2 ring-[#DB9D47]/30"
-                          : "border-[#E8DCC8] hover:border-[#DB9D47]/50",
-                      )}
-                    >
-                      <CardContent className="p-0">
-                        {/* Available Badge */}
-                        <div className="absolute top-2 left-2 z-10">
-                          <Badge className="bg-[#94A670] hover:bg-[#94A670] text-white text-xs px-2 py-0.5">
-                            Available
-                          </Badge>
-                        </div>
+                  {services.map((service) => {
+                    const isAlreadyBooked = appointments.some(apt => {
+                      const isCurrentCustomer = apt.userId === user.id || apt.customer_id === user.id;
+                      const isSameService = apt.service === service.name || apt.service_id === service.id;
+                      const isActive = ['pending', 'confirmed', 'verified', 'upcoming'].includes(apt.status);
+                      return isCurrentCustomer && isSameService && isActive;
+                    });
 
-                        {/* Selected Checkmark */}
-                        {selectedServices.some(s => s.id === service.id) && (
-                          <div className="absolute top-2 right-2 z-10">
-                            <div className="bg-[#DB9D47] rounded-full p-1">
-                              <CheckCircle2 className="w-4 h-4 text-white" />
-                            </div>
-                          </div>
+                    return (
+                      <Card
+                        key={service.id}
+                        onClick={() => {
+                          if (!isAlreadyBooked) {
+                            handleServiceSelect(service.id);
+                          }
+                        }}
+                        className={cn(
+                          "border-2 transition-all relative overflow-hidden",
+                          isAlreadyBooked
+                            ? "border-gray-300 opacity-50 cursor-not-allowed grayscale"
+                            : selectedServices.some(s => s.id === service.id)
+                              ? "border-[#DB9D47] shadow-lg ring-2 ring-[#DB9D47]/30 cursor-pointer hover:shadow-md"
+                              : "border-[#E8DCC8] hover:border-[#DB9D47]/50 cursor-pointer hover:shadow-md",
                         )}
-
-                        {/* Service Image */}
-                        <div className="w-full h-32 bg-gradient-to-br from-[#F5EDD8] to-[#E8DCC8] flex items-center justify-center overflow-hidden">
-                          {service.imageUrl && !failedServiceImages.has(service.id) ? (
-                            <img
-                              src={service.imageUrl}
-                              alt={service.name}
-                              className="w-full h-full object-cover"
-                              onError={() => {
-                              
-                                setFailedServiceImages(prev => new Set(prev).add(service.id));
-                              }}
-                            />
-                          ) : (
-                            <Scissors className="w-12 h-12 text-[#87765E] opacity-40" />
-                          )}
-                        </div>
-
-                        {/* Service Info */}
-                        <div className="p-3 space-y-2">
-                          <h3
-                            className={cn(
-                              "text-sm line-clamp-1",
-                              selectedServices.some(s => s.id === service.id)
-                                ? "text-[#4B3621]"
-                                : "text-[#5C4A3A]",
+                        style={isAlreadyBooked ? { pointerEvents: 'none' } : undefined}
+                      >
+                        <CardContent className="p-0">
+                          {/* Badge */}
+                          <div className="absolute top-2 left-2 z-10">
+                            {isAlreadyBooked ? (
+                              <Badge className="bg-gray-500 hover:bg-gray-500 text-white text-xs px-2 py-0.5">
+                                Already Booked
+                              </Badge>
+                            ) : (
+                              <Badge className="bg-[#94A670] hover:bg-[#94A670] text-white text-xs px-2 py-0.5">
+                                Available
+                              </Badge>
                             )}
-                          >
-                            {service.name}
-                          </h3>
+                          </div>
 
-                          {service.description && (
-                            <p className="text-xs text-[#87765E] line-clamp-2 min-h-[2rem]">
-                              {service.description}
-                            </p>
+                          {/* Selected Checkmark */}
+                          {selectedServices.some(s => s.id === service.id) && (
+                            <div className="absolute top-2 right-2 z-10">
+                              <div className="bg-[#DB9D47] rounded-full p-1">
+                                <CheckCircle2 className="w-4 h-4 text-white" />
+                              </div>
+                            </div>
                           )}
 
-                          <div className="flex items-center justify-between pt-1">
-                            <div className="flex items-center gap-1">
-                              <Clock className="w-3 h-3 text-[#87765E]" />
-                              <span className="text-xs text-[#87765E]">
-                                {service.duration} mins
+                          {/* Service Image */}
+                          <div className="w-full h-32 bg-gradient-to-br from-[#F5EDD8] to-[#E8DCC8] flex items-center justify-center overflow-hidden">
+                            {service.imageUrl && !failedServiceImages.has(service.id) ? (
+                              <img
+                                src={service.imageUrl}
+                                alt={service.name}
+                                className={cn("w-full h-full object-cover", isAlreadyBooked && "grayscale")}
+                                onError={() => {
+
+                                  setFailedServiceImages(prev => new Set(prev).add(service.id));
+                                }}
+                              />
+                            ) : (
+                              <Scissors className="w-12 h-12 text-[#87765E] opacity-40" />
+                            )}
+                          </div>
+
+                          {/* Service Info */}
+                          <div className="p-3 space-y-2">
+                            <h3
+                              className={cn(
+                                "text-sm line-clamp-1",
+                                isAlreadyBooked
+                                  ? "text-gray-400"
+                                  : selectedServices.some(s => s.id === service.id)
+                                    ? "text-[#4B3621]"
+                                    : "text-[#5C4A3A]",
+                              )}
+                            >
+                              {service.name}
+                            </h3>
+
+                            {service.description && (
+                              <p className={cn("text-xs line-clamp-2 min-h-[2rem]", isAlreadyBooked ? "text-gray-400" : "text-[#87765E]")}>
+                                {service.description}
+                              </p>
+                            )}
+
+                            <div className="flex items-center justify-between pt-1">
+                              <div className="flex items-center gap-1">
+                                <Clock className={cn("w-3 h-3", isAlreadyBooked ? "text-gray-400" : "text-[#87765E]")} />
+                                <span className={cn("text-xs", isAlreadyBooked ? "text-gray-400" : "text-[#87765E]")}>
+                                  {service.duration} mins
+                                </span>
+                              </div>
+                              <span className={isAlreadyBooked ? "text-gray-400" : "text-[#DB9D47]"}>
+                                ₱{service.price}
                               </span>
                             </div>
-                            <span className="text-[#DB9D47]">
-                              ₱{service.price}
-                            </span>
                           </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
                 </div>
               </ScrollArea>
             )}
-            
+
             {/* Selected Services Summary */}
             {selectedServices.length > 0 && (
               <Card className="border-[#DB9D47] bg-[#FBF7EF]">
@@ -953,7 +1040,7 @@ export function BookingFlow({
                 </CardContent>
               </Card>
             )}
-            
+
             <Button
               className="w-full bg-[#DB9D47] hover:bg-[#C58A38] text-white"
               disabled={selectedServices.length === 0}
@@ -1022,7 +1109,7 @@ export function BookingFlow({
                               alt={barber.name}
                               className="w-full h-full object-cover"
                               onError={(e) => {
-                             
+
                                 // Replace with fallback image
                                 e.currentTarget.src = 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&h=400&fit=crop';
                               }}
@@ -1104,7 +1191,7 @@ export function BookingFlow({
                             alt={barber.name}
                             className="w-full h-full object-cover"
                             onError={(e) => {
-                            
+
                               // Replace with fallback image
                               e.currentTarget.src = 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&h=400&fit=crop';
                             }}
@@ -1425,12 +1512,12 @@ export function BookingFlow({
                             className={cn(
                               "w-full p-3 border-2 rounded-lg transition-all text-left relative group",
                               isSelected &&
-                                "border-[#DB9D47] bg-[#FFF9F0] shadow-md ring-1 ring-[#DB9D47]",
+                              "border-[#DB9D47] bg-[#FFF9F0] shadow-md ring-1 ring-[#DB9D47]",
                               !isSelected &&
-                                !disabled &&
-                                "border-[#E8DCC8] hover:border-[#DB9D47] hover:bg-[#FBF7EF]",
+                              !disabled &&
+                              "border-[#E8DCC8] hover:border-[#DB9D47] hover:bg-[#FBF7EF]",
                               disabled &&
-                                "border-[#E8DCC8] bg-[#F8F8F8] cursor-not-allowed opacity-50",
+                              "border-[#E8DCC8] bg-[#F8F8F8] cursor-not-allowed opacity-50",
                             )}
                           >
                             <div className="flex items-center justify-between">
@@ -1502,16 +1589,26 @@ export function BookingFlow({
             <div className="bg-[#FBF7EF] border border-[#E8DCC8] p-4 rounded-lg space-y-2">
               <div className="space-y-1">
                 <span className="text-[#87765E] text-sm">Service{selectedServices.length > 1 ? 's' : ''}:</span>
-                {selectedServices.map((service, index) => (
-                  <div key={service.id} className="flex justify-between text-sm pl-4">
-                    <span className="text-[#5C4A3A]">
-                      {selectedServices.length > 1 && `${index + 1}. `}{service.name}
-                    </span>
-                    <span className="text-[#5C4A3A]">
-                      ₱{service.price}
-                    </span>
-                  </div>
-                ))}
+                {(() => {
+                  let cumulativeMinutes = selectedTime ? timeToMinutes(selectedTime) : 0;
+                  return selectedServices.map((service, index) => {
+                    const serviceTime = minutesToTime(cumulativeMinutes);
+                    cumulativeMinutes += service.duration;
+                    return (
+                      <div key={service.id} className="flex justify-between text-sm pl-4">
+                        <span className="text-[#5C4A3A]">
+                          {selectedServices.length > 1 && `${index + 1}. `}{service.name}
+                          {selectedServices.length > 1 && (
+                            <span className="text-[#87765E] ml-1">({serviceTime})</span>
+                          )}
+                        </span>
+                        <span className="text-[#5C4A3A]">
+                          ₱{service.price}
+                        </span>
+                      </div>
+                    );
+                  });
+                })()}
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-[#87765E]">Barber:</span>
@@ -1526,11 +1623,19 @@ export function BookingFlow({
                 </span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-[#87765E]">Time:</span>
+                <span className="text-[#87765E]">Start Time:</span>
                 <span className="text-[#5C4A3A]">
                   {selectedTime}
                 </span>
               </div>
+              {selectedServices.length > 1 && (
+                <div className="flex justify-between text-sm">
+                  <span className="text-[#87765E]">Total Duration:</span>
+                  <span className="text-[#5C4A3A]">
+                    {selectedServices.reduce((sum, s) => sum + s.duration, 0)} mins
+                  </span>
+                </div>
+              )}
               <div className="h-px bg-[#E8DCC8] my-2" />
               <div className="flex justify-between">
                 <span className="text-[#87765E]">
@@ -1548,8 +1653,12 @@ export function BookingFlow({
               </Label>
               <div className="mt-3 p-4 border-2 border-[#DB9D47] rounded-lg bg-[#FFF9F0]">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-[#DB9D47] rounded-lg flex items-center justify-center">
-                    <QrCode className="w-6 h-6 text-white" />
+                  <div className="p-1 w-12 h-12 bg-[#DB9D47] rounded-lg flex items-center justify-center">
+                    <img
+                      src={gcash}
+                      alt="Supremo Barber QR Payment"
+                      className="w-full h-full object-contain"
+                    />
                   </div>
                   <div className="flex-1">
                     <h4 className="text-[#5C4A3A]">
@@ -1608,16 +1717,26 @@ export function BookingFlow({
             <div className="bg-[#FBF7EF] border border-[#E8DCC8] rounded-lg p-4 space-y-2">
               <div className="space-y-1">
                 <span className="text-[#87765E] text-sm">Service{selectedServices.length > 1 ? 's' : ''}:</span>
-                {selectedServices.map((service, index) => (
-                  <div key={service.id} className="flex justify-between items-center">
-                    <span className="text-[#5C4A3A] text-sm">
-                      {index + 1}. {service.name}
-                    </span>
-                    <span className="text-[#5C4A3A] text-sm">
-                      ₱{service.price}
-                    </span>
-                  </div>
-                ))}
+                {(() => {
+                  let cumulativeMinutes = selectedTime ? timeToMinutes(selectedTime) : 0;
+                  return selectedServices.map((service, index) => {
+                    const serviceTime = minutesToTime(cumulativeMinutes);
+                    cumulativeMinutes += service.duration;
+                    return (
+                      <div key={service.id} className="flex justify-between items-center">
+                        <span className="text-[#5C4A3A] text-sm">
+                          {index + 1}. {service.name}
+                          {selectedServices.length > 1 && (
+                            <span className="text-[#87765E] ml-1 text-xs">({serviceTime})</span>
+                          )}
+                        </span>
+                        <span className="text-[#5C4A3A] text-sm">
+                          ₱{service.price}
+                        </span>
+                      </div>
+                    );
+                  });
+                })()}
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-[#87765E]">Barber:</span>
@@ -1719,14 +1838,12 @@ export function BookingFlow({
               <div className="border border-[#DB9D47] rounded-lg p-2 sm:p-3 w-full bg-[#FFF9F0]">
                 <div className="space-y-1 text-xs sm:text-sm">
                   <p className="text-[#5C4A3A] break-all">
-                    <strong>GCash Number:</strong> 0920-4XX-XX31
+                    <strong>GCash Number:</strong> 0920-422-9731
                   </p>
                   <p className="text-[#5C4A3A] break-all">
                     <strong>Account Name:</strong> JOSHUA A.
                   </p>
-                  <p className="text-[#5C4A3A] break-all">
-                    <strong>User ID:</strong> •••••••••••X2KDAP
-                  </p>
+
                 </div>
               </div>
             </div>
@@ -1741,7 +1858,7 @@ export function BookingFlow({
                 id="payment-proof"
                 type="file"
                 accept="image/*"
-                onChange={async (e) => {
+                onChange={(e) => {
                   const file = e.target.files?.[0];
                   if (file) {
                     if (!file.type.startsWith("image/")) {
@@ -1757,39 +1874,18 @@ export function BookingFlow({
                       return;
                     }
 
-                    // Show preview immediately
+                    // Store the file for later upload (only uploads after booking confirmation)
+                    setPendingProofFile(file);
+                    setUploadedProofUrl(null); // Reset any previous URL
+
+                    // Show preview immediately (local only, no Cloudflare upload yet)
                     const reader = new FileReader();
                     reader.onloadend = () => {
                       setUploadedProof(reader.result as string);
                     };
                     reader.readAsDataURL(file);
 
-                    // Upload to Cloudflare R2
-                    try {
-                      setIsUploadingProof(true);
-                      const formData = new FormData();
-                      formData.append("file", file);
-                      formData.append("type", "payment-proof"); // Specify upload type for proper folder organization
 
-                      const result =
-                        await API.uploadImage(formData);
-                      setUploadedProofUrl(result.url);
-                      toast.success(
-                        "Payment proof uploaded successfully!",
-                      );
-                
-                    } catch (error) {
-                      console.error(
-                        "❌ Error uploading payment proof:",
-                        error,
-                      );
-                      toast.error(
-                        "Failed to upload payment proof. Please try again.",
-                      );
-                      setUploadedProof(null);
-                    } finally {
-                      setIsUploadingProof(false);
-                    }
                   }
                 }}
                 className="hidden"
@@ -1851,6 +1947,7 @@ export function BookingFlow({
                       onClick={() => {
                         setUploadedProof(null);
                         setUploadedProofUrl(null);
+                        setPendingProofFile(null);
                       }}
                       className="border-[#E57373] text-[#E57373] hover:bg-[#E57373] hover:text-white text-[10px] sm:text-xs h-7 sm:h-8"
                     >
@@ -1887,6 +1984,7 @@ export function BookingFlow({
                 setShowQRPayment(false);
                 setUploadedProof(null);
                 setUploadedProofUrl(null);
+                setPendingProofFile(null);
               }}
               className="border-[#E8DCC8] text-xs sm:text-sm h-8 sm:h-9 w-full sm:w-auto"
             >

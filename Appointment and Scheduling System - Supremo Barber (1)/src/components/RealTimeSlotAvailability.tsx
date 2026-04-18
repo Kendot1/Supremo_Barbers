@@ -71,17 +71,17 @@ export function RealTimeSlotAvailability() {
   const parseTime12Hour = (time: string): number => {
     const match = time.match(/(\d+):(\d+)\s*(AM|PM)/i);
     if (!match) return 0;
-    
+
     let hours = parseInt(match[1]);
     const minutes = parseInt(match[2]);
     const period = match[3].toUpperCase();
-    
+
     if (period === 'PM' && hours !== 12) {
       hours += 12;
     } else if (period === 'AM' && hours === 12) {
       hours = 0;
     }
-    
+
     return hours * 60 + minutes;
   };
 
@@ -112,11 +112,11 @@ export function RealTimeSlotAvailability() {
       }
 
       const dayAvailability = barber.availability.find(a => a.dayOfWeek === dayOfWeek);
-      
+
       if (dayAvailability && dayAvailability.isAvailable) {
         const startMinutes = parseTime(dayAvailability.startTime);
         const endMinutes = parseTime(dayAvailability.endTime);
-        
+
         // Generate 30-minute slots
         for (let time = startMinutes; time < endMinutes; time += 30) {
           slots.add(time);
@@ -143,7 +143,7 @@ export function RealTimeSlotAvailability() {
     }
 
     const dayAvailability = barber.availability.find(a => a.dayOfWeek === dayOfWeek);
-    
+
     if (!dayAvailability || !dayAvailability.isAvailable) {
       return false;
     }
@@ -160,11 +160,11 @@ export function RealTimeSlotAvailability() {
       console.log('🔍 Fetching barbers...');
       const fetchedBarbers = await API.barbers.getAll();
       console.log('📋 All barbers from API:', fetchedBarbers);
-      
+
       // Only include active barbers
       const activeBarbers = fetchedBarbers.filter(b => b.status === 'active' || b.isActive !== false);
       console.log('✅ Active barbers:', activeBarbers);
-      
+
       // Fetch availability for each barber
       const barbersWithAvailability = await Promise.all(
         activeBarbers.map(async (barber) => {
@@ -186,7 +186,7 @@ export function RealTimeSlotAvailability() {
           }
         })
       );
-      
+
       console.log('👥 Barbers with availability:', barbersWithAvailability);
       setBarbers(barbersWithAvailability as BarberData[]);
     } catch (error) {
@@ -204,24 +204,24 @@ export function RealTimeSlotAvailability() {
       const month = String(date.getMonth() + 1).padStart(2, '0');
       const day = String(date.getDate()).padStart(2, '0');
       const dateString = `${year}-${month}-${day}`;
-      
+
       console.log('🔍 Fetching appointments for date (local timezone):', dateString);
       console.log('🌍 User timezone offset:', -date.getTimezoneOffset() / 60, 'hours from UTC');
-      
+
       const allAppointments = await API.appointments.getAll({
         dateFrom: dateString,
         dateTo: dateString,
       });
-      
+
       console.log('📅 Raw appointments from API:', allAppointments);
-      
+
       // Only include confirmed appointments (pending and confirmed status)
       const relevantAppointments = allAppointments.filter(
         apt => apt.status === 'pending' || apt.status === 'confirmed'
       );
-      
+
       console.log('✅ Filtered appointments (pending/confirmed):', relevantAppointments);
-      
+
       setAppointments(relevantAppointments);
     } catch (error) {
       console.error('Error fetching appointments:', error);
@@ -241,14 +241,14 @@ export function RealTimeSlotAvailability() {
 
       // Determine which barbers are working at this time
       let workingBarbers = barbers;
-      
+
       // Filter by selected barber if specified
       if (selectedBarber !== "any") {
         workingBarbers = barbers.filter(b => (b.id || b._id) === selectedBarber);
       }
 
       // Filter barbers who are actually working at this time slot
-      const availableAtSlot = workingBarbers.filter(b => 
+      const availableAtSlot = workingBarbers.filter(b =>
         isBarberWorkingAtSlot(b, slotMinutes, dayOfWeek)
       );
 
@@ -267,7 +267,7 @@ export function RealTimeSlotAvailability() {
       // Count appointments that overlap with this time slot for working barbers
       const overlappingAppointments = appointments.filter(apt => {
         // Check if appointment is for one of the working barbers
-        const isRelevantBarber = availableAtSlot.some(b => 
+        const isRelevantBarber = availableAtSlot.some(b =>
           apt.barber === b.name || apt.barber === (b.id || b._id) || apt.barberId === (b.id || b._id)
         );
 
@@ -275,11 +275,11 @@ export function RealTimeSlotAvailability() {
 
         // Parse appointment time from the time string (e.g., "9:00 AM")
         const aptStartMinutes = apt.time ? parseTime12Hour(apt.time) : 0;
-        
+
         // Get service duration (default 30 mins if not available)
         const serviceDuration = apt.duration || 30;
         const aptEndMinutes = aptStartMinutes + serviceDuration;
-        
+
         const slotStartMinutes = slot.hour * 60 + slot.minute;
         const slotEndMinutes = slotStartMinutes + 30;
 
@@ -291,7 +291,7 @@ export function RealTimeSlotAvailability() {
       }).length;
 
       const barbersAvailable = Math.max(0, totalBarbers - overlappingAppointments);
-      
+
       let status: "available" | "limited" | "booked" | "closed";
       if (barbersAvailable === 0) {
         status = "booked";
@@ -313,17 +313,17 @@ export function RealTimeSlotAvailability() {
   // Check if selected barber is working on selected date
   const isSelectedBarberWorkingToday = (): boolean => {
     if (!selectedDate || selectedBarber === "any") return true;
-    
+
     const dayOfWeek = selectedDate.getDay();
     const barber = barbers.find(b => (b.id || b._id) === selectedBarber);
-    
+
     if (!barber) return false;
-    
+
     if (!barber.availability || barber.availability.length === 0) {
       // Default: working Monday-Saturday
       return dayOfWeek !== 0;
     }
-    
+
     const dayAvailability = barber.availability.find(a => a.dayOfWeek === dayOfWeek);
     return dayAvailability?.isAvailable || false;
   };
@@ -331,14 +331,14 @@ export function RealTimeSlotAvailability() {
   // Get working barbers for selected date
   const getWorkingBarbersCount = (): number => {
     if (!selectedDate) return 0;
-    
+
     const dayOfWeek = selectedDate.getDay();
     return barbers.filter(barber => {
       if (!barber.availability || barber.availability.length === 0) {
         // Default: working Monday-Saturday
         return dayOfWeek !== 0;
       }
-      
+
       const dayAvailability = barber.availability.find(a => a.dayOfWeek === dayOfWeek);
       return dayAvailability?.isAvailable || false;
     }).length;
@@ -376,7 +376,7 @@ export function RealTimeSlotAvailability() {
     console.log('  - Appointments:', appointments.length);
     console.log('  - Selected Date:', selectedDate);
     console.log('  - Selected Barber:', selectedBarber);
-    
+
     const slots = calculateSlotAvailability();
     console.log('⏰ Generated time slots:', slots);
     setTimeSlots(slots);
@@ -396,22 +396,22 @@ export function RealTimeSlotAvailability() {
   // Handle date selection with double-click prevention
   const handleDateSelect = (date: Date | undefined) => {
     const now = Date.now();
-    
+
     // Prevent double-click (ignore clicks within 300ms)
     if (now - lastClickTime < 300) {
       return;
     }
-    
+
     setLastClickTime(now);
-    
+
     // If clicking the same date, keep it selected (don't toggle to undefined)
-    if (date && selectedDate && 
-        date.getDate() === selectedDate.getDate() &&
-        date.getMonth() === selectedDate.getMonth() &&
-        date.getFullYear() === selectedDate.getFullYear()) {
+    if (date && selectedDate &&
+      date.getDate() === selectedDate.getDate() &&
+      date.getMonth() === selectedDate.getMonth() &&
+      date.getFullYear() === selectedDate.getFullYear()) {
       return; // Don't change selection
     }
-    
+
     setSelectedDate(date);
   };
 
@@ -497,58 +497,7 @@ export function RealTimeSlotAvailability() {
         </CardHeader>
       </Card>
 
-      {/* Barber Availability Alert */}
-      {barbers.length > 0 && selectedDate && (
-        <Card className={`border-2 ${
-          workingBarbersCount === 0 
-            ? 'border-red-200 bg-red-50' 
-            : workingBarbersCount < barbers.length 
-            ? 'border-orange-200 bg-orange-50' 
-            : 'border-green-200 bg-green-50'
-        }`}>
-          <CardContent className="pt-6">
-            <div className="flex items-start gap-3">
-              {workingBarbersCount === 0 ? (
-                <XCircle className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" />
-              ) : workingBarbersCount < barbers.length ? (
-                <AlertCircle className="w-5 h-5 text-orange-600 mt-0.5 flex-shrink-0" />
-              ) : (
-                <CheckCircle className="w-5 h-5 text-green-600 mt-0.5 flex-shrink-0" />
-              )}
-              <div className="flex-1">
-                <p className={`text-sm font-medium ${
-                  workingBarbersCount === 0 
-                    ? 'text-red-900' 
-                    : workingBarbersCount < barbers.length 
-                    ? 'text-orange-900' 
-                    : 'text-green-900'
-                }`}>
-                  {workingBarbersCount === 0 
-                    ? 'No barbers available' 
-                    : workingBarbersCount < barbers.length 
-                    ? `Limited availability` 
-                    : 'All barbers available'}
-                </p>
-                <p className={`text-xs mt-1 ${
-                  workingBarbersCount === 0 
-                    ? 'text-red-700' 
-                    : workingBarbersCount < barbers.length 
-                    ? 'text-orange-700' 
-                    : 'text-green-700'
-                }`}>
-                  {workingBarbersCount} of {barbers.length} barber{barbers.length !== 1 ? 's' : ''} working on{' '}
-                  {selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
-                </p>
-                {selectedBarber !== "any" && !selectedBarberWorkingToday && (
-                  <p className="text-xs mt-2 text-red-700 font-medium">
-                    ⚠️ Selected barber is not available on this day
-                  </p>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
+
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Sidebar - Calendar & Filters */}
@@ -572,11 +521,11 @@ export function RealTimeSlotAvailability() {
                   disabled={(date) => {
                     const today = new Date();
                     today.setHours(0, 0, 0, 0);
-                    
+
                     // Calculate 30 days from today
                     const maxDate = new Date(today);
                     maxDate.setDate(maxDate.getDate() + 30);
-                    
+
                     // Disable dates before today OR after 30 days
                     return date < today || date > maxDate;
                   }}
@@ -599,23 +548,22 @@ export function RealTimeSlotAvailability() {
                     </SelectItem>
                     {barbers.map(barber => {
                       const isWorking = selectedDate && isBarberWorkingAtSlot(
-                        barber, 
+                        barber,
                         9 * 60, // Just check if working at all on this day
                         selectedDate.getDay()
                       );
-                      
+
                       return (
                         <SelectItem key={barber.id || barber._id} value={barber.id || barber._id || ''}>
                           <div className="flex items-center justify-between w-full">
                             <span>{barber.name}</span>
                             {selectedDate && (
-                              <Badge 
-                                variant={isWorking ? "default" : "secondary"} 
-                                className={`ml-2 text-xs ${
-                                  isWorking 
-                                    ? 'bg-green-100 text-green-700' 
-                                    : 'bg-gray-100 text-gray-500'
-                                }`}
+                              <Badge
+                                variant={isWorking ? "default" : "secondary"}
+                                className={`ml-2 text-xs ${isWorking
+                                  ? 'bg-green-100 text-green-700'
+                                  : 'bg-gray-100 text-gray-500'
+                                  }`}
                               >
                                 {isWorking ? 'Available' : 'Off'}
                               </Badge>
@@ -726,7 +674,7 @@ export function RealTimeSlotAvailability() {
                     })}
                   </CardTitle>
                   <CardDescription className="text-[#87765E] mt-1">
-                    {timeSlots.length > 0 
+                    {timeSlots.length > 0
                       ? 'Click on any available slot to proceed with booking'
                       : 'No time slots available for this day'}
                   </CardDescription>
@@ -761,8 +709,8 @@ export function RealTimeSlotAvailability() {
                     {selectedBarber !== "any" && !selectedBarberWorkingToday
                       ? 'The selected barber is not working on this day'
                       : workingBarbersCount === 0
-                      ? 'All barbers are off on this day'
-                      : 'No barbers have set their working hours for this day'}
+                        ? 'All barbers are off on this day'
+                        : 'No barbers have set their working hours for this day'}
                   </p>
                   <Button
                     variant="outline"
@@ -795,11 +743,10 @@ export function RealTimeSlotAvailability() {
                             key={index}
                             variant="outline"
                             disabled={slot.status === "booked" || slot.status === "closed"}
-                            className={`h-auto py-4 px-3 flex flex-col items-center gap-2 border-2 transition-all ${
-                              selectedBarber !== "any" && (slot.status === "available" || slot.status === "limited")
-                                ? "bg-green-50 text-green-700 border-green-300 hover:bg-green-100 hover:border-green-400"
-                                : getSlotColor(slot.status)
-                            }`}
+                            className={`h-auto py-4 px-3 flex flex-col items-center gap-2 border-2 transition-all ${selectedBarber !== "any" && (slot.status === "available" || slot.status === "limited")
+                              ? "bg-green-50 text-green-700 border-green-300 hover:bg-green-100 hover:border-green-400"
+                              : getSlotColor(slot.status)
+                              }`}
                           >
                             <div className="flex items-center gap-1.5">
                               <Clock className="w-4 h-4" />
@@ -846,11 +793,10 @@ export function RealTimeSlotAvailability() {
                             key={index}
                             variant="outline"
                             disabled={slot.status === "booked" || slot.status === "closed"}
-                            className={`h-auto py-4 px-3 flex flex-col items-center gap-2 border-2 transition-all ${
-                              selectedBarber !== "any" && (slot.status === "available" || slot.status === "limited")
-                                ? "bg-green-50 text-green-700 border-green-300 hover:bg-green-100 hover:border-green-400"
-                                : getSlotColor(slot.status)
-                            }`}
+                            className={`h-auto py-4 px-3 flex flex-col items-center gap-2 border-2 transition-all ${selectedBarber !== "any" && (slot.status === "available" || slot.status === "limited")
+                              ? "bg-green-50 text-green-700 border-green-300 hover:bg-green-100 hover:border-green-400"
+                              : getSlotColor(slot.status)
+                              }`}
                           >
                             <div className="flex items-center gap-1.5">
                               <Clock className="w-4 h-4" />
@@ -897,11 +843,10 @@ export function RealTimeSlotAvailability() {
                             key={index}
                             variant="outline"
                             disabled={slot.status === "booked" || slot.status === "closed"}
-                            className={`h-auto py-4 px-3 flex flex-col items-center gap-2 border-2 transition-all ${
-                              selectedBarber !== "any" && (slot.status === "available" || slot.status === "limited")
-                                ? "bg-green-50 text-green-700 border-green-300 hover:bg-green-100 hover:border-green-400"
-                                : getSlotColor(slot.status)
-                            }`}
+                            className={`h-auto py-4 px-3 flex flex-col items-center gap-2 border-2 transition-all ${selectedBarber !== "any" && (slot.status === "available" || slot.status === "limited")
+                              ? "bg-green-50 text-green-700 border-green-300 hover:bg-green-100 hover:border-green-400"
+                              : getSlotColor(slot.status)
+                              }`}
                           >
                             <div className="flex items-center gap-1.5">
                               <Clock className="w-4 h-4" />

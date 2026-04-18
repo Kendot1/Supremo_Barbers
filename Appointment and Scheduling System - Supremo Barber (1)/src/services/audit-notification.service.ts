@@ -164,6 +164,19 @@ export async function logAppointmentCreated(
     actionUrl: '/appointments',
     actionLabel: 'View Appointments',
   });
+
+  // Create confirmation notification for customer
+  await createNotification({
+    userId,
+    userRole: 'customer',
+    type: 'appointment_booked',
+    title: '✅ Booking Confirmed',
+    message: `Your appointment for ${appointmentDetails.service} with ${appointmentDetails.barber} on ${new Date(appointmentDetails.date).toLocaleDateString()} at ${appointmentDetails.time} has been submitted. Please complete payment to confirm.`,
+    relatedId: appointmentId,
+    relatedType: 'appointment',
+    actionUrl: `/appointments?highlight=${appointmentId}`,
+    actionLabel: 'View Booking',
+  });
 }
 
 /**
@@ -1146,3 +1159,319 @@ export async function logSignOutAllDevices(
     relatedType: 'user',
   });
 }
+
+/**
+ * Log & notify: Customer cancelled their own appointment.
+ * Notifies admin and barber.
+ */
+export async function logAppointmentCancelledByCustomer(
+  userId: string,
+  userName: string,
+  userEmail: string,
+  appointmentId: string,
+  appointmentDetails: {
+    service: string;
+    barber: string;
+    barberId: string;
+    date: string;
+    time: string;
+    reason: string;
+  }
+): Promise<void> {
+  // Audit log
+  await createAuditLog({
+    userId,
+    userRole: 'customer',
+    userName,
+    userEmail,
+    action: 'appointment_cancelled',
+    entityType: 'appointment',
+    entityId: appointmentId,
+    description: `${userName} cancelled appointment for ${appointmentDetails.service} on ${appointmentDetails.date} - Reason: ${appointmentDetails.reason}`,
+    status: 'warning',
+    metadata: appointmentDetails,
+  });
+
+  // Notify admin
+  await createNotification({
+    userId: 'admin',
+    userRole: 'admin',
+    type: 'appointment_cancelled',
+    title: '❌ Appointment Cancelled by Customer',
+    message: `${userName} cancelled their ${appointmentDetails.service} appointment with ${appointmentDetails.barber} on ${new Date(appointmentDetails.date).toLocaleDateString()} at ${appointmentDetails.time}. Reason: ${appointmentDetails.reason}`,
+    relatedId: appointmentId,
+    relatedType: 'appointment',
+    actionUrl: '/appointments',
+    actionLabel: 'View Appointments',
+  });
+
+  // Notify barber
+  await createNotification({
+    userId: appointmentDetails.barberId,
+    userRole: 'barber',
+    type: 'appointment_cancelled',
+    title: '❌ Appointment Cancelled',
+    message: `${userName} cancelled their ${appointmentDetails.service} appointment on ${new Date(appointmentDetails.date).toLocaleDateString()} at ${appointmentDetails.time}. Reason: ${appointmentDetails.reason}`,
+    relatedId: appointmentId,
+    relatedType: 'appointment',
+    actionUrl: '/appointments',
+    actionLabel: 'View Schedule',
+  });
+
+  // Confirmation notification for customer
+  await createNotification({
+    userId,
+    userRole: 'customer',
+    type: 'appointment_cancelled',
+    title: 'Appointment Cancelled',
+    message: `Your ${appointmentDetails.service} appointment on ${new Date(appointmentDetails.date).toLocaleDateString()} at ${appointmentDetails.time} has been cancelled.`,
+    relatedId: appointmentId,
+    relatedType: 'appointment',
+    actionUrl: `/appointments?highlight=${appointmentId}`,
+    actionLabel: 'View History',
+  });
+}
+
+/**
+ * Log & notify: Barber cancelled an appointment.
+ * Notifies admin and customer.
+ */
+export async function logAppointmentCancelledByBarber(
+  userId: string,
+  userName: string,
+  userEmail: string,
+  appointmentId: string,
+  appointmentDetails: {
+    service: string;
+    customerId: string;
+    customerName: string;
+    date: string;
+    time: string;
+    reason: string;
+  }
+): Promise<void> {
+  // Audit log
+  await createAuditLog({
+    userId,
+    userRole: 'barber',
+    userName,
+    userEmail,
+    action: 'appointment_cancelled_by_barber',
+    entityType: 'appointment',
+    entityId: appointmentId,
+    description: `Barber ${userName} cancelled appointment for ${appointmentDetails.customerName} - ${appointmentDetails.service} - Reason: ${appointmentDetails.reason}`,
+    status: 'warning',
+    metadata: appointmentDetails,
+  });
+
+  // Notify admin
+  await createNotification({
+    userId: 'admin',
+    userRole: 'admin',
+    type: 'appointment_cancelled',
+    title: '❌ Appointment Cancelled by Barber',
+    message: `${userName} cancelled ${appointmentDetails.customerName}'s ${appointmentDetails.service} appointment on ${new Date(appointmentDetails.date).toLocaleDateString()} at ${appointmentDetails.time}. Reason: ${appointmentDetails.reason}`,
+    relatedId: appointmentId,
+    relatedType: 'appointment',
+    actionUrl: '/appointments',
+    actionLabel: 'View Appointments',
+  });
+
+  // Notify customer
+  await createNotification({
+    userId: appointmentDetails.customerId,
+    userRole: 'customer',
+    type: 'appointment_cancelled',
+    title: '❌ Appointment Cancelled by Barber',
+    message: `Your ${appointmentDetails.service} appointment on ${new Date(appointmentDetails.date).toLocaleDateString()} at ${appointmentDetails.time} was cancelled by ${userName}. Reason: ${appointmentDetails.reason}. Please book a new appointment.`,
+    relatedId: appointmentId,
+    relatedType: 'appointment',
+    actionUrl: `/appointments?highlight=${appointmentId}`,
+    actionLabel: 'Rebook Now',
+  });
+}
+
+/**
+ * Log & notify: Barber completed an appointment.
+ * Notifies customer and admin.
+ */
+export async function logAppointmentCompleted(
+  userId: string,
+  userName: string,
+  userEmail: string,
+  appointmentId: string,
+  appointmentDetails: {
+    service: string;
+    customerId: string;
+    customerName: string;
+    date: string;
+    time: string;
+    price: number;
+  }
+): Promise<void> {
+  // Audit log
+  await createAuditLog({
+    userId,
+    userRole: 'barber',
+    userName,
+    userEmail,
+    action: 'appointment_completed',
+    entityType: 'appointment',
+    entityId: appointmentId,
+    description: `${userName} completed ${appointmentDetails.customerName}'s appointment for ${appointmentDetails.service}`,
+    status: 'success',
+    metadata: appointmentDetails,
+  });
+
+  // Notify customer
+  await createNotification({
+    userId: appointmentDetails.customerId,
+    userRole: 'customer',
+    type: 'appointment_completed',
+    title: '✅ Appointment Completed',
+    message: `Your ${appointmentDetails.service} appointment with ${userName} has been completed. We hope you enjoyed the service! Please leave a review.`,
+    relatedId: appointmentId,
+    relatedType: 'appointment',
+    actionUrl: `/appointments?highlight=${appointmentId}`,
+    actionLabel: 'Leave a Review',
+  });
+
+  // Notify admin
+  await createNotification({
+    userId: 'admin',
+    userRole: 'admin',
+    type: 'appointment_completed',
+    title: 'Appointment Completed',
+    message: `${userName} completed ${appointmentDetails.customerName}'s ${appointmentDetails.service} appointment (₱${appointmentDetails.price})`,
+    relatedId: appointmentId,
+    relatedType: 'appointment',
+    actionUrl: '/appointments',
+    actionLabel: 'View Appointments',
+  });
+}
+
+/**
+ * Log & notify: Customer rescheduled their appointment.
+ * Notifies admin and barber.
+ */
+export async function logAppointmentRescheduledByCustomer(
+  userId: string,
+  userName: string,
+  userEmail: string,
+  appointmentId: string,
+  appointmentDetails: {
+    service: string;
+    barber: string;
+    barberId: string;
+    oldDate: string;
+    oldTime: string;
+    newDate: string;
+    newTime: string;
+  }
+): Promise<void> {
+  // Audit log
+  await createAuditLog({
+    userId,
+    userRole: 'customer',
+    userName,
+    userEmail,
+    action: 'appointment_rescheduled',
+    entityType: 'appointment',
+    entityId: appointmentId,
+    description: `${userName} rescheduled ${appointmentDetails.service} from ${appointmentDetails.oldDate} ${appointmentDetails.oldTime} to ${appointmentDetails.newDate} ${appointmentDetails.newTime}`,
+    status: 'success',
+    metadata: appointmentDetails,
+  });
+
+  // Notify admin
+  await createNotification({
+    userId: 'admin',
+    userRole: 'admin',
+    type: 'appointment_rescheduled',
+    title: '📅 Appointment Rescheduled',
+    message: `${userName} rescheduled their ${appointmentDetails.service} appointment with ${appointmentDetails.barber} from ${new Date(appointmentDetails.oldDate).toLocaleDateString()} to ${new Date(appointmentDetails.newDate).toLocaleDateString()} at ${appointmentDetails.newTime}`,
+    relatedId: appointmentId,
+    relatedType: 'appointment',
+    actionUrl: '/appointments',
+    actionLabel: 'View Appointments',
+  });
+
+  // Notify barber
+  await createNotification({
+    userId: appointmentDetails.barberId,
+    userRole: 'barber',
+    type: 'appointment_rescheduled',
+    title: '📅 Appointment Rescheduled',
+    message: `${userName} rescheduled their ${appointmentDetails.service} appointment from ${new Date(appointmentDetails.oldDate).toLocaleDateString()} ${appointmentDetails.oldTime} to ${new Date(appointmentDetails.newDate).toLocaleDateString()} at ${appointmentDetails.newTime}`,
+    relatedId: appointmentId,
+    relatedType: 'appointment',
+    actionUrl: '/appointments',
+    actionLabel: 'View Schedule',
+  });
+
+  // Confirmation for customer
+  await createNotification({
+    userId,
+    userRole: 'customer',
+    type: 'appointment_rescheduled',
+    title: '📅 Appointment Rescheduled',
+    message: `Your ${appointmentDetails.service} appointment has been moved to ${new Date(appointmentDetails.newDate).toLocaleDateString()} at ${appointmentDetails.newTime}.`,
+    relatedId: appointmentId,
+    relatedType: 'appointment',
+    actionUrl: `/appointments?highlight=${appointmentId}`,
+    actionLabel: 'View Appointment',
+  });
+}
+
+/**
+ * Log & notify: New device login detected. Also alerts admins for security.
+ */
+export async function logNewDeviceLoginWithAdminAlert(
+  userId: string,
+  userName: string,
+  userEmail: string,
+  userRole: 'customer' | 'barber' | 'admin',
+  deviceInfo: { userAgent: string; time: string }
+): Promise<void> {
+  // Audit log
+  await createAuditLog({
+    userId,
+    userRole,
+    userName,
+    userEmail,
+    action: 'new_device_login',
+    entityType: 'user',
+    entityId: userId,
+    description: `Login from a new / unrecognised device detected for ${userName} (${userRole})`,
+    status: 'warning',
+    metadata: deviceInfo,
+  });
+
+  // In-app security notification for the user
+  await createNotification({
+    userId,
+    userRole,
+    type: 'new_device_login',
+    title: '🔐 New Device Login',
+    message: `Your account was accessed from a new device on ${deviceInfo.time}. If this wasn't you, change your password immediately.`,
+    relatedId: userId,
+    relatedType: 'user',
+    actionUrl: '/profile',
+    actionLabel: 'Review Security',
+  });
+
+  // Alert admins of suspicious login (only for non-admin users)
+  if (userRole !== 'admin') {
+    await createNotification({
+      userId: 'admin',
+      userRole: 'admin',
+      type: 'security_alert',
+      title: '🔐 New Device Login Detected',
+      message: `${userName} (${userRole}) logged in from a new device on ${deviceInfo.time}. Email: ${userEmail}`,
+      relatedId: userId,
+      relatedType: 'user',
+      actionUrl: '/users',
+      actionLabel: 'View User',
+    });
+  }
+}

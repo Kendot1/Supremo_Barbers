@@ -578,6 +578,7 @@ export function CustomerDashboard({
                 }
               }}
               userId={user.id}
+              appointments={appointments}
             />
           )}
 

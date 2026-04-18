@@ -399,7 +399,7 @@ const API = {
       if (USE_LOCAL_BACKEND) {
         return LocalBackend.users.update(id, { isActive: false });
       }
-      return apiCall<User>(
+      const result = await apiCall<User>(
         `/users/${id}`,
         {
           method: 'PUT',
@@ -407,13 +407,16 @@ const API = {
         },
         false
       );
+      // Invalidate users cache so fetchUsers returns fresh data
+      apiCache.invalidate('users:all');
+      return result;
     },
     
     unsuspend: async (id: string) => {
       if (USE_LOCAL_BACKEND) {
         return LocalBackend.users.update(id, { isActive: true });
       }
-      return apiCall<User>(
+      const result = await apiCall<User>(
         `/users/${id}`,
         {
           method: 'PUT',
@@ -421,6 +424,9 @@ const API = {
         },
         false
       );
+      // Invalidate users cache so fetchUsers returns fresh data
+      apiCache.invalidate('users:all');
+      return result;
     },
     
     delete: async (id: string) => {

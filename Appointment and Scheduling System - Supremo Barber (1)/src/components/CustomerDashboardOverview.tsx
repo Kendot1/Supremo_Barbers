@@ -23,7 +23,6 @@ import {
   Scissors,
   ArrowRight,
   Star,
-  DollarSign,
   Gift,
   CheckCircle2,
   ChevronDown,
@@ -34,6 +33,7 @@ import {
   Heart,
   Loader2,
 } from "lucide-react";
+import { FaPesoSign } from "react-icons/fa6";
 import { ImageWithFallback } from "./fallback/ImageWithFallback";
 import type { User, Appointment } from "../App";
 import API from "../services/api.service";
@@ -771,68 +771,95 @@ export function CustomerDashboardOverview({
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {services.slice(0, 6).map((service) => (
-                <div
-                  key={service.id || service._id}
-                >
-                  <Card className="relative transition-all overflow-hidden hover:shadow-md border-2 border-[#E8DCC8] hover:border-[#DB9D47]/40 cursor-pointer group">
-                    <div className="relative h-48 overflow-hidden">
-                      <ImageWithFallback
-                        src={
-                          service.imageUrl ||
-                          "https://images.unsplash.com/photo-1621605815971-fbc98d665033?w=400&h=400&fit=crop"
-                        }
-                        alt={service.name}
-                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                      />
-                      {/* Favorite Icon */}
-                      <button
-                        onClick={(e) => toggleFavorite(service.id || service._id, e)}
-                        className="absolute top-3 right-3 p-2 rounded-full bg-white shadow-md hover:shadow-lg transition-all hover:scale-110 z-10 cursor-pointer"
-                        aria-label="Add to favorites"
-                      >
-                        <Heart
-                          className={`w-5 h-5 transition-colors ${favoriteServices.includes(service.id || service._id)
-                            ? "text-red-500 fill-current"
-                            : "text-[#87765E] hover:text-[#DB9D47]"
-                            }`}
-                        />
-                      </button>
-                    </div>
-                    <CardContent className="pt-4 pb-4">
-                      <h3 className="text-lg text-[#5C4A3A] mb-2 group-hover:text-[#DB9D47] transition-colors">
-                        {service.name}
-                      </h3>
-                      <p className="text-sm text-[#87765E] mb-3 line-clamp-2">
-                        {service.description}
-                      </p>
+              {services.slice(0, 6).map((service) => {
+                const serviceId = service.id || service._id;
+                // Check if user already has an active booking for this service
+                const hasActiveBooking = userAppointments.some(
+                  (apt) =>
+                    apt.service === service.name &&
+                    (apt.status === 'pending' || apt.status === 'verified' || apt.status === 'confirmed' || apt.status === 'upcoming')
+                );
 
-                      <div className="flex items-center justify-between mb-3 pb-3 border-b border-[#E8DCC8]">
-                        <span className="flex items-center gap-1 text-sm text-[#87765E]">
-                          <Clock className="w-4 h-4" />
-                          {service.duration} mins
-                        </span>
-                        <span className="text-lg text-[#DB9D47] font-semibold">
-                          ₱{service.price}
-                        </span>
-                      </div>
-
-                      <Button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          if (onSetPreSelectedService) {
-                            onSetPreSelectedService(service.id || service._id);
+                return (
+                  <div
+                    key={serviceId}
+                  >
+                    <Card className={`relative transition-all overflow-hidden hover:shadow-md border-2 ${hasActiveBooking ? 'border-gray-300 bg-gray-50/30' : 'border-[#E8DCC8] hover:border-[#DB9D47]/40'} cursor-pointer group`}>
+                      <div className="relative h-48 overflow-hidden">
+                        <ImageWithFallback
+                          src={
+                            service.imageUrl ||
+                            "https://images.unsplash.com/photo-1621605815971-fbc98d665033?w=400&h=400&fit=crop"
                           }
-                          onNavigate("book");
-                        }}
-                        className="w-full bg-[#DB9D47] hover:bg-[#C88A35] text-white cursor-pointer transition-all hover:shadow-md"
-                      >
-                        Book Now
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </div>
-              ))}
+                          alt={service.name}
+                          className={`w-full h-full object-cover transition-transform duration-300 group-hover:scale-105 ${hasActiveBooking ? 'opacity-75' : ''}`}
+                        />
+                        {/* Already Booked Badge */}
+                        {hasActiveBooking && (
+                          <Badge className="absolute top-3 left-3 bg-gray-500 hover:bg-gray-500 text-white z-10">
+                            <CheckCircle2 className="w-3 h-3 mr-1" />
+                            Already Booked
+                          </Badge>
+                        )}
+                        {/* Favorite Icon */}
+                        <button
+                          onClick={(e) => toggleFavorite(service.id || service._id, e)}
+                          className="absolute top-3 right-3 p-2 rounded-full bg-white shadow-md hover:shadow-lg transition-all hover:scale-110 z-10 cursor-pointer"
+                          aria-label="Add to favorites"
+                        >
+                          <Heart
+                            className={`w-5 h-5 transition-colors ${favoriteServices.includes(service.id || service._id)
+                              ? "text-red-500 fill-current"
+                              : "text-[#87765E] hover:text-[#DB9D47]"
+                              }`}
+                          />
+                        </button>
+                      </div>
+                      <CardContent className="pt-4 pb-4">
+                        <h3 className="text-lg text-[#5C4A3A] mb-2 group-hover:text-[#DB9D47] transition-colors">
+                          {service.name}
+                        </h3>
+                        <p className="text-sm text-[#87765E] mb-3 line-clamp-2">
+                          {service.description}
+                        </p>
+
+                        <div className="flex items-center justify-between mb-3 pb-3 border-b border-[#E8DCC8]">
+                          <span className="flex items-center gap-1 text-sm text-[#87765E]">
+                            <Clock className="w-4 h-4" />
+                            {service.duration} mins
+                          </span>
+                          <span className="text-lg text-[#DB9D47] font-semibold">
+                            ₱{service.price}
+                          </span>
+                        </div>
+
+                        {hasActiveBooking ? (
+                          <Button
+                            disabled
+                            className="w-full bg-gray-600 text-white cursor-not-allowed opacity-80"
+                          >
+                            <CheckCircle2 className="w-4 h-4 mr-2" />
+                            Already Booked
+                          </Button>
+                        ) : (
+                          <Button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (onSetPreSelectedService) {
+                                onSetPreSelectedService(service.id || service._id);
+                              }
+                              onNavigate("book");
+                            }}
+                            className="w-full bg-[#DB9D47] hover:bg-[#C88A35] text-white cursor-pointer transition-all hover:shadow-md"
+                          >
+                            Book Now
+                          </Button>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </div>
+                );
+              })}
             </div>
           )}
         </CardContent>
