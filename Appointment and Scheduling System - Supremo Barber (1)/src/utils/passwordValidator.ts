@@ -40,7 +40,7 @@ const commonWords = [
 const commonPasswords = [
   '123456', '12345678', '123456789', '1234567890',
   'password', 'password123', 'qwerty', 'qwerty123',
-  'abc123', '111111', '1234', '12345', 
+  'abc123', '111111', '1234', '12345',
   'admin', 'admin123', 'root', 'toor',
   'pass', 'pass123', 'Password1', 'Password123'
 ];
@@ -51,21 +51,21 @@ const commonPasswords = [
 function generateLeetVariations(word: string): Set<string> {
   const variations = new Set<string>();
   const chars = word.toLowerCase().split('');
-  
+
   function generate(index: number, current: string) {
     if (index === chars.length) {
       variations.add(current);
       return;
     }
-    
+
     const char = chars[index];
     const replacements = leetSpeakMap[char] || [char];
-    
+
     for (const replacement of replacements) {
       generate(index + 1, current + replacement);
     }
   }
-  
+
   generate(0, '');
   return variations;
 }
@@ -75,7 +75,7 @@ function generateLeetVariations(word: string): Set<string> {
  */
 function normalizeLeetSpeak(password: string): string {
   let normalized = password.toLowerCase();
-  
+
   // Replace leet speak characters with their alphabetic equivalents
   normalized = normalized
     .replace(/[4@α]/g, 'a')
@@ -87,7 +87,7 @@ function normalizeLeetSpeak(password: string): string {
     .replace(/[5$]/g, 's')
     .replace(/[7+]/g, 't')
     .replace(/2/g, 'z');
-  
+
   return normalized;
 }
 
@@ -96,24 +96,24 @@ function normalizeLeetSpeak(password: string): string {
  */
 function containsName(password: string, name: string): boolean {
   if (!name || name.trim().length < 2) return false;
-  
+
   const nameParts = name.toLowerCase().split(/\s+/);
   const normalizedPassword = normalizeLeetSpeak(password);
-  
+
   // Check each part of the name
   for (const part of nameParts) {
     if (part.length < 2) continue;
-    
+
     // Direct check in normalized password
     if (normalizedPassword.includes(part.toLowerCase())) {
       return true;
     }
-    
+
     // Check reversed name
     if (normalizedPassword.includes(part.toLowerCase().split('').reverse().join(''))) {
       return true;
     }
-    
+
     // Generate leet variations and check against original password
     const leetVariations = generateLeetVariations(part);
     for (const variation of leetVariations) {
@@ -122,7 +122,7 @@ function containsName(password: string, name: string): boolean {
       }
     }
   }
-  
+
   return false;
 }
 
@@ -131,15 +131,15 @@ function containsName(password: string, name: string): boolean {
  */
 function containsDictionaryWord(password: string): { found: boolean; word?: string } {
   const normalizedPassword = normalizeLeetSpeak(password);
-  
+
   for (const word of commonWords) {
     if (word.length < 3) continue;
-    
+
     // Check in normalized password
     if (normalizedPassword.includes(word.toLowerCase())) {
       return { found: true, word };
     }
-    
+
     // Check leet variations in original password
     const leetVariations = generateLeetVariations(word);
     for (const variation of leetVariations) {
@@ -148,7 +148,7 @@ function containsDictionaryWord(password: string): { found: boolean; word?: stri
       }
     }
   }
-  
+
   return { found: false };
 }
 
@@ -157,13 +157,13 @@ function containsDictionaryWord(password: string): { found: boolean; word?: stri
  */
 function isCommonPassword(password: string): boolean {
   const lowerPassword = password.toLowerCase();
-  
+
   for (const common of commonPasswords) {
     if (lowerPassword === common.toLowerCase()) {
       return true;
     }
   }
-  
+
   return false;
 }
 
@@ -195,9 +195,9 @@ function hasSequentialChars(password: string): boolean {
     'asdfghjkl',
     'zxcvbnm'
   ];
-  
+
   const lowerPassword = password.toLowerCase();
-  
+
   for (const sequence of sequences) {
     for (let i = 0; i <= sequence.length - 3; i++) {
       const chunk = sequence.substring(i, i + 3);
@@ -210,7 +210,7 @@ function hasSequentialChars(password: string): boolean {
       }
     }
   }
-  
+
   return false;
 }
 
@@ -229,7 +229,7 @@ function extractAlphabeticSegments(password: string): string[] {
   // Remove all non-alphabetic characters and split into segments
   const segments: string[] = [];
   let currentSegment = '';
-  
+
   for (const char of password) {
     if (/[a-zA-Z]/.test(char)) {
       currentSegment += char;
@@ -240,12 +240,12 @@ function extractAlphabeticSegments(password: string): string[] {
       currentSegment = '';
     }
   }
-  
+
   // Don't forget the last segment
   if (currentSegment.length >= 3) {
     segments.push(currentSegment.toLowerCase());
   }
-  
+
   return segments;
 }
 
@@ -255,45 +255,45 @@ function extractAlphabeticSegments(password: string): string[] {
  */
 function containsWordSegment(password: string, userName?: string): { found: boolean; segment?: string; type?: string } {
   const segments = extractAlphabeticSegments(password);
-  
+
   // Check each segment against dictionary words
   for (const segment of segments) {
     if (segment.length < 3) continue;
-    
+
     // Normalize for leet speak
     const normalized = normalizeLeetSpeak(segment);
-    
+
     // Check against common words
     for (const word of commonWords) {
       if (word.length < 3) continue;
-      
+
       if (normalized === word.toLowerCase() || normalized.includes(word.toLowerCase())) {
         return { found: true, segment, type: 'dictionary word' };
       }
-      
+
       // Check if segment contains the word
       if (segment.length >= word.length && segment.includes(word.toLowerCase())) {
         return { found: true, segment, type: 'dictionary word' };
       }
     }
-    
+
     // Check against user name if provided
     if (userName) {
       const nameParts = userName.toLowerCase().split(/\s+/);
       for (const namePart of nameParts) {
         if (namePart.length < 2) continue;
-        
+
         if (normalized === namePart || normalized.includes(namePart)) {
           return { found: true, segment, type: 'your name' };
         }
-        
+
         if (segment === namePart || segment.includes(namePart)) {
           return { found: true, segment, type: 'your name' };
         }
       }
     }
   }
-  
+
   return { found: false };
 }
 
@@ -316,9 +316,9 @@ function hasKeyboardPattern(password: string): boolean {
     // Common patterns
     'abcd', 'bcde', 'cdef', 'defg', 'efgh', 'fghi', 'ghij'
   ];
-  
+
   const lowerPassword = password.toLowerCase();
-  
+
   for (const pattern of patterns) {
     if (lowerPassword.includes(pattern)) {
       return true;
@@ -328,7 +328,7 @@ function hasKeyboardPattern(password: string): boolean {
       return true;
     }
   }
-  
+
   return false;
 }
 
@@ -350,7 +350,7 @@ export function validatePassword(
   const feedback: string[] = [];
   const issues: string[] = [];
   let score = 0;
-  
+
   // Length validation
   if (password.length === 0) {
     return {
@@ -361,7 +361,7 @@ export function validatePassword(
       isValid: false,
     };
   }
-  
+
   if (password.length > 64) {
     return {
       strength: 'weak',
@@ -371,7 +371,7 @@ export function validatePassword(
       isValid: false,
     };
   }
-  
+
   if (password.length < 8) {
     issues.push('Password must be at least 8 characters long');
     return {
@@ -382,12 +382,12 @@ export function validatePassword(
       isValid: false,
     };
   }
-  
+
   // Base score from length
   if (password.length >= 8) score += 20;
   if (password.length >= 12) score += 15;
   if (password.length >= 16) score += 10;
-  
+
   // Check for common passwords
   if (isCommonPassword(password)) {
     issues.push('This is a commonly used password');
@@ -399,7 +399,7 @@ export function validatePassword(
       isValid: false,
     };
   }
-  
+
   // Check for name in password
   if (userName && containsName(password, userName)) {
     issues.push('Password contains your name (even with special characters)');
@@ -411,11 +411,11 @@ export function validatePassword(
       isValid: false,
     };
   }
-  
+
   // Check for dictionary words
   const dictCheck = containsDictionaryWord(password);
   if (dictCheck.found) {
-    
+
     return {
       strength: 'weak',
       score: Math.min(score, 30),
@@ -424,7 +424,7 @@ export function validatePassword(
       isValid: false,
     };
   }
-  
+
   // Check for word segments
   const wordSegmentCheck = containsWordSegment(password, userName);
   if (wordSegmentCheck.found) {
@@ -437,32 +437,32 @@ export function validatePassword(
       isValid: false,
     };
   }
-  
+
   // Check complexity
   const complexity = checkComplexity(password);
   if (complexity.hasUpperCase) score += 10;
   if (complexity.hasLowerCase) score += 10;
   if (complexity.hasNumber) score += 10;
   if (complexity.hasSpecialChar) score += 15;
-  
+
   // Check for sequential characters
   if (hasSequentialChars(password)) {
     score -= 15;
     issues.push('Contains sequential characters (123, abc, etc.)');
   }
-  
+
   // Check for repeated characters
   if (hasRepeatedChars(password)) {
     score -= 10;
     issues.push('Contains repeated characters (aaa, 111, etc.)');
   }
-  
+
   // Check for keyboard patterns
   if (hasKeyboardPattern(password)) {
     score -= 10;
     issues.push('Contains keyboard patterns (qwerty, asdfg, etc.)');
   }
-  
+
   // Ensure minimum complexity for passwords >= 8 characters
   const complexityCount = [
     complexity.hasUpperCase,
@@ -470,14 +470,14 @@ export function validatePassword(
     complexity.hasNumber,
     complexity.hasSpecialChar,
   ].filter(Boolean).length;
-  
+
   if (complexityCount < 3) {
     issues.push('Use a mix of uppercase, lowercase, numbers, and symbols');
   }
-  
+
   // Determine strength based on length and score
   let strength: 'weak' | 'medium' | 'strong';
-  
+
   if (password.length < 8) {
     strength = 'weak';
   } else if (password.length >= 12 && score >= 70 && complexityCount >= 3) {
@@ -505,7 +505,7 @@ export function validatePassword(
     strength = 'weak';
     feedback.push('Use at least 12 characters with variety for a strong password');
   }
-  
+
   // Add positive feedback for strong passwords
   if (strength === 'strong' && feedback.length === 1) {
     if (password.length >= 16) {
@@ -514,10 +514,10 @@ export function validatePassword(
       feedback.push('Great mix of character types');
     }
   }
-  
+
   // Clamp score
   score = Math.max(0, Math.min(100, score));
-  
+
   return {
     strength,
     score,
@@ -536,7 +536,7 @@ export function getPasswordFeedback(password: string, userName?: string): {
   progress: number;
 } {
   const validation = validatePassword(password, userName);
-  
+
   if (password.length === 0) {
     return {
       color: 'bg-gray-300',
@@ -544,7 +544,7 @@ export function getPasswordFeedback(password: string, userName?: string): {
       progress: 0,
     };
   }
-  
+
   if (validation.strength === 'weak') {
     return {
       color: 'bg-red-500',

@@ -47,14 +47,14 @@ export function useCache<T>(
 
       // Fetch fresh data
       const result = await fetchFn();
-      
+
       // Store in cache
       apiCache.set(key, result, cacheConfig);
-      
+
       setData(result);
       setFromCache(false);
       setLoading(false);
-      
+
       return result;
     } catch (err) {
       setError(err as Error);
@@ -80,7 +80,7 @@ export function useCache<T>(
   }, [autoRefresh, refreshInterval, fetchData]);
 
   const refresh = useCallback(() => fetchData(true), [fetchData]);
-  
+
   const invalidate = useCallback(() => {
     apiCache.invalidate(key);
     setData(null);

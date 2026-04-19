@@ -80,7 +80,7 @@ class LoadBalancerService {
       if (stored) {
         const parsed = JSON.parse(stored);
         this.metrics = { ...this.metrics, ...parsed };
-        console.log('📊 [LOAD BALANCER] Metrics loaded from storage');
+
       }
     } catch (error) {
       console.warn('⚠️ [LOAD BALANCER] Failed to load metrics:', error);
@@ -118,25 +118,25 @@ class LoadBalancerService {
     // Filter out providers with open circuits that haven't recovered
     const healthyProviders = availableProviders.filter(provider => {
       const health = this.metrics.providers[provider];
-      
+
       // Check if circuit is open and if recovery time has passed
       if (health.isCircuitOpen) {
-        const timeSinceFailure = health.lastFailureTime 
-          ? now - health.lastFailureTime 
+        const timeSinceFailure = health.lastFailureTime
+          ? now - health.lastFailureTime
           : Infinity;
-        
+
         if (timeSinceFailure > this.CIRCUIT_RECOVERY_TIME) {
           // Try to recover - circuit half-open
-          console.log(`🔄 [LOAD BALANCER] Attempting to recover ${provider}`);
+
           health.isCircuitOpen = false;
           health.consecutiveFailures = 0;
           return true;
         }
-        
-        console.log(`⛔ [LOAD BALANCER] ${provider} circuit is open (${Math.round(timeSinceFailure/1000)}s since failure)`);
+
+
         return false;
       }
-      
+
       return health.isHealthy;
     });
 
@@ -149,21 +149,21 @@ class LoadBalancerService {
     // Score each provider based on performance
     const scoredProviders = healthyProviders.map(provider => {
       const health = this.metrics.providers[provider];
-      
+
       // Calculate score (higher is better)
       let score = 100;
-      
+
       // Penalize high latency
       if (health.averageLatency > 0) {
         score -= Math.min(50, (health.averageLatency / 100)); // -0.5 per 100ms
       }
-      
+
       // Penalize high error rate
       score -= health.errorRate * 50; // -50 for 100% error rate
-      
+
       // Bonus for high uptime
       score += (health.uptime / 10); // +10 for 100% uptime
-      
+
       // Bonus for recent success
       if (health.lastSuccessTime) {
         const timeSinceSuccess = now - health.lastSuccessTime;
@@ -171,10 +171,10 @@ class LoadBalancerService {
           score += 20;
         }
       }
-      
+
       // Prefer Groq (it's faster)
       if (provider === 'groq') score += 10;
-      
+
       return { provider, score, health };
     });
 
@@ -183,8 +183,8 @@ class LoadBalancerService {
 
     const selected = scoredProviders[0];
     const reason = `Best score: ${selected.score.toFixed(1)} (latency: ${selected.health.averageLatency}ms, uptime: ${selected.health.uptime.toFixed(1)}%)`;
-    
-    console.log(`🎯 [LOAD BALANCER] Selected ${selected.provider}: ${reason}`);
+
+
     this.recordRoutingDecision(selected.provider, reason);
 
     return selected.provider;
@@ -213,9 +213,8 @@ class LoadBalancerService {
 
     // Update metrics
     this.updateMetrics(provider);
-    
-    console.log(`✅ [LOAD BALANCER] ${provider} success - ${latency}ms (avg: ${health.averageLatency.toFixed(0)}ms)`);
-    
+
+
     this.saveMetricsToStorage();
   }
 
@@ -240,20 +239,20 @@ class LoadBalancerService {
 
     // Update metrics
     this.updateMetrics(provider);
-    
+
     console.error(`❌ [LOAD BALANCER] ${provider} failure (${health.consecutiveFailures} consecutive)${error ? `: ${error}` : ''}`);
-    
+
     this.saveMetricsToStorage();
   }
 
   private updateMetrics(provider: AIProvider): void {
     const health = this.metrics.providers[provider];
-    
+
     // Calculate error rate
     if (health.totalRequests > 0) {
       health.errorRate = health.failedRequests / health.totalRequests;
     }
-    
+
     // Calculate uptime
     if (health.totalRequests > 0) {
       health.uptime = (health.successfulRequests / health.totalRequests) * 100;
@@ -287,7 +286,7 @@ class LoadBalancerService {
   resetMetrics(): void {
     this.metrics = this.initializeMetrics();
     localStorage.removeItem('ai_load_balancer_metrics');
-    console.log('🔄 [LOAD BALANCER] Metrics reset');
+
   }
 
   /**
@@ -307,7 +306,7 @@ class LoadBalancerService {
 
       if (health.isCircuitOpen) {
         status = 'circuit_open';
-        const timeSinceFailure = health.lastFailureTime 
+        const timeSinceFailure = health.lastFailureTime
           ? Math.round((Date.now() - health.lastFailureTime) / 1000)
           : 0;
         details = `Circuit open - ${timeSinceFailure}s since failure`;
@@ -329,7 +328,7 @@ class LoadBalancerService {
     // Determine overall health
     const healthyCount = providerStatuses.filter(p => p.status === 'healthy').length;
     let overall: 'healthy' | 'degraded' | 'critical';
-    
+
     if (healthyCount >= 2) {
       overall = 'healthy';
     } else if (healthyCount === 1) {

@@ -25,22 +25,13 @@ const API_BASE_URL = EDGE_FUNCTIONS_URL; // Use Supabase Edge Functions
 // Use Supabase backend (set to false to use local backend)
 const USE_LOCAL_BACKEND = false; // Using Supabase for all operations including notifications
 
-// Log configuration only in development
-if (process.env.NODE_ENV === 'development') {
-  console.log('🚀 API Service initialized');
-  if (USE_LOCAL_BACKEND) {
-    console.log('📦 Using Local Backend (localStorage)');
-  } else {
-    console.log('📍 API Base URL:', API_BASE_URL);
-    console.log('✅ Connected to Supabase Edge Functions');
-  }
-}
+
 
 // Get auth token from localStorage
 function getAuthToken(): string | null {
   if (typeof window !== 'undefined') {
     const token = localStorage.getItem('authToken');
-    
+
     // Validate JWT format - should have 3 parts separated by dots
     if (token) {
       const parts = token.split('.');
@@ -50,7 +41,7 @@ function getAuthToken(): string | null {
         localStorage.removeItem('currentUser');
         return null;
       }
-      
+
       // Check if token is too short (likely invalid)
       if (token.length < 20) {
         console.warn('⚠️ Invalid token detected in localStorage (too short), clearing...');
@@ -58,7 +49,7 @@ function getAuthToken(): string | null {
         localStorage.removeItem('currentUser');
         return null;
       }
-      
+
       // Try to decode and check expiration
       try {
         const payload = JSON.parse(atob(parts[1]));
@@ -75,7 +66,7 @@ function getAuthToken(): string | null {
         return null;
       }
     }
-    
+
     return token;
   }
   return null;
@@ -84,11 +75,11 @@ function getAuthToken(): string | null {
 // Helper function to convert camelCase to snake_case
 function toSnakeCase(obj: any): any {
   if (obj === null || typeof obj !== 'object') return obj;
-  
+
   if (Array.isArray(obj)) {
     return obj.map(item => toSnakeCase(item));
   }
-  
+
   const snakeCaseObj: any = {};
   for (const key in obj) {
     if (obj.hasOwnProperty(key)) {
@@ -102,11 +93,11 @@ function toSnakeCase(obj: any): any {
 // Helper function to convert snake_case to camelCase
 function toCamelCase(obj: any): any {
   if (obj === null || typeof obj !== 'object') return obj;
-  
+
   if (Array.isArray(obj)) {
     return obj.map(item => toCamelCase(item));
   }
-  
+
   const camelCaseObj: any = {};
   for (const key in obj) {
     if (obj.hasOwnProperty(key)) {
@@ -130,7 +121,7 @@ async function apiCall<T>(
       'apikey': publicAnonKey,
       ...options?.headers,
     };
-    
+
     // IMPORTANT: Supabase Edge Functions require Authorization header
     // Use user token if available, otherwise use anon key
     if (token && token.trim() !== '' && token !== publicAnonKey) {
@@ -139,7 +130,7 @@ async function apiCall<T>(
       // For anonymous/public requests, use the anon key
       headers['Authorization'] = `Bearer ${publicAnonKey}`;
     }
-    
+
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
       headers,
@@ -154,17 +145,17 @@ async function apiCall<T>(
       } catch {
         errorMessage = `HTTP ${response.status}: ${response.statusText}`;
       }
-      
+
       throw new Error(errorMessage);
     }
 
     const json = await response.json();
-    
+
     // If response has the standardized format { success, data }, extract data
     if (json && typeof json === 'object' && 'success' in json && 'data' in json) {
       return json.data as T;
     }
-    
+
     // Otherwise return the raw response
     return json as T;
   } catch (error) {
@@ -184,7 +175,7 @@ const API = {
       if (USE_LOCAL_BACKEND) {
         return LocalBackend.auth.login(email, password);
       }
-      
+
       const result = await apiCall<{ user: User; token: string }>(
         '/auth/login',
         {
@@ -193,10 +184,10 @@ const API = {
         },
         false
       );
-      
+
       // DO NOT store in localStorage here - let LoginPage handle it after OTP verification
       // This prevents auto-login on refresh during OTP step
-      
+
       return result;
     },
 
@@ -205,7 +196,7 @@ const API = {
         // Fallback to email-based login for local backend
         return LocalBackend.auth.login(username, password);
       }
-      
+
       const result = await apiCall<{ user: User; token: string }>(
         '/auth/login',
         {
@@ -214,18 +205,18 @@ const API = {
         },
         false
       );
-      
+
       // DO NOT store in localStorage here - let LoginPage handle it after OTP verification
       // This prevents auto-login on refresh during OTP step
-      
+
       return result;
     },
-    
+
     register: async (data: { email: string; username: string; password: string; name: string; phone?: string; role?: string }) => {
       if (USE_LOCAL_BACKEND) {
         return LocalBackend.auth.register(data.email, data.password, data.name, data.phone);
       }
-      
+
       const result = await apiCall<{ user: User; token: string }>(
         '/auth/register',
         {
@@ -237,16 +228,16 @@ const API = {
 
       // DO NOT store in localStorage here - let LoginPage handle it after OTP verification
       // Registration is called after OTP is verified, so LoginPage manages the storage
-      
+
       return result;
     },
-    
+
     checkEmailExists: async (email: string) => {
       if (USE_LOCAL_BACKEND) {
         const exists = await LocalBackend.auth.checkEmail(email);
         return { exists };
       }
-      
+
       return apiCall<{ exists: boolean }>(
         '/auth/check-email',
         {
@@ -258,13 +249,13 @@ const API = {
     },
 
     checkUsernameExists: async (username: string) => {
-      console.log('🔍 API.auth.checkUsernameExists called with username:', username);
-      
+
+
       if (USE_LOCAL_BACKEND) {
         // For local backend, always return false (username not taken)
         return { exists: false };
       }
-      
+
       return apiCall<{ exists: boolean }>(
         '/auth/check-username',
         {
@@ -274,7 +265,7 @@ const API = {
         false
       );
     },
-    
+
     verify: async () => {
       return apiCall<{ user: User }>(
         '/auth/verify',
@@ -310,7 +301,7 @@ const API = {
   users: {
     getAll: async () => {
       if (USE_LOCAL_BACKEND) return LocalBackend.users.getAll();
-      
+
       // Use frontend cache for users (5 min TTL)
       return cachedAPICall(
         'users:all',
@@ -318,12 +309,12 @@ const API = {
         5 * 60 * 1000 // 5 minutes cache
       );
     },
-    
+
     getById: async (id: string) => {
       if (USE_LOCAL_BACKEND) return LocalBackend.users.getById(id);
       return apiCall<User>(`/users/${id}`, undefined, false);
     },
-    
+
     create: async (data: { name: string; email: string; phone: string; password: string; role: string }) => {
       if (USE_LOCAL_BACKEND) {
         // Use the register endpoint which creates users
@@ -339,7 +330,7 @@ const API = {
         false
       );
     },
-    
+
     update: async (id: string, data: Partial<User>) => {
       if (USE_LOCAL_BACKEND) return LocalBackend.users.update(id, data);
       return apiCall<User>(
@@ -351,15 +342,10 @@ const API = {
         false
       );
     },
-    
+
     changePassword: async (id: string, data: { currentPassword: string; newPassword: string }) => {
-      console.log('🔐 API Service: changePassword called with:', {
-        userId: id,
-        userIdType: typeof id,
-        hasCurrentPassword: !!data.currentPassword,
-        hasNewPassword: !!data.newPassword
-      });
-      
+
+
       if (USE_LOCAL_BACKEND) {
         // For local backend, just update the password (simplified)
         return LocalBackend.users.update(id, { password: data.newPassword });
@@ -373,14 +359,10 @@ const API = {
         false
       );
     },
-    
+
     changeEmail: async (id: string, data: { newEmail: string; password: string }) => {
-      console.log('📧 API Service: changeEmail called with:', {
-        userId: id,
-        newEmail: data.newEmail,
-        hasPassword: !!data.password
-      });
-      
+
+
       if (USE_LOCAL_BACKEND) {
         // For local backend, just update the email (simplified)
         return LocalBackend.users.update(id, { email: data.newEmail });
@@ -394,7 +376,7 @@ const API = {
         false
       );
     },
-    
+
     suspend: async (id: string) => {
       if (USE_LOCAL_BACKEND) {
         return LocalBackend.users.update(id, { isActive: false });
@@ -425,7 +407,7 @@ const API = {
       apiCache.invalidate('users:all');
       return result[0] || result;
     },
-    
+
     unsuspend: async (id: string) => {
       if (USE_LOCAL_BACKEND) {
         return LocalBackend.users.update(id, { isActive: true });
@@ -455,7 +437,7 @@ const API = {
       apiCache.invalidate('users:all');
       return result[0] || result;
     },
-    
+
     delete: async (id: string) => {
       if (USE_LOCAL_BACKEND) {
         LocalBackend.users.delete(id);
@@ -475,7 +457,7 @@ const API = {
   barbers: {
     getAll: async () => {
       if (USE_LOCAL_BACKEND) return LocalBackend.barbers.getAll();
-      
+
       // Use cache for barbers list (changes infrequently)
       return cachedAPICall(
         'barbers:all',
@@ -485,12 +467,12 @@ const API = {
         5 * 60 * 1000 // Cache for 5 minutes
       );
     },
-    
+
     getById: async (id: string) => {
       if (USE_LOCAL_BACKEND) return LocalBackend.barbers.getById(id);
       return apiCall<any>(`/barbers/${id}`, undefined, false);
     },
-    
+
     getByUserId: async (userId: string) => {
       if (USE_LOCAL_BACKEND) {
         // For local backend, find barber where user_id matches
@@ -499,19 +481,19 @@ const API = {
       }
       return apiCall<any>(`/barbers/user/${userId}`, undefined, false);
     },
-    
+
     getEarnings: async (id: string, params?: { startDate?: string; endDate?: string }) => {
       if (USE_LOCAL_BACKEND) {
         // For local backend, calculate from appointments
         const appointments = LocalBackend.appointments.getAll();
-        const barberAppointments = appointments.filter((apt: any) => 
+        const barberAppointments = appointments.filter((apt: any) =>
           apt.barberId === id && apt.status === 'completed'
         );
-        
+
         const totalEarnings = barberAppointments.reduce((sum: number, apt: any) => sum + apt.price, 0);
         const totalAppointments = barberAppointments.length;
         const averageEarningPerAppointment = totalAppointments > 0 ? totalEarnings / totalAppointments : 0;
-        
+
         // Group by date
         const earningsByDate = barberAppointments.reduce((acc: any, apt: any) => {
           if (!acc[apt.date]) {
@@ -521,7 +503,7 @@ const API = {
           acc[apt.date].count += 1;
           return acc;
         }, {});
-        
+
         return {
           totalEarnings,
           totalAppointments,
@@ -529,11 +511,11 @@ const API = {
           earningsByDate: Object.values(earningsByDate),
         };
       }
-      
+
       const queryParams = params ? '?' + new URLSearchParams(params as any).toString() : '';
       return apiCall<any>(`/barbers/${id}/earnings${queryParams}`, undefined, false);
     },
-    
+
     getAvailability: async (id: string) => {
       if (USE_LOCAL_BACKEND) {
         // Return default availability for local backend
@@ -565,7 +547,7 @@ const API = {
         ];
       }
     },
-    
+
     create: async (data: any) => {
       if (USE_LOCAL_BACKEND) return LocalBackend.barbers.create(data);
       const result = await apiCall<any>(
@@ -580,7 +562,7 @@ const API = {
       apiCache.invalidate('barbers:all');
       return result;
     },
-    
+
     update: async (id: string, data: any) => {
       if (USE_LOCAL_BACKEND) return LocalBackend.barbers.update(id, data);
       const result = await apiCall<any>(
@@ -596,7 +578,7 @@ const API = {
       apiCache.invalidatePattern(/^barbers:/);
       return result;
     },
-    
+
     delete: async (id: string) => {
       if (USE_LOCAL_BACKEND) {
         LocalBackend.barbers.delete(id);
@@ -620,7 +602,7 @@ const API = {
   services: {
     getAll: async () => {
       if (USE_LOCAL_BACKEND) return LocalBackend.services.getAll();
-      
+
       // Use cache for services (they rarely change)
       return cachedAPICall(
         'services:all',
@@ -631,14 +613,14 @@ const API = {
         10 * 60 * 1000 // Cache for 10 minutes
       );
     },
-    
+
     getById: async (id: string) => {
       if (USE_LOCAL_BACKEND) return LocalBackend.services.getById(id);
       const data = await apiCall<any>(`/services/${id}`, undefined, false);
       // Convert snake_case to camelCase
       return toCamelCase(data);
     },
-    
+
     create: async (data: any) => {
       if (USE_LOCAL_BACKEND) return LocalBackend.services.create(data);
       // Convert camelCase to snake_case before sending
@@ -656,7 +638,7 @@ const API = {
       // Convert response back to camelCase
       return toCamelCase(result);
     },
-    
+
     update: async (id: string, data: any) => {
       if (USE_LOCAL_BACKEND) return LocalBackend.services.update(id, data);
       // Convert camelCase to snake_case before sending
@@ -675,7 +657,7 @@ const API = {
       // Convert response back to camelCase
       return toCamelCase(result);
     },
-    
+
     delete: async (id: string) => {
       if (USE_LOCAL_BACKEND) {
         LocalBackend.services.delete(id);
@@ -700,7 +682,7 @@ const API = {
     getAll: async (filters?: any) => {
       if (USE_LOCAL_BACKEND) return LocalBackend.appointments.getAll();
       const queryParams = filters ? '?' + new URLSearchParams(filters).toString() : '';
-      
+
       // Use frontend cache for appointments (2 min TTL)
       const cacheKey = `appointments${queryParams}`;
       return cachedAPICall(
@@ -709,12 +691,12 @@ const API = {
         2 * 60 * 1000 // 2 minutes cache
       );
     },
-    
+
     getById: async (id: string) => {
       if (USE_LOCAL_BACKEND) return LocalBackend.appointments.getById(id);
       return apiCall<Appointment>(`/appointments/${id}`, undefined, false);
     },
-    
+
     getByCustomerId: async (customerId: string) => {
       if (USE_LOCAL_BACKEND) {
         const all = LocalBackend.appointments.getAll();
@@ -722,7 +704,7 @@ const API = {
       }
       return apiCall<Appointment[]>(`/appointments/customer/${customerId}`, undefined, false);
     },
-    
+
     getByBarberId: async (barberId: string) => {
       if (USE_LOCAL_BACKEND) {
         const all = LocalBackend.appointments.getAll();
@@ -730,7 +712,7 @@ const API = {
       }
       return apiCall<Appointment[]>(`/appointments/barber/${barberId}`, undefined, false);
     },
-    
+
     getByDate: async (date: string) => {
       if (USE_LOCAL_BACKEND) {
         const all = LocalBackend.appointments.getAll();
@@ -738,10 +720,10 @@ const API = {
       }
       return apiCall<Appointment[]>(`/appointments/date/${date}`, undefined, false);
     },
-    
+
     create: async (data: any) => {
       if (USE_LOCAL_BACKEND) return LocalBackend.appointments.create(data);
-      
+
       const result = await apiCall<Appointment>(
         '/appointments',
         {
@@ -750,15 +732,15 @@ const API = {
         },
         false
       );
-      
+
       // Invalidate appointments cache
       apiCache.invalidatePattern(/^appointments/);
       return result;
     },
-    
+
     update: async (id: string, data: any) => {
       if (USE_LOCAL_BACKEND) return LocalBackend.appointments.update(id, data);
-      
+
       const result = await apiCall<Appointment>(
         `/appointments/${id}`,
         {
@@ -767,18 +749,18 @@ const API = {
         },
         false
       );
-      
+
       // Invalidate appointments cache
       apiCache.invalidatePattern(/^appointments/);
       return result;
     },
-    
+
     delete: async (id: string) => {
       if (USE_LOCAL_BACKEND) {
         LocalBackend.appointments.delete(id);
         return { message: 'Appointment deleted successfully' };
       }
-      
+
       const result = await apiCall<{ message: string }>(
         `/appointments/${id}`,
         {
@@ -786,12 +768,12 @@ const API = {
         },
         false
       );
-      
+
       // Invalidate appointments cache
       apiCache.invalidatePattern(/^appointments/);
       return result;
     },
-    
+
     cancel: async (customerId: string, appointmentId: string, reason?: string) => {
       if (USE_LOCAL_BACKEND) {
         return LocalBackend.appointments.update(appointmentId, { status: 'cancelled' });
@@ -835,41 +817,41 @@ const API = {
   // ==================== REVIEWS ====================
   reviews: {
     testConnection: async () => {
-      console.log('🧪 API: Testing backend connection');
+
       const data = await apiCall<any>('/reviews/debug/test-connection', undefined, false);
-      console.log('✅ API: Test connection result:', data);
+
       return data;
     },
-    
+
     getAll: async () => {
       if (USE_LOCAL_BACKEND) return LocalBackend.reviews.getAll();
-      
+
       try {
         const data = await apiCall<any[]>('/reviews', undefined, false);
-        
+
         // Check if data is valid
         if (!data) {
           console.warn('⚠️ API: Received null/undefined data');
           return [];
         }
-        
+
         if (!Array.isArray(data)) {
           console.error('❌ API: Data is not an array!');
           throw new Error('Invalid response format: expected array of reviews');
         }
-        
+
         const camelData = toCamelCase(data);
-        
+
         return camelData;
       } catch (error: any) {
         console.error('❌ API: Failed to fetch reviews:', error.message);
-        
+
         // Re-throw with better context
         const errorMessage = error.message || 'Unknown error fetching reviews';
         throw new Error(`Backend error: ${errorMessage}`);
       }
     },
-    
+
     getRecent: async (limit: number = 10) => {
       if (USE_LOCAL_BACKEND) return LocalBackend.reviews.getRecent(limit);
       const data = await apiCall<any[]>(`/reviews?limit=${limit}`, undefined, false);
@@ -881,17 +863,17 @@ const API = {
         const all = LocalBackend.reviews.getAll();
         return all.filter(r => r.barber_id === barberId);
       }
-      
+
       try {
         const data = await apiCall<any[]>(`/reviews?barber_id=${barberId}`, undefined, false);
-        
+
         if (!data) {
           console.warn('⚠️ API: Received null/undefined data for barber reviews');
           return [];
         }
-        
+
         const camelData = toCamelCase(data);
-        
+
         return camelData;
       } catch (error: any) {
         console.error('❌ API: Failed to fetch barber reviews');
@@ -907,7 +889,7 @@ const API = {
       const data = await apiCall<any[]>(`/reviews?customer_id=${customerId}`, undefined, false);
       return toCamelCase(data);
     },
-    
+
     create: async (data: any) => {
       if (USE_LOCAL_BACKEND) return LocalBackend.reviews.create(data);
       const snakeCaseData = toSnakeCase(data);
@@ -963,7 +945,7 @@ const API = {
       if (USE_LOCAL_BACKEND) return LocalBackend.payments.getAll();
       return apiCall<any[]>('/payments', undefined, false);
     },
-    
+
     create: async (data: any) => {
       if (USE_LOCAL_BACKEND) return LocalBackend.payments.create(data);
       return apiCall<any>(
@@ -975,7 +957,7 @@ const API = {
         false
       );
     },
-    
+
     update: async (id: string, data: any) => {
       return apiCall<any>(
         `/payments/${id}`,
@@ -1004,7 +986,7 @@ const API = {
       if (USE_LOCAL_BACKEND) return LocalBackend.settings.getAll();
       return apiCall<any>('/settings', undefined, false);
     },
-    
+
     update: async (data: any) => {
       if (USE_LOCAL_BACKEND) {
         Object.entries(data).forEach(([key, value]) => {
@@ -1069,7 +1051,7 @@ const API = {
     removeMultiple: async (userId: string, serviceIds: string[]) => {
       // Remove favorites one by one
       const results = await Promise.all(
-        serviceIds.map(serviceId => 
+        serviceIds.map(serviceId =>
           apiCall<{ message: string }>(
             `/favorites/${userId}/${serviceId}`,
             {
@@ -1103,7 +1085,7 @@ const API = {
       const headers: HeadersInit = {
         'apikey': publicAnonKey,
       };
-      
+
       // IMPORTANT: Supabase Edge Functions require Authorization header
       // Use user token if available, otherwise use anon key
       if (token && token.trim() !== '' && token !== publicAnonKey) {
@@ -1112,18 +1094,15 @@ const API = {
         // For anonymous/public requests, use the anon key
         headers['Authorization'] = `Bearer ${publicAnonKey}`;
       }
-      
-      console.log('🚀 API Service: Uploading image to:', `${API_BASE_URL}/upload-image`);
-      console.log('📋 FormData contents:', Array.from(formData.entries()));
-      
+
+
+
       const response = await fetch(`${API_BASE_URL}/upload-image`, {
         method: 'POST',
         headers,
         body: formData,
       });
 
-      console.log('📡 Response status:', response.status, response.statusText);
-      console.log('📡 Response headers:', Object.fromEntries(response.headers.entries()));
 
       if (!response.ok) {
         let errorMessage = 'Image upload failed';
@@ -1140,33 +1119,33 @@ const API = {
       }
 
       const responseText = await response.text();
-      console.log('📦 Raw response text:', responseText);
-      
+
+
       let json;
       try {
         json = JSON.parse(responseText);
-        console.log('📦 Parsed JSON response:', json);
+
       } catch (parseError) {
         console.error('❌ Failed to parse response as JSON:', parseError);
         throw new Error('Invalid response format from server');
       }
-      
+
       // If response has the standardized format { success, data }, extract data
       if (json && typeof json === 'object' && 'success' in json && 'data' in json) {
-        console.log('✅ Extracting data from standardized response:', json.data);
+
         const data = json.data;
         // Normalize the URL to always be the public R2 CDN URL
         if (data && data.url) data.url = normalizeR2Url(data.url);
         return data;
       }
-      
+
       // Check if response has url directly
       if (json && typeof json === 'object' && 'url' in json) {
-        console.log('✅ Response has url field:', json.url);
+
         json.url = normalizeR2Url(json.url);
         return json;
       }
-      
+
       console.error('❌ Response missing expected fields. Full response:', json);
       throw new Error('Invalid response format: missing url field');
     } catch (error) {
@@ -1179,43 +1158,43 @@ const API = {
   notifications: {
     getAll: async (limit?: number) => {
       if (USE_LOCAL_BACKEND) return LocalBackend.notifications.getAll();
-      
+
       const query = limit ? `?limit=${limit}` : '';
       const data = await apiCall<any[]>(`/notifications${query}`, undefined, false);
       return toCamelCase(data);
     },
-    
+
     getByUserId: async (userId: string, role?: string, limit?: number, offset?: number) => {
       if (USE_LOCAL_BACKEND) return LocalBackend.notifications.getByUserId(userId);
-      
-      console.log('📡 API: Fetching notifications for userId:', userId, 'role:', role, 'limit:', limit, 'offset:', offset);
+
+
       const params = new URLSearchParams();
       if (role) params.append('role', role);
       if (limit) params.append('limit', limit.toString());
       if (offset) params.append('offset', offset.toString());
       const query = params.toString() ? `?${params.toString()}` : '';
       const fullUrl = `/notifications/user/${userId}${query}`;
-      console.log('📡 API: Full URL:', fullUrl);
+
       const data = await apiCall<any[]>(fullUrl, undefined, false);
-      console.log('📡 API: Raw response data:', data);
+
       const camelData = toCamelCase(data);
-      console.log('📡 API: Converted to camelCase:', camelData);
+
       return camelData;
     },
-    
+
     getUnreadCount: async (userId: string, role?: string) => {
       if (USE_LOCAL_BACKEND) return LocalBackend.notifications.getUnreadCount(userId);
-      
-      console.log('🔢 API: Fetching unread count for user:', userId);
+
+
       const query = role ? `?role=${role}` : '';
       const result = await apiCall<{ count: number }>(`/notifications/user/${userId}/unread-count${query}`, undefined, false);
       return result.count;
     },
-    
+
     create: async (notification: any) => {
       if (USE_LOCAL_BACKEND) return LocalBackend.notifications.create(notification);
-      
-      console.log('📝 API: Creating notification');
+
+
       const snakeData = toSnakeCase(notification);
       const data = await apiCall<any>('/notifications', {
         method: 'POST',
@@ -1223,39 +1202,37 @@ const API = {
       }, false);
       return toCamelCase(data);
     },
-    
+
     markAsRead: async (id: string) => {
       if (USE_LOCAL_BACKEND) return LocalBackend.notifications.markAsRead(id);
-      
-      console.log('✅ [API] Marking notification as read:', id);
-      console.log('📡 [API] Calling endpoint: /notifications/' + id + '/read');
-      console.log('🔑 [API] Method: PATCH');
-      
+
+
+
       const data = await apiCall<any>(`/notifications/${id}/read`, {
         method: 'PATCH',
       }, false);
-      
-      console.log('📨 [API] Backend response:', data);
+
+
       const result = toCamelCase(data);
-      console.log('📦 [API] Converted to camelCase:', result);
-      
+
+
       return result;
     },
-    
+
     markAllAsRead: async (userId: string, role?: string) => {
       if (USE_LOCAL_BACKEND) return LocalBackend.notifications.markAllAsRead(userId);
-      
-      console.log('✅ API: Marking all notifications as read for user:', userId);
+
+
       const query = role ? `?role=${role}` : '';
       await apiCall<void>(`/notifications/user/${userId}/read-all${query}`, {
         method: 'PATCH',
       }, false);
     },
-    
+
     delete: async (id: string) => {
       if (USE_LOCAL_BACKEND) return LocalBackend.notifications.delete(id);
-      
-      console.log('🗑️ API: Deleting notification:', id);
+
+
       await apiCall<void>(`/notifications/${id}`, {
         method: 'DELETE',
       }, false);
@@ -1266,40 +1243,40 @@ const API = {
   auditLogs: {
     getAll: async (limit?: number, action?: string, userId?: string) => {
       if (USE_LOCAL_BACKEND) return LocalBackend.auditLogs.getAll();
-      
-      console.log('🔍 API: Fetching all audit logs');
+
+
       const params = new URLSearchParams();
       if (limit) params.append('limit', limit.toString());
       if (action) params.append('action', action);
       if (userId) params.append('userId', userId);
-      
+
       const query = params.toString() ? `?${params.toString()}` : '';
       const data = await apiCall<any[]>(`/audit-logs${query}`, undefined, false);
       return toCamelCase(data);
     },
-    
+
     getByUserId: async (userId: string, limit?: number) => {
       if (USE_LOCAL_BACKEND) return LocalBackend.auditLogs.getByUserId(userId);
-      
-      console.log('🔍 API: Fetching audit logs for user:', userId);
+
+
       const query = limit ? `?limit=${limit}` : '';
       const data = await apiCall<any[]>(`/audit-logs/user/${userId}${query}`, undefined, false);
       return toCamelCase(data);
     },
-    
+
     getByEntity: async (entityType: string, entityId: string, limit?: number) => {
       if (USE_LOCAL_BACKEND) return LocalBackend.auditLogs.getByEntity(entityType, entityId);
-      
-      console.log('🔍 API: Fetching audit logs for entity:', entityType, entityId);
+
+
       const query = limit ? `?limit=${limit}` : '';
       const data = await apiCall<any[]>(`/audit-logs/entity/${entityType}/${entityId}${query}`, undefined, false);
       return toCamelCase(data);
     },
-    
+
     create: async (log: any) => {
       if (USE_LOCAL_BACKEND) return LocalBackend.auditLogs.create(log);
-      
-      console.log('📝 API: Creating audit log');
+
+
       const snakeData = toSnakeCase(log);
       const data = await apiCall<any>('/audit-logs', {
         method: 'POST',
@@ -1307,11 +1284,11 @@ const API = {
       }, false);
       return toCamelCase(data);
     },
-    
+
     getStatistics: async () => {
       if (USE_LOCAL_BACKEND) return LocalBackend.auditLogs.getStatistics();
-      
-      console.log('📊 API: Fetching audit log statistics');
+
+
       const data = await apiCall<any>('/audit-logs/statistics', undefined, false);
       return toCamelCase(data);
     },

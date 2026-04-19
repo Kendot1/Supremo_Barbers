@@ -182,13 +182,13 @@ export const validateNumber = (value: string | number, fieldName: string, min?: 
  */
 export const validatePrice = (price: string | number, fieldName: string = 'Price'): { isValid: boolean; error?: string } => {
   const result = validateNumber(price, fieldName, 0);
-  
+
   if (!result.isValid) {
     return result;
   }
 
   const num = typeof price === 'string' ? parseFloat(price) : price;
-  
+
   if (num === 0) {
     return { isValid: false, error: `${fieldName} must be greater than 0` };
   }

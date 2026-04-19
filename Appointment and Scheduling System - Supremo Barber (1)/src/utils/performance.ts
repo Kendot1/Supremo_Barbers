@@ -53,10 +53,7 @@ class PerformanceMonitor {
         // Clean up
         this.metrics.delete(name);
 
-        // Log to console in development
-        if (logToConsole) {
-            console.log(`⚡ Performance: ${name} took ${duration.toFixed(2)}ms`);
-        }
+
 
         return duration;
     }
@@ -128,9 +125,7 @@ class PerformanceMonitor {
         operations.forEach(name => {
             const stats = this.getStats(name);
             if (stats) {
-                console.log(
-                    `${name}: avg ${stats.average.toFixed(2)}ms, min ${stats.min.toFixed(2)}ms, max ${stats.max.toFixed(2)}ms (${stats.count} calls)`
-                );
+
             }
         });
         console.groupEnd();
@@ -178,7 +173,7 @@ export function reportWebVitals() {
         const lcpObserver = new PerformanceObserver((list) => {
             const entries = list.getEntries();
             const lastEntry = entries[entries.length - 1];
-            console.log('📊 LCP:', lastEntry.renderTime || lastEntry.loadTime);
+
         });
         lcpObserver.observe({ entryTypes: ['largest-contentful-paint'] });
     } catch (e) {
@@ -190,7 +185,7 @@ export function reportWebVitals() {
         const fidObserver = new PerformanceObserver((list) => {
             const entries = list.getEntries();
             entries.forEach((entry: any) => {
-                console.log('📊 FID:', entry.processingStart - entry.startTime);
+
             });
         });
         fidObserver.observe({ entryTypes: ['first-input'] });

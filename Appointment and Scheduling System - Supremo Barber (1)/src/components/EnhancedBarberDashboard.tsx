@@ -202,7 +202,7 @@ export function EnhancedBarberDashboard({
       completionRate: 0,
     });
 
-  /
+
 
   // Barber Profile State
   const [barberDbId, setBarberDbId] = useState<string | null>(null);

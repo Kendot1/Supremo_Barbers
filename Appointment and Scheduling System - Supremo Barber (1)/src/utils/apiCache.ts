@@ -48,7 +48,7 @@ class APICache {
   private cache: Map<string, CacheEntry<any>> = new Map();
   private defaultTTL: number = 5 * 60 * 1000; // 5 minutes default
   private maxSize: number = 200; // Max cache entries
-  
+
   // Performance tracking
   private stats = {
     hits: 0,
@@ -67,10 +67,10 @@ class APICache {
   constructor() {
     // Load persisted cache on initialization
     this.loadPersistedCache();
-    
+
     // Cleanup expired entries every 5 minutes
     setInterval(() => this.cleanup(), 5 * 60 * 1000);
-    
+
     // Auto-save to localStorage every minute
     setInterval(() => this.persistCache(), 60 * 1000);
   }
@@ -82,7 +82,7 @@ class APICache {
    */
   get<T>(key: string): T | null {
     const entry = this.cache.get(key);
-    
+
     if (!entry) {
       this.stats.misses++;
       return null;
@@ -100,9 +100,9 @@ class APICache {
     // Update hit counter
     entry.hits++;
     this.stats.hits++;
-    
+
     // Log cache hit (removed console.log to reduce noise)
-    
+
     return entry.data as T;
   }
 
@@ -114,7 +114,7 @@ class APICache {
    */
   set<T>(key: string, data: T, config?: number | CacheConfig): void {
     const now = Date.now();
-    
+
     // Support legacy API: set(key, data, ttl)
     let ttl: number;
     let tags: string[] = [];
@@ -186,7 +186,7 @@ class APICache {
   invalidate(key: string): void {
     this.cache.delete(key);
     this.deletePersistedEntry(key);
-    console.log(`🗑️ Cache invalidated: ${key}`);
+
   }
 
   /**
@@ -195,7 +195,7 @@ class APICache {
    */
   invalidatePattern(pattern: RegExp): void {
     const keysToDelete: string[] = [];
-    
+
     this.cache.forEach((_, key) => {
       if (pattern.test(key)) {
         keysToDelete.push(key);
@@ -207,9 +207,7 @@ class APICache {
       this.deletePersistedEntry(key);
     });
 
-    if (keysToDelete.length > 0) {
-      console.log(`🗑️ Cache invalidated (pattern): ${keysToDelete.length} entries`);
-    }
+
   }
 
   /**
@@ -218,7 +216,7 @@ class APICache {
    */
   invalidateByTag(...tags: string[]): number {
     let count = 0;
-    
+
     for (const [key, entry] of this.cache.entries()) {
       if (entry.tags.some(tag => tags.includes(tag))) {
         this.cache.delete(key);
@@ -227,10 +225,8 @@ class APICache {
       }
     }
 
-    if (count > 0) {
-      console.log(`🗑️ Cache invalidated (tags: ${tags.join(', ')}): ${count} entries`);
-    }
-    
+
+
     return count;
   }
 
@@ -241,7 +237,7 @@ class APICache {
     this.cache.clear();
     this.clearPersistedCache();
     this.stats = { hits: 0, misses: 0 };
-    console.log('🧹 All cache cleared');
+
   }
 
   /**
@@ -249,7 +245,7 @@ class APICache {
    */
   getStats(): CacheStats {
     const persistedKeys = JSON.parse(localStorage.getItem('cache:keys') || '[]');
-    
+
     return {
       hits: this.stats.hits,
       misses: this.stats.misses,
@@ -274,9 +270,7 @@ class APICache {
       }
     }
 
-    if (cleaned > 0) {
-      console.log(`🧹 Cache cleanup: Removed ${cleaned} expired entries`);
-    }
+
   }
 
   /**
@@ -285,7 +279,7 @@ class APICache {
   private persistCache(): void {
     try {
       const persistedKeys: string[] = [];
-      
+
       for (const [key, entry] of this.cache.entries()) {
         // Only persist entries marked for persistence and not expired
         if (entry.persist && Date.now() < entry.expiresAt) {
@@ -293,7 +287,7 @@ class APICache {
           persistedKeys.push(key);
         }
       }
-      
+
       localStorage.setItem('cache:keys', JSON.stringify(persistedKeys));
     } catch (error) {
       console.warn('⚠️ Failed to persist cache:', error);
@@ -306,7 +300,7 @@ class APICache {
   private persistEntry(key: string, entry: CacheEntry<any>): void {
     try {
       localStorage.setItem(`cache:${key}`, JSON.stringify(entry));
-      
+
       // Update keys list
       const keys = JSON.parse(localStorage.getItem('cache:keys') || '[]');
       if (!keys.includes(key)) {
@@ -331,7 +325,7 @@ class APICache {
         const entryStr = localStorage.getItem(`cache:${key}`);
         if (entryStr) {
           const entry = JSON.parse(entryStr);
-          
+
           // Only load non-expired entries
           if (entry.expiresAt > now) {
             this.cache.set(key, entry);
@@ -342,9 +336,7 @@ class APICache {
         }
       }
 
-      if (loaded > 0) {
-        console.log(`📦 Loaded ${loaded} cached entries from storage`);
-      }
+
     } catch (error) {
       console.warn('⚠️ Failed to load persisted cache:', error);
     }
@@ -356,7 +348,7 @@ class APICache {
   private deletePersistedEntry(key: string): void {
     try {
       localStorage.removeItem(`cache:${key}`);
-      
+
       const keys = JSON.parse(localStorage.getItem('cache:keys') || '[]');
       const filtered = keys.filter((k: string) => k !== key);
       localStorage.setItem('cache:keys', JSON.stringify(filtered));
@@ -405,18 +397,18 @@ export async function cachedAPICall<T>(
   // Check cache first
   const cached = apiCache.get<T>(key);
   if (cached !== null) {
-    console.log(`✅ Cache HIT: ${key}`);
+
     return cached;
   }
 
-  console.log(`❌ Cache MISS: ${key} - Fetching fresh data`);
+
 
   // Fetch fresh data
   const data = await fetchFn();
-  
+
   // Store in cache
   apiCache.set(key, data, ttl);
-  
+
   return data;
 }
 
@@ -428,13 +420,13 @@ export const DataCache = {
   // Appointments caching
   appointments: {
     getAll: () => apiCache.get<any[]>('appointments:all'),
-    setAll: (data: any[]) => 
+    setAll: (data: any[]) =>
       apiCache.set('appointments:all', data, {
         ttl: apiCache.TTL.MEDIUM,
         tags: ['appointments'],
         persist: true,
       }),
-    getByUser: (userId: string) => 
+    getByUser: (userId: string) =>
       apiCache.get<any[]>(`appointments:user:${userId}`),
     setByUser: (userId: string, data: any[]) =>
       apiCache.set(`appointments:user:${userId}`, data, {

@@ -304,13 +304,12 @@ function App() {
         // Admin sees all appointments
         fetchedAppointments = await API.appointments.getAll();
       } else if (userRole === 'barber' && userId) {
-        // Barbers see only THEIR appointments
-        console.log('📅 Fetching appointments for barber user:', userId);
+
         try {
           // Look up the barber profile to get the barber record ID
           const barberProfile = await API.barbers.getByUserId(userId);
           if (barberProfile && barberProfile.id) {
-            console.log('📅 Found barber profile ID:', barberProfile.id);
+
             fetchedAppointments = await API.appointments.getByBarberId(barberProfile.id);
           } else {
             console.warn('📅 No barber profile found for user:', userId, '- fetching by user ID fallback');
@@ -340,7 +339,7 @@ function App() {
 
       const transformedAppointments = validAppointments.map(transformAppointment);
 
-      console.log(`✅ Fetched ${transformedAppointments.length} appointments for ${userRole}`);
+
       setAppointments(transformedAppointments);
     } catch (error) {
       console.error('❌ Error fetching appointments:', error);
@@ -380,9 +379,9 @@ function App() {
   // Refresh user profile from database to get latest data (including avatarUrl)
   const refreshUserProfile = useCallback(async (userId: string) => {
     try {
-      console.log('🔄 Refreshing user profile from database...');
+
       const freshUserData = await API.users.getById(userId);
-      console.log('✅ Fresh user data received:', freshUserData);
+
 
       // Update current user state with fresh data
       setCurrentUser(freshUserData);
@@ -390,7 +389,7 @@ function App() {
       // Update localStorage with fresh data
       localStorage.setItem('currentUser', JSON.stringify(freshUserData));
 
-      console.log('✅ User profile refreshed successfully');
+
     } catch (error) {
       console.error('❌ Error refreshing user profile:', error);
     }
@@ -431,7 +430,7 @@ function App() {
     const pollInterval = currentUser.role === 'customer' ? 15000 : 30000; // 15s for customers, 30s for others
 
     const intervalId = setInterval(() => {
-      console.log('🔄 Auto-refreshing data for', currentUser.role);
+
 
       // Refresh appointments to catch payment status changes
       fetchAppointments(currentUser.id, currentUser.role).catch(err =>
@@ -501,7 +500,7 @@ function App() {
   // Handle adding a new appointment
   // Memoized to prevent recreation on every render
   const handleAddAppointment = useCallback(async (appointment: Appointment) => {
-    console.log("🚀 handleAddAppointment called with:", appointment);
+
     try {
       // Duplicate check: prevent same customer from booking same service if already active
       const activeStatuses = ['pending', 'confirmed', 'verified', 'upcoming'];
@@ -518,24 +517,24 @@ function App() {
       }
 
       // Create appointment (main operation)
-      console.log("📡 Calling API.appointments.create...");
+
       const createdAppointment = await API.appointments.create(appointment);
-      console.log("✅ API.appointments.create SUCCESS:", createdAppointment);
+
 
       // Transform the returned appointment to include legacy fields for display
       const transformedAppointment = transformAppointment(createdAppointment);
-      console.log("🔄 Transformed appointment:", transformedAppointment);
+
 
       // OPTIMISTIC UPDATE: Add to state immediately instead of refetching all
       setAppointments(prev => {
         const updated = [...prev, transformedAppointment];
-        console.log("📊 Updated appointments state, now has", updated.length, "appointments");
+
         return updated;
       });
 
       // Create notifications in parallel (don't wait for them)
       if (currentUser?.role === 'customer') {
-        console.log("📧 Creating notifications for customer booking...");
+
         Promise.all([
           API.notifications.create(createNotification(
             'super-admin',
@@ -562,7 +561,7 @@ function App() {
             }
           ))
         ]).then(() => {
-          console.log("✅ Notifications created successfully");
+
         }).catch(error => {
           console.error('❌ Failed to create notifications:', error);
           // Don't fail the booking if notifications fail
@@ -586,11 +585,11 @@ function App() {
             price: appointment.price,
           }
         ).then(() => {
-          console.log("✅ Audit log created");
+
         }).catch(err => console.error('❌ Failed to log appointment creation:', err));
       }
 
-      console.log("✅ handleAddAppointment COMPLETE, returning:", createdAppointment);
+
       // Return the created appointment with database ID
       return createdAppointment;
     } catch (error) {
@@ -634,7 +633,7 @@ function App() {
       }
 
       // No generic toast here — callers provide context-specific messages
-      console.log('✅ Appointments synced to database successfully');
+
     } catch (error) {
       console.error('Error updating appointments:', error);
 

@@ -25,7 +25,7 @@ export async function apiCall(
 ): Promise<Response> {
   // Determine endpoint type from URL
   const endpoint = getEndpointType(url);
-  
+
   // Check rate limit before making request
   const rateLimitKey = getUserRateLimitKey(endpoint, userId);
   const rateLimit = rateLimiter.isAllowed(rateLimitKey);
@@ -39,7 +39,7 @@ export async function apiCall(
     error.retryAfter = rateLimit.retryAfter || 60;
     error.reason = rateLimit.reason || "rate_limit";
     error.endpoint = endpoint;
-    
+
     throw error;
   }
 
@@ -50,7 +50,7 @@ export async function apiCall(
     // Check if server returned rate limit error
     if (response.status === 429) {
       const data = await response.json().catch(() => ({}));
-      
+
       const error = new Error(
         data.message || "Too many requests. Please try again later."
       ) as RateLimitError;
@@ -58,7 +58,7 @@ export async function apiCall(
       error.retryAfter = data.retryAfter || 60;
       error.reason = data.reason || "rate_limit";
       error.endpoint = endpoint;
-      
+
       throw error;
     }
 
@@ -92,7 +92,7 @@ function getEndpointType(url: string): string {
   if (url.includes("/booking")) return "booking:create";
   if (url.includes("/payment")) return "payment:upload";
   if (url.includes("/send-inquiry")) return "contact:send";
-  
+
   // Default to general API rate limit
   return "api:general";
 }
