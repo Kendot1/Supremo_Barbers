@@ -1446,9 +1446,7 @@ export function LandingPage({
               <p className="font-bold text-2xl text-slate-900 mb-1">
                 {selectedTestimonial?.customerName || "Anonymous Customer"}
               </p>
-              <p className="text-sm md:text-base text-slate-500">
-                Verified Customer
-              </p>
+
             </div>
           </div>
         </DialogContent>
