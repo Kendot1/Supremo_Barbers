@@ -83,23 +83,23 @@ export function BarberModule({ appointments }: BarberModuleProps) {
       try {
         setIsLoading(true);
         const barbersData = await API.barbers.getAll();
-        
+
         // Transform barbers data to match UI format and calculate stats from appointments
         const transformedBarbers: Barber[] = barbersData.map(barber => {
           const barberAppointments = appointments.filter(apt => apt.barber === barber.name);
           const completedAppointments = barberAppointments.filter(apt => apt.status === 'completed');
-          
+
           // Extract specialty from specialties array (first item or default)
           const specialty = Array.isArray(barber.specialties) && barber.specialties.length > 0
             ? barber.specialties[0]
             : 'Barber Specialist';
-          
+
           // Extract schedule from available_hours object
           const schedule = barber.available_hours?.schedule || 'Mon-Sat, 9AM-6PM';
-          
+
           // Calculate average rating from reviews or use default
           const rating = barber.rating || 5.0;
-          
+
           return {
             id: barber.user_id, // Use user_id as the barber ID for consistency
             name: barber.name,
@@ -111,7 +111,7 @@ export function BarberModule({ appointments }: BarberModuleProps) {
             status: 'active', // Default to active, can be updated based on user status
           };
         });
-        
+
         setBarbers(transformedBarbers);
       } catch (error) {
         console.error('Error fetching barbers:', error);
@@ -124,7 +124,7 @@ export function BarberModule({ appointments }: BarberModuleProps) {
   }, [appointments]);
 
   // Calculate analytics from real barber data
-  const mostBookedBarber = barbers.length > 0 
+  const mostBookedBarber = barbers.length > 0
     ? barbers.reduce((max, barber) => barber.totalBookings > max.totalBookings ? barber : max, barbers[0])
     : null;
 
@@ -146,7 +146,7 @@ export function BarberModule({ appointments }: BarberModuleProps) {
       (barber.totalBookings?.toString() || '').includes(searchQuery) ||
       (barber.rating?.toString() || '').includes(searchQuery);
     const matchesStatus = filterStatus === "all" || barber.status === filterStatus;
-    
+
     return matchesSearch && matchesStatus;
   });
 
@@ -166,16 +166,16 @@ export function BarberModule({ appointments }: BarberModuleProps) {
   // Generate email from name
   const generateEmail = (name: string, existingBarbers: Barber[]) => {
     if (!name.trim()) return "";
-    
+
     const nameParts = name.trim().split(" ");
     const surname = nameParts[nameParts.length - 1].toLowerCase();
-    
+
     // Count existing barbers with same surname
     const surnameCount = existingBarbers.filter(b => {
       const bSurname = b.name.split(" ").pop()?.toLowerCase();
       return bSurname === surname;
     }).length;
-    
+
     const idNumber = String(surnameCount + 1).padStart(2, '0');
     return `${surname}${idNumber}@barbershop.com`;
   };
@@ -188,7 +188,7 @@ export function BarberModule({ appointments }: BarberModuleProps) {
 
     const email = generateEmail(newBarber.name, barbers);
     const defaultPassword = "SupremoBarber2024";
-    
+
     // Generate username from barber name (firstname + lastname initial)
     const generateUsername = (name: string): string => {
       const parts = name.trim().toLowerCase().split(' ');
@@ -199,7 +199,7 @@ export function BarberModule({ appointments }: BarberModuleProps) {
       const lastNameInitial = parts[parts.length - 1].charAt(0);
       return `${firstName}${lastNameInitial}`; // e.g., "John Doe" -> "johnd"
     };
-    
+
     const username = generateUsername(newBarber.name);
 
     try {
@@ -226,7 +226,7 @@ export function BarberModule({ appointments }: BarberModuleProps) {
       toast.success(`Barber ${newBarber.name} added successfully! Email: ${email}, Password: ${defaultPassword}`, { duration: 6000 });
       setNewBarber({ name: "", specialty: "", schedule: "" });
       setIsAddDialogOpen(false);
-      
+
       // Refetch barbers
       const users = await API.barbers.getAll();
       const transformedBarbers: Barber[] = users.map(user => {
@@ -235,7 +235,7 @@ export function BarberModule({ appointments }: BarberModuleProps) {
           ? user.specialties[0]
           : 'Barber Specialist';
         const schedule = user.available_hours?.schedule || 'Mon-Sat, 9AM-6PM';
-        
+
         return {
           id: user.user_id,
           name: user.name,
@@ -299,7 +299,7 @@ export function BarberModule({ appointments }: BarberModuleProps) {
       // Note: We need to find the barber record ID, not the user ID
       const barbersData = await API.barbers.getAll();
       const barberRecord = barbersData.find(b => b.user_id === editingBarber.id);
-      
+
       if (barberRecord) {
         await API.barbers.update(barberRecord.id, {
           specialties: [editingBarber.specialty],
@@ -312,7 +312,7 @@ export function BarberModule({ appointments }: BarberModuleProps) {
       toast.success(`Barber ${editingBarber.name} updated in database!`);
       setEditingBarber(null);
       setIsEditDialogOpen(false);
-      
+
       // Refetch barbers
       const users = await API.barbers.getAll();
       const transformedBarbers: Barber[] = users.map(user => {
@@ -321,7 +321,7 @@ export function BarberModule({ appointments }: BarberModuleProps) {
           ? user.specialties[0]
           : 'Barber Specialist';
         const schedule = user.available_hours?.schedule || 'Mon-Sat, 9AM-6PM';
-        
+
         return {
           id: user.user_id,
           name: user.name,
@@ -355,17 +355,17 @@ export function BarberModule({ appointments }: BarberModuleProps) {
         // Find the barber record to get the actual barber table ID
         const barbersData = await API.barbers.getAll();
         const barberRecord = barbersData.find(b => b.user_id === passwordConfirmation.barberId);
-        
+
         if (barberRecord) {
           // Delete barber record
           await API.barbers.delete(barberRecord.id);
         }
-        
+
         // Also delete user account
         await API.users.delete(passwordConfirmation.barberId);
-        
+
         toast.success(`Barber ${passwordConfirmation.barberName} removed from database!`);
-        
+
         // Refetch barbers
         const users = await API.barbers.getAll();
         const transformedBarbers: Barber[] = users.map(user => {
@@ -374,7 +374,7 @@ export function BarberModule({ appointments }: BarberModuleProps) {
             ? user.specialties[0]
             : 'Barber Specialist';
           const schedule = user.available_hours?.schedule || 'Mon-Sat, 9AM-6PM';
-          
+
           return {
             id: user.user_id,
             name: user.name,
@@ -425,10 +425,10 @@ export function BarberModule({ appointments }: BarberModuleProps) {
       return;
     }
 
-    setBarbers(prev => prev.map(b => 
+    setBarbers(prev => prev.map(b =>
       b.id === resetPasswordBarber.id ? { ...b, password: newPassword } : b
     ));
-    
+
     toast.success(`Password reset successfully for ${resetPasswordBarber.name}`);
     setResetPasswordBarber(null);
     setNewPassword("SupremoBarber2024");
@@ -453,7 +453,7 @@ export function BarberModule({ appointments }: BarberModuleProps) {
     }));
 
     const headers = ['Barber ID', 'Name', 'Specialty', 'Schedule', 'Total Bookings', 'Rating', 'Status'];
-    
+
     exportToCSV(exportData, headers, 'supremo-barber-staff');
     toast.success(`Exported ${filteredBarbers.length} barbers successfully!`);
   };
@@ -537,83 +537,83 @@ export function BarberModule({ appointments }: BarberModuleProps) {
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-[500px]">
-                <DialogHeader>
-                  <DialogTitle>Add New Barber</DialogTitle>
-                  <DialogDescription>
-                    Add a new barber to the team. Email and password will be auto-generated.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="barber-name">Full Name</Label>
-                    <Input 
-                      id="barber-name" 
-                      placeholder="Carlos Mendoza" 
-                      value={newBarber.name}
-                      onChange={(e) => setNewBarber(prev => ({ ...prev, name: e.target.value }))}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="specialty">Specialty</Label>
-                    <Input 
-                      id="specialty" 
-                      placeholder="Fade Specialist" 
-                      value={newBarber.specialty}
-                      onChange={(e) => setNewBarber(prev => ({ ...prev, specialty: e.target.value }))}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="schedule">Schedule</Label>
-                    <Select 
-                      value={newBarber.schedule}
-                      onValueChange={(value) => setNewBarber(prev => ({ ...prev, schedule: value }))}
-                    >
-                      <SelectTrigger className="border-[#E8DCC8]">
-                        <SelectValue placeholder="Select work schedule" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {scheduleOptions.map((schedule) => (
-                          <SelectItem key={schedule} value={schedule}>
-                            {schedule}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  {/* Auto-generated Email Preview */}
-                  {newBarber.name && (
-                    <div className="grid gap-2 p-3 bg-[#FBF7EF] rounded-lg border border-[#E8DCC8]">
-                      <Label className="text-xs text-[#87765E]">Auto-Generated Credentials</Label>
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-[#87765E]">Email:</span>
-                          <span className="text-sm text-[#5C4A3A] font-mono">
-                            {generateEmail(newBarber.name, barbers)}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-[#87765E]">Password:</span>
-                          <span className="text-sm text-[#5C4A3A] font-mono">
-                            SupremoBarber2024
-                          </span>
+                  <DialogHeader>
+                    <DialogTitle>Add New Barber</DialogTitle>
+                    <DialogDescription>
+                      Add a new barber to the team. Email and password will be auto-generated.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="barber-name">Full Name</Label>
+                      <Input
+                        id="barber-name"
+                        placeholder="Carlos Mendoza"
+                        value={newBarber.name}
+                        onChange={(e) => setNewBarber(prev => ({ ...prev, name: e.target.value }))}
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="specialty">Specialty</Label>
+                      <Input
+                        id="specialty"
+                        placeholder="Fade Specialist"
+                        value={newBarber.specialty}
+                        onChange={(e) => setNewBarber(prev => ({ ...prev, specialty: e.target.value }))}
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="schedule">Schedule</Label>
+                      <Select
+                        value={newBarber.schedule}
+                        onValueChange={(value) => setNewBarber(prev => ({ ...prev, schedule: value }))}
+                      >
+                        <SelectTrigger className="border-[#E8DCC8]">
+                          <SelectValue placeholder="Select work schedule" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {scheduleOptions.map((schedule) => (
+                            <SelectItem key={schedule} value={schedule}>
+                              {schedule}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    {/* Auto-generated Email Preview */}
+                    {newBarber.name && (
+                      <div className="grid gap-2 p-3 bg-[#FBF7EF] rounded-lg border border-[#E8DCC8]">
+                        <Label className="text-xs text-[#87765E]">Auto-Generated Credentials</Label>
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-[#87765E]">Email:</span>
+                            <span className="text-sm text-[#5C4A3A] font-mono">
+                              {generateEmail(newBarber.name, barbers)}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-[#87765E]">Password:</span>
+                            <span className="text-sm text-[#5C4A3A] font-mono">
+                              SupremoBarber2024
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  )}
-                </div>
-                <div className="flex justify-end gap-3">
-                  <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button 
-                    className="bg-[#DB9D47] hover:bg-[#C88A35] text-white"
-                    onClick={handleAddBarber}
-                  >
-                    Add Barber
-                  </Button>
-                </div>
-              </DialogContent>
+                    )}
+                  </div>
+                  <div className="flex justify-end gap-3">
+                    <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button
+                      className="bg-[#DB9D47] hover:bg-[#C88A35] text-white"
+                      onClick={handleAddBarber}
+                    >
+                      Add Barber
+                    </Button>
+                  </div>
+                </DialogContent>
               </Dialog>
             </div>
           </div>
@@ -801,8 +801,8 @@ export function BarberModule({ appointments }: BarberModuleProps) {
                               <div className="text-right">
                                 <p className="text-[#5C4A3A]">{barber.schedule}</p>
                                 <p className="text-sm text-[#87765E]">
-                                  {appointments.filter(a => 
-                                    a.barber === barber.name && 
+                                  {appointments.filter(a =>
+                                    a.barber === barber.name &&
                                     a.date === (selectedDate ? `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}` : '') &&
                                     a.status === 'upcoming'
                                   ).length} bookings
@@ -834,25 +834,25 @@ export function BarberModule({ appointments }: BarberModuleProps) {
               <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
                   <Label htmlFor="edit-barber-name">Full Name</Label>
-                  <Input 
-                    id="edit-barber-name" 
-                    placeholder="Carlos Mendoza" 
+                  <Input
+                    id="edit-barber-name"
+                    placeholder="Carlos Mendoza"
                     value={editingBarber.name}
                     onChange={(e) => setEditingBarber({ ...editingBarber, name: e.target.value })}
                   />
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="edit-specialty">Specialty</Label>
-                  <Input 
-                    id="edit-specialty" 
-                    placeholder="Fade Specialist" 
+                  <Input
+                    id="edit-specialty"
+                    placeholder="Fade Specialist"
                     value={editingBarber.specialty}
                     onChange={(e) => setEditingBarber({ ...editingBarber, specialty: e.target.value })}
                   />
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="edit-schedule">Schedule</Label>
-                  <Select 
+                  <Select
                     value={editingBarber.schedule}
                     onValueChange={(value) => setEditingBarber({ ...editingBarber, schedule: value })}
                   >
@@ -876,7 +876,7 @@ export function BarberModule({ appointments }: BarberModuleProps) {
                 }}>
                   Cancel
                 </Button>
-                <Button 
+                <Button
                   className="bg-[#DB9D47] hover:bg-[#C88A35] text-white"
                   onClick={handleSaveEdit}
                 >
@@ -920,10 +920,10 @@ export function BarberModule({ appointments }: BarberModuleProps) {
 
                 <div className="grid gap-2">
                   <Label htmlFor="new-password">New Password</Label>
-                  <StrongPasswordInput 
+                  <StrongPasswordInput
                     label=""
                     id="new-password"
-                    placeholder="Enter new password" 
+                    placeholder="Enter new password"
                     value={newPassword}
                     onChange={(value) => setNewPassword(value)}
                     showStrength={true}
@@ -940,7 +940,7 @@ export function BarberModule({ appointments }: BarberModuleProps) {
                 }}>
                   Cancel
                 </Button>
-                <Button 
+                <Button
                   className="bg-[#DB9D47] hover:bg-[#C88A35] text-white"
                   onClick={handleSaveNewPassword}
                 >
@@ -971,15 +971,15 @@ export function BarberModule({ appointments }: BarberModuleProps) {
           passwordConfirmation.action === 'delete'
             ? 'Confirm Barber Deletion'
             : passwordConfirmation.action === 'reset-password'
-            ? 'Confirm Password Reset'
-            : 'Confirm Barber Edit'
+              ? 'Confirm Password Reset'
+              : 'Confirm Barber Edit'
         }
         description={
           passwordConfirmation.action === 'delete'
             ? `Enter your password to confirm deletion of ${passwordConfirmation.barberName}`
             : passwordConfirmation.action === 'reset-password'
-            ? `Enter your password to reset password for ${passwordConfirmation.barberName}`
-            : `Enter your password to edit ${passwordConfirmation.barberName}`
+              ? `Enter your password to reset password for ${passwordConfirmation.barberName}`
+              : `Enter your password to edit ${passwordConfirmation.barberName}`
         }
         actionType={passwordConfirmation.action || 'action'}
       />

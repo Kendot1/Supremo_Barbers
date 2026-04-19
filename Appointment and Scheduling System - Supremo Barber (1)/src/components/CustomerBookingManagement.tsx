@@ -108,7 +108,7 @@ export function CustomerBookingManagement({
         // Create a set of reviewed appointment IDs
         const reviewedIds = new Set(customerReviews.map((r: any) => r.appointmentId));
         setReviewedAppointments(reviewedIds);
-        console.log('📝 Customer reviews loaded:', customerReviews.length);
+
       } catch (error) {
         console.error('Error fetching customer reviews:', error);
       }
@@ -117,30 +117,27 @@ export function CustomerBookingManagement({
     fetchReviews();
   }, [user.id]);
 
-  // Debug: Log appointments data
-  console.log('🔍 CustomerBookingManagement - All appointments:', appointments.length);
-  console.log('🔍 User ID:', user.id);
-  console.log('🔍 User Role:', user.role);
+
 
   // Filter appointments for current user
   const userAppointments = useMemo(() => {
     const filtered = appointments.filter(apt => {
-      console.log('🔍 Checking appointment:', apt.id, 'customer_id:', apt.customer_id, 'userId:', apt.userId);
+
       return apt.userId === user.id || apt.customer_id === user.id;
     });
-    console.log('🔍 Filtered user appointments:', filtered.length);
+
     return filtered;
   }, [appointments, user.id]);
 
   const upcomingBookings = useMemo(() => {
     const upcoming = userAppointments.filter((b) => b.status === "pending" || b.status === "confirmed" || b.status === "verified");
-    console.log('📅 Upcoming bookings:', upcoming.length, upcoming.map(b => ({ id: b.id, status: b.status, service: b.service })));
+
     return upcoming;
   }, [userAppointments]);
 
   const pastBookings = useMemo(() => {
     const past = userAppointments.filter((b) => b.status === "completed" || b.status === "cancelled" || b.status === "rejected");
-    console.log('📋 Past bookings:', past.length);
+
     return past;
   }, [userAppointments]);
 
@@ -315,7 +312,7 @@ export function CustomerBookingManagement({
             newTime: newTime,
           }
         );
-        console.log('✅ Reschedule notifications sent to admin and barber');
+
       } catch (notifError) {
         console.error('❌ Failed to send reschedule notifications:', notifError);
       }
@@ -415,7 +412,7 @@ export function CustomerBookingManagement({
             reason: finalReason,
           }
         );
-        console.log('✅ Cancellation notifications sent to admin and barber');
+
       } catch (notifError) {
         console.error('❌ Failed to send cancellation notifications:', notifError);
       }
@@ -474,7 +471,7 @@ export function CustomerBookingManagement({
         proofUrl,
         appointment.price * 0.5 // Down payment amount (50%)
       );
-      console.log('✅ Admin notification sent for payment proof upload');
+
     } catch (error) {
       console.error('❌ Failed to send admin notification:', error);
       // Don't fail the whole operation if notification fails
@@ -547,9 +544,9 @@ export function CustomerBookingManagement({
 
     // Create appointment in background
     try {
-      console.log('📅 Creating rebook appointment:', newAppointmentData);
+
       const createdAppointment = await API.appointments.create(newAppointmentData);
-      console.log('✅ Rebook appointment created:', createdAppointment);
+
 
       // Add the new appointment to state with the server-generated UUID
       const updatedAppointments = [...appointments, createdAppointment];
@@ -574,13 +571,7 @@ export function CustomerBookingManagement({
     setIsSubmittingReview(true);
 
     try {
-      console.log('📝 Submitting review directly to Supabase:', {
-        appointment_id: selectedBooking.id,
-        customer_id: user.id,
-        barber_id: selectedBooking.barber_id,
-        rating: reviewRating,
-        comment: reviewComment,
-      });
+
 
       // Submit review directly to Supabase database using only fields that exist
       const reviewData: any = {
@@ -597,7 +588,7 @@ export function CustomerBookingManagement({
       }
 
       const result = await SupabaseReviewsService.create(reviewData);
-      console.log('✅ Review created successfully in Supabase:', result);
+
 
       // Add appointment ID to reviewed set
       setReviewedAppointments(prev => new Set([...prev, selectedBooking.id]));
@@ -1394,10 +1385,9 @@ export function CustomerBookingManagement({
                         {(viewBooking.paymentStatus) && (
                           <div className="flex justify-between items-center pt-1.5 border-t border-[#E8DCC8]">
                             <span className="text-[#87765E]">Payment Status</span>
-                            <Badge className={`text-xs text-white ${
-                              viewBooking.paymentStatus === 'verified' ? 'bg-green-500' :
-                              viewBooking.paymentStatus === 'rejected' ? 'bg-red-500' : 'bg-orange-500'
-                            }`}>
+                            <Badge className={`text-xs text-white ${viewBooking.paymentStatus === 'verified' ? 'bg-green-500' :
+                                viewBooking.paymentStatus === 'rejected' ? 'bg-red-500' : 'bg-orange-500'
+                              }`}>
                               {viewBooking.paymentStatus}
                             </Badge>
                           </div>

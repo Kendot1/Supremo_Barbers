@@ -42,7 +42,7 @@ USING (true);`;
           <h3 className="font-semibold text-orange-900 mb-3 flex items-center gap-2">
             📋 Follow These Steps:
           </h3>
-          
+
           <ol className="space-y-3 text-sm">
             <li className="flex items-start gap-2">
               <span className="flex-shrink-0 w-6 h-6 bg-orange-200 text-orange-900 rounded-full flex items-center justify-center text-xs font-bold">
@@ -130,7 +130,7 @@ USING (true);`;
           <p className="text-xs text-blue-900 flex items-start gap-2">
             <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
             <span>
-              <strong>Alternative:</strong> If you want to quickly disable RLS for testing, run this instead: 
+              <strong>Alternative:</strong> If you want to quickly disable RLS for testing, run this instead:
               <code className="bg-blue-100 px-2 py-0.5 rounded ml-1 font-mono text-xs">
                 ALTER TABLE reviews DISABLE ROW LEVEL SECURITY;
               </code>

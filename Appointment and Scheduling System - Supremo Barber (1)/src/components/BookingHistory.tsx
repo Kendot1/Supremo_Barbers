@@ -307,47 +307,47 @@ export function BookingHistory({ userId, appointments, onUpdateAppointments }: B
                         : null);
 
                     return (
-                    <TableRow key={booking.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Scissors className="w-4 h-4 text-slate-400" />
-                          <div>
-                            {booking.service}
-                            {/* Cancellation Reason Display */}
-                            {booking.status === 'cancelled' && cancelReason && (
-                              <div className="mt-1 text-xs text-red-500 flex items-start gap-1">
-                                <AlertCircle className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                                <span>Reason: {cancelReason}</span>
-                              </div>
-                            )}
+                      <TableRow key={booking.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Scissors className="w-4 h-4 text-slate-400" />
+                            <div>
+                              {booking.service}
+                              {/* Cancellation Reason Display */}
+                              {booking.status === 'cancelled' && cancelReason && (
+                                <div className="mt-1 text-xs text-red-500 flex items-start gap-1">
+                                  <AlertCircle className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                                  <span>Reason: {cancelReason}</span>
+                                </div>
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <User className="w-4 h-4 text-slate-400" />
-                          {booking.barber}
-                        </div>
-                      </TableCell>
-                      <TableCell>{booking.date}</TableCell>
-                      <TableCell>₱{booking.price}</TableCell>
-                      <TableCell>{getStatusBadge(booking.status)}</TableCell>
-                      <TableCell className="text-right">
-                        {booking.status === 'completed' && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedBooking(booking);
-                              setRatingDialogOpen(true);
-                            }}
-                          >
-                            <Star className="w-4 h-4 mr-1" />
-                            Rate
-                          </Button>
-                        )}
-                      </TableCell>
-                    </TableRow>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <User className="w-4 h-4 text-slate-400" />
+                            {booking.barber}
+                          </div>
+                        </TableCell>
+                        <TableCell>{booking.date}</TableCell>
+                        <TableCell>₱{booking.price}</TableCell>
+                        <TableCell>{getStatusBadge(booking.status)}</TableCell>
+                        <TableCell className="text-right">
+                          {booking.status === 'completed' && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setSelectedBooking(booking);
+                                setRatingDialogOpen(true);
+                              }}
+                            >
+                              <Star className="w-4 h-4 mr-1" />
+                              Rate
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
                     );
                   })}
                 </TableBody>

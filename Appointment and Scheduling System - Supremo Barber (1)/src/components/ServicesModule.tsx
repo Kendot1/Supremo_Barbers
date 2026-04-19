@@ -95,9 +95,9 @@ export function ServicesModule({ user, onBookService }: ServicesModuleProps) {
     service: Service | null;
   }>(
     {
-    isOpen: false,
-    service: null,
-  });
+      isOpen: false,
+      service: null,
+    });
   const [imagePreview, setImagePreview] = useState<string>("");
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -132,8 +132,7 @@ export function ServicesModule({ user, onBookService }: ServicesModuleProps) {
     try {
       setIsLoading(true);
       const data = await API.services.getAll();
-      console.log('🔍 ServicesModule - Fetched services:', data);
-      console.log('🔍 ServicesModule - First service imageUrl:', data[0]?.imageUrl);
+
       setServices(data);
     } catch (error) {
       console.error('❌ ServicesModule - Error fetching services:', error);
@@ -362,24 +361,18 @@ export function ServicesModule({ user, onBookService }: ServicesModuleProps) {
 
   const handleToggleStatus = async (service: Service) => {
     setTogglingServiceId(service.id);
-    console.log("🔄 Toggling service status:", {
-      serviceId: service.id,
-      serviceName: service.name,
-      currentStatus: service.isActive,
-      newStatus: !service.isActive,
-    });
+
 
     try {
       const updateData = {
         isActive: !service.isActive,
       };
-      console.log("📤 Sending update request:", updateData);
 
       const result = await API.services.update(
         service.id,
         updateData,
       );
-      console.log("✅ Update successful:", result);
+
 
       toast.success(
         `Service ${!service.isActive ? "activated" : "deactivated"} successfully!`,
@@ -470,9 +463,9 @@ export function ServicesModule({ user, onBookService }: ServicesModuleProps) {
   const averageDuration =
     services.length > 0
       ? Math.round(
-          services.reduce((sum, s) => sum + s.duration, 0) /
-            services.length,
-        )
+        services.reduce((sum, s) => sum + s.duration, 0) /
+        services.length,
+      )
       : 0;
 
   const handleExportServices = () => {
@@ -696,7 +689,7 @@ export function ServicesModule({ user, onBookService }: ServicesModuleProps) {
                   <TableHead className="text-[#5C4A3A] text-center">
                     Status
                   </TableHead>
-                  
+
                   <TableHead className="text-[#5C4A3A] text-right">
                     Actions
                   </TableHead>
@@ -784,7 +777,7 @@ export function ServicesModule({ user, onBookService }: ServicesModuleProps) {
                           </Badge>
                         </div>
                       </TableCell>
-                      
+
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
                           <Button

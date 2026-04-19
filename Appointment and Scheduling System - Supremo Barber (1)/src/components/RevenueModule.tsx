@@ -117,10 +117,8 @@ export function RevenueModule({
             API.barbers.getAll(),
           ]);
 
-        console.log("📊 Revenue Module - Appointments:", appointmentsData);
-        console.log("💈 Revenue Module - Barbers:", barbersData);
-        console.log("🔍 Sample appointment:", appointmentsData?.[0]);
-        
+
+
         setAppointments(appointmentsData || []);
         setBarbers(barbersData || []);
       } catch (error) {
@@ -222,9 +220,9 @@ export function RevenueModule({
     const growthRate =
       midPoint > 0 && firstHalfRevenue > 0
         ? ((secondHalfRevenue / midPoint -
-            firstHalfRevenue / midPoint) /
-            (firstHalfRevenue / midPoint)) *
-          100
+          firstHalfRevenue / midPoint) /
+          (firstHalfRevenue / midPoint)) *
+        100
         : 0;
 
     // Predict based on time filter
@@ -362,23 +360,23 @@ export function RevenueModule({
     const dailyGrowth =
       yesterdayRevenue > 0
         ? ((dailyRevenue - yesterdayRevenue) /
-            yesterdayRevenue) *
-          100
+          yesterdayRevenue) *
+        100
         : 0;
     const monthlyGrowth =
       lastMonthRevenue > 0
         ? ((monthlyRevenue - lastMonthRevenue) /
-            lastMonthRevenue) *
-          100
+          lastMonthRevenue) *
+        100
         : 0;
 
     // Calculate transaction count growth
     const transactionGrowth =
       lastMonthTransactions.length > 0
         ? ((monthlyTransactions.length -
-            lastMonthTransactions.length) /
-            lastMonthTransactions.length) *
-          100
+          lastMonthTransactions.length) /
+          lastMonthTransactions.length) *
+        100
         : 0;
 
     // Find top service
@@ -546,8 +544,8 @@ export function RevenueModule({
     });
 
     return Array.from(serviceRevenue.entries())
-      .map(([service, revenue], index) => ({ 
-        service, 
+      .map(([service, revenue], index) => ({
+        service,
         revenue,
         id: `service-${service.replace(/\s+/g, '-')}-${index}-${revenue}`
       }))

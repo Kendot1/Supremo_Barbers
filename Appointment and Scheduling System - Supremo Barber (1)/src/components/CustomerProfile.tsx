@@ -197,17 +197,13 @@ export function CustomerProfile({
     setLoading(true);
 
     try {
-      console.log('🔍 DEBUG - Full user object:', user);
-      console.log('🔍 DEBUG - User ID:', user.id);
-      console.log('🔍 DEBUG - User ID type:', typeof user.id);
-      console.log('🔍 DEBUG - User email:', user.email);
-      console.log('🔍 DEBUG - localStorage currentUser:', localStorage.getItem('currentUser'));
+
 
       // First, verify the user exists in the database
       try {
-        console.log('🔍 DEBUG - Attempting to fetch user with ID:', user.id);
+
         const existingUser = await API.users.getById(user.id);
-        console.log('✅ DEBUG - User found in database:', existingUser);
+
       } catch (verifyError: any) {
         console.error('❌ DEBUG - User verification failed:', verifyError);
         console.error('❌ DEBUG - Error details:', {

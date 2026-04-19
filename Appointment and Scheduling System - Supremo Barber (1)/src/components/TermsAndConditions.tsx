@@ -45,7 +45,7 @@ export function TermsAndConditions({ onBack }: TermsAndConditionsProps) {
             Terms of Service - Supremo Barber
           </h2>
           <p className="text-[#5C4A3A] leading-relaxed mb-3">
-            Welcome to Supremo Barber's online booking system. By creating an account and  booking appointments through our platform, you agree to these terms and conditions. 
+            Welcome to Supremo Barber's online booking system. By creating an account and  booking appointments through our platform, you agree to these terms and conditions.
             Please read them carefully to understand your rights and responsibilities.
           </p>
           <p className="text-sm text-[#7A6854]">
@@ -134,7 +134,7 @@ export function TermsAndConditions({ onBack }: TermsAndConditionsProps) {
                         <p>Choose from our available services (haircut, shave, styling, etc.). You can select a specific barber or choose "Any Available Barber" for the next available slot. Each service has a set duration and price displayed during selection.</p>
                       </div>
                     </div>
-                    
+
                     <div className="flex gap-3">
                       <span className="font-bold text-[#DB9D47] flex-shrink-0">Step 2:</span>
                       <div className="text-sm">
@@ -142,7 +142,7 @@ export function TermsAndConditions({ onBack }: TermsAndConditionsProps) {
                         <p>Our calendar shows real-time availability. Select your preferred date and time slot. Grayed-out slots are already booked or outside business hours (Monday-Saturday, 9:00 AM - 7:00 PM).</p>
                       </div>
                     </div>
-                    
+
                     <div className="flex gap-3">
                       <span className="font-bold text-[#DB9D47] flex-shrink-0">Step 3:</span>
                       <div className="text-sm">
@@ -210,7 +210,7 @@ export function TermsAndConditions({ onBack }: TermsAndConditionsProps) {
                     </div>
                   </div>
                   <p className="text-sm text-[#5C4A3A]">
-                    <strong>Example:</strong> If your chosen service costs ₱400, you pay ₱200 down payment online 
+                    <strong>Example:</strong> If your chosen service costs ₱400, you pay ₱200 down payment online
                     and the remaining ₱200 at the shop after your service is completed.
                   </p>
                 </div>
@@ -361,7 +361,7 @@ export function TermsAndConditions({ onBack }: TermsAndConditionsProps) {
 
                 <div className="p-3 bg-blue-50 rounded-md border-l-4 border-blue-400">
                   <p className="text-sm text-blue-900">
-                    <strong>How to Cancel/Reschedule:</strong> Log into your account, go to "My Appointments," 
+                    <strong>How to Cancel/Reschedule:</strong> Log into your account, go to "My Appointments,"
                     and select the appropriate option. For assistance, email info@supremobarber.com or call us at +63 912 345 6789.
                   </p>
                 </div>
@@ -446,8 +446,8 @@ export function TermsAndConditions({ onBack }: TermsAndConditionsProps) {
 
                 <div className="p-3 bg-red-50 rounded-md border-l-4 border-red-400">
                   <p className="text-sm text-red-900">
-                    <strong>Zero Tolerance Policy:</strong> We maintain zero tolerance for harassment, discrimination, 
-                    threatening behavior, or abuse toward staff or customers. Violators will be asked to leave immediately, 
+                    <strong>Zero Tolerance Policy:</strong> We maintain zero tolerance for harassment, discrimination,
+                    threatening behavior, or abuse toward staff or customers. Violators will be asked to leave immediately,
                     forfeit all payments, and may be banned from future bookings. Police will be contacted if necessary.
                   </p>
                 </div>
@@ -510,7 +510,7 @@ export function TermsAndConditions({ onBack }: TermsAndConditionsProps) {
 
                 <div className="p-3 bg-blue-50 rounded-md border-l-4 border-blue-400">
                   <p className="text-sm text-blue-900">
-                    <strong>Good Faith:</strong> We're committed to resolving issues fairly. Most disputes are resolved 
+                    <strong>Good Faith:</strong> We're committed to resolving issues fairly. Most disputes are resolved
                     through friendly communication. We value your satisfaction and will work with you to find a reasonable solution.
                   </p>
                 </div>

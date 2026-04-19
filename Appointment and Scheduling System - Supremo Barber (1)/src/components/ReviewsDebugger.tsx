@@ -28,9 +28,9 @@ export function ReviewsDebugger() {
   const testDirectFetch = async () => {
     setIsLoading(true);
     try {
-     
+
       const reviews = await API.reviews.getAll();
-     
+
       setTestResult({
         success: true,
         data: reviews,
@@ -63,7 +63,7 @@ export function ReviewsDebugger() {
   const testDirectSupabase = async () => {
     setIsDirectLoading(true);
     try {
-     
+
 
       const supabase = getSupabaseClient();
 
@@ -71,7 +71,7 @@ export function ReviewsDebugger() {
         .from("reviews")
         .select("*", { count: "exact" });
 
-      
+
       if (error) {
         console.error("❌ Supabase error:", error);
         setDirectTestResult({
@@ -83,12 +83,12 @@ export function ReviewsDebugger() {
           message: "❌ Direct Supabase query FAILED!",
           diagnosis:
             error.message.includes("policy") ||
-            error.code === "42501"
+              error.code === "42501"
               ? "🔒 RLS IS BLOCKING ACCESS - Disable RLS in SQL Editor!"
               : "Database error - check error details below",
         });
       } else {
-       
+
         setDirectTestResult({
           success: true,
           data: data,
@@ -124,9 +124,9 @@ export function ReviewsDebugger() {
   const testBackendFetch = async () => {
     setIsBackendLoading(true);
     try {
-    
+
       const result = await API.reviews.testConnection();
-     
+
       setBackendTestResult({
         success: result.success,
         data: result,

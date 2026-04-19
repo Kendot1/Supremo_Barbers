@@ -4,11 +4,11 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
-import { 
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from './ui/table';
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, 
+  Dialog, DialogContent, DialogDescription, DialogFooter,
   DialogHeader, DialogTitle, DialogTrigger
 } from './ui/dialog';
 import {
@@ -145,18 +145,18 @@ export function ServiceManagement() {
   };
 
   const filteredServices = services.filter(service => {
-    const matchesSearch = 
+    const matchesSearch =
       service.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       service.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       service.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
       service.price.toString().includes(searchTerm) ||
       service.duration.toString().includes(searchTerm);
-    
+
     let matchesPrice = true;
     if (filterPrice === 'low') matchesPrice = service.price < 300;
     else if (filterPrice === 'medium') matchesPrice = service.price >= 300 && service.price < 500;
     else if (filterPrice === 'high') matchesPrice = service.price >= 500;
-    
+
     return matchesSearch && matchesPrice;
   });
 
@@ -188,10 +188,10 @@ export function ServiceManagement() {
       const createdService = await API.services.create(serviceData);
       setServices([...services, createdService]);
       setIsAddDialogOpen(false);
-      setNewService({ 
-        name: '', 
-        description: '', 
-        price: 0, 
+      setNewService({
+        name: '',
+        description: '',
+        price: 0,
         duration: 30,
         category: 'Haircut',
         imageUrl: '',
@@ -212,10 +212,10 @@ export function ServiceManagement() {
         };
         setServices([...services, service]);
         setIsAddDialogOpen(false);
-        setNewService({ 
-          name: '', 
-          description: '', 
-          price: 0, 
+        setNewService({
+          name: '',
+          description: '',
+          price: 0,
           duration: 30,
           category: 'Haircut',
           imageUrl: '',
@@ -356,7 +356,7 @@ export function ServiceManagement() {
       }));
 
       const headers = ['Service ID', 'Service Name', 'Description', 'Category', 'Price (₱)', 'Duration (minutes)', 'Status'];
-      
+
       exportToCSV(exportData, headers, 'supremo-barber-services');
       toast.success(`Exported ${filteredServices.length} service(s) to CSV`);
     } catch (error) {
@@ -405,132 +405,132 @@ export function ServiceManagement() {
                   Add Service
                 </Button>
               </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Add New Service</DialogTitle>
-                <DialogDescription>Create a new service offering</DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Service Name *</Label>
-                  <Input
-                    id="name"
-                    value={newService.name}
-                    onChange={(e) => setNewService({ ...newService, name: e.target.value })}
-                    placeholder="e.g., Premium Haircut"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    value={newService.description}
-                    onChange={(e) => setNewService({ ...newService, description: e.target.value })}
-                    placeholder="Brief description of the service"
-                    className="w-full h-[150px] resize-none overflow-y-auto whitespace-normal break-all [field-sizing:initial]"
-                    style={{ overflowX: 'hidden', wordBreak: 'break-all', overflowWrap: 'anywhere' }}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="category">Category *</Label>
-                  <Select 
-                    value={newService.category} 
-                    onValueChange={(value) => setNewService({ ...newService, category: value })}
-                  >
-                    <SelectTrigger id="category">
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Haircut">Haircut</SelectItem>
-                      <SelectItem value="Shave">Shave</SelectItem>
-                      <SelectItem value="Styling">Styling</SelectItem>
-                      <SelectItem value="Coloring">Coloring</SelectItem>
-                      <SelectItem value="Treatment">Treatment</SelectItem>
-                      <SelectItem value="Grooming">Grooming</SelectItem>
-                      <SelectItem value="Package">Package</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-[#5C4A3A]">Service Image (optional)</Label>
-                  
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => handleImageUpload(e, false)}
-                    className="hidden"
-                  />
-
-                  {!imagePreview ? (
-                    <div
-                      onClick={() => fileInputRef.current?.click()}
-                      className="border-2 border-dashed border-[#E8DCC8] rounded-lg p-8 flex flex-col items-center justify-center cursor-pointer hover:border-[#DB9D47] transition-colors"
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Add New Service</DialogTitle>
+                  <DialogDescription>Create a new service offering</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Service Name *</Label>
+                    <Input
+                      id="name"
+                      value={newService.name}
+                      onChange={(e) => setNewService({ ...newService, name: e.target.value })}
+                      placeholder="e.g., Premium Haircut"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="description">Description</Label>
+                    <Textarea
+                      id="description"
+                      value={newService.description}
+                      onChange={(e) => setNewService({ ...newService, description: e.target.value })}
+                      placeholder="Brief description of the service"
+                      className="w-full h-[150px] resize-none overflow-y-auto whitespace-normal break-all [field-sizing:initial]"
+                      style={{ overflowX: 'hidden', wordBreak: 'break-all', overflowWrap: 'anywhere' }}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="category">Category *</Label>
+                    <Select
+                      value={newService.category}
+                      onValueChange={(value) => setNewService({ ...newService, category: value })}
                     >
-                      <Upload className="w-12 h-12 text-[#87765E] mb-3" />
-                      <p className="text-[#5C4A3A] mb-1">Click to upload service image</p>
-                      <p className="text-xs text-[#87765E]">PNG, JPG or JPEG (max. 5MB)</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      <div className="relative rounded-lg overflow-hidden border-2 border-[#E8DCC8] bg-[#FBF7EF]">
-                        <img
-                          src={imagePreview}
-                          alt="Service image preview"
-                          className="w-full h-auto max-h-[300px] object-contain"
-                        />
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => fileInputRef.current?.click()}
-                          className="flex-1 border-[#DB9D47] text-[#DB9D47] hover:bg-[#DB9D47] hover:text-white"
-                        >
-                          Change Image
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          onClick={() => removeImage(false)}
-                          className="border-[#E57373] text-[#E57373] hover:bg-[#E57373] hover:text-white"
-                        >
-                          Remove
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="price">Price (₱) *</Label>
-                    <Input
-                      id="price"
-                      type="number"
-                      value={newService.price}
-                      onChange={(e) => setNewService({ ...newService, price: parseFloat(e.target.value) })}
-                      placeholder="0.00"
-                    />
+                      <SelectTrigger id="category">
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Haircut">Haircut</SelectItem>
+                        <SelectItem value="Shave">Shave</SelectItem>
+                        <SelectItem value="Styling">Styling</SelectItem>
+                        <SelectItem value="Coloring">Coloring</SelectItem>
+                        <SelectItem value="Treatment">Treatment</SelectItem>
+                        <SelectItem value="Grooming">Grooming</SelectItem>
+                        <SelectItem value="Package">Package</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="duration">Duration (min) *</Label>
-                    <Input
-                      id="duration"
-                      type="number"
-                      value={newService.duration}
-                      onChange={(e) => setNewService({ ...newService, duration: parseInt(e.target.value) })}
-                      placeholder="30"
+                    <Label className="text-[#5C4A3A]">Service Image (optional)</Label>
+
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleImageUpload(e, false)}
+                      className="hidden"
                     />
+
+                    {!imagePreview ? (
+                      <div
+                        onClick={() => fileInputRef.current?.click()}
+                        className="border-2 border-dashed border-[#E8DCC8] rounded-lg p-8 flex flex-col items-center justify-center cursor-pointer hover:border-[#DB9D47] transition-colors"
+                      >
+                        <Upload className="w-12 h-12 text-[#87765E] mb-3" />
+                        <p className="text-[#5C4A3A] mb-1">Click to upload service image</p>
+                        <p className="text-xs text-[#87765E]">PNG, JPG or JPEG (max. 5MB)</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="relative rounded-lg overflow-hidden border-2 border-[#E8DCC8] bg-[#FBF7EF]">
+                          <img
+                            src={imagePreview}
+                            alt="Service image preview"
+                            className="w-full h-auto max-h-[300px] object-contain"
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="flex-1 border-[#DB9D47] text-[#DB9D47] hover:bg-[#DB9D47] hover:text-white"
+                          >
+                            Change Image
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => removeImage(false)}
+                            className="border-[#E57373] text-[#E57373] hover:bg-[#E57373] hover:text-white"
+                          >
+                            Remove
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="price">Price (₱) *</Label>
+                      <Input
+                        id="price"
+                        type="number"
+                        value={newService.price}
+                        onChange={(e) => setNewService({ ...newService, price: parseFloat(e.target.value) })}
+                        placeholder="0.00"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="duration">Duration (min) *</Label>
+                      <Input
+                        id="duration"
+                        type="number"
+                        value={newService.duration}
+                        onChange={(e) => setNewService({ ...newService, duration: parseInt(e.target.value) })}
+                        placeholder="30"
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
-                <Button onClick={handleAddService}>Add Service</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
+                  <Button onClick={handleAddService}>Add Service</Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
       </CardHeader>
       <CardContent>
         {/* Search and Filter Row */}
@@ -669,8 +669,8 @@ export function ServiceManagement() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-category">Category</Label>
-                  <Select 
-                    value={editingService.category} 
+                  <Select
+                    value={editingService.category}
                     onValueChange={(value) => setEditingService({ ...editingService, category: value })}
                   >
                     <SelectTrigger id="edit-category">
@@ -689,7 +689,7 @@ export function ServiceManagement() {
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[#5C4A3A]">Service Image (optional)</Label>
-                  
+
                   <input
                     ref={editFileInputRef}
                     type="file"

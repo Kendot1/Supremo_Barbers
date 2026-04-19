@@ -50,10 +50,10 @@ export function CustomerModule() {
       try {
         setIsLoading(true);
         const users = await API.users.getAll({ role: 'customer' });
-        
+
         // Filter to ensure ONLY customer role (exclude admin and barber)
         const customerUsers = users.filter(user => user.role === 'customer');
-        
+
         // Transform users to customers format
         const transformedCustomers: Customer[] = customerUsers.map(user => ({
           id: user.id,
@@ -64,7 +64,7 @@ export function CustomerModule() {
           lastBookingDate: 'N/A',
           status: (user.isActive ?? true) ? 'active' : 'inactive',
         }));
-        
+
         setCustomers(transformedCustomers);
       } catch (error) {
         // Silently handle - backend might not be running
@@ -81,8 +81,8 @@ export function CustomerModule() {
     totalCustomers: customers.length,
     newCustomers: customers.filter(c => c.totalVisits < 2).length,
     returningCustomers: customers.filter(c => c.totalVisits >= 2).length,
-    averageBookings: customers.length > 0 
-      ? customers.reduce((sum, c) => sum + c.totalVisits, 0) / customers.length 
+    averageBookings: customers.length > 0
+      ? customers.reduce((sum, c) => sum + c.totalVisits, 0) / customers.length
       : 0,
   };
 
@@ -94,9 +94,9 @@ export function CustomerModule() {
       customer.contact.includes(searchQuery) ||
       customer.totalVisits.toString().includes(searchQuery) ||
       customer.lastBookingDate.includes(searchQuery);
-    
+
     const matchesStatus = filterStatus === "all" || customer.status === filterStatus;
-    
+
     return matchesSearch && matchesStatus;
   });
 
@@ -118,7 +118,7 @@ export function CustomerModule() {
       toast.success(`Customer ${newCustomer.name} added to database!`);
       setNewCustomer({ name: "", email: "", contact: "" });
       setIsAddDialogOpen(false);
-      
+
       // Refetch customers
       const users = await API.users.getAll({ role: 'customer' });
       // Filter to ensure ONLY customer role (exclude admin and barber)
@@ -180,7 +180,7 @@ export function CustomerModule() {
       toast.success(`Customer ${editingCustomer.name} updated in database!`);
       setEditingCustomer(null);
       setIsEditDialogOpen(false);
-      
+
       // Refetch customers
       const users = await API.users.getAll({ role: 'customer' });
       const transformedCustomers: Customer[] = users.map(user => ({
@@ -221,7 +221,7 @@ export function CustomerModule() {
     if (passwordConfirmation.customerId && passwordConfirmation.customerName) {
       const customer = customers.find(c => c.id === passwordConfirmation.customerId);
       if (!customer) return;
-      
+
       try {
         // Toggle suspend/unsuspend
         if (customer.status === 'active') {
@@ -231,7 +231,7 @@ export function CustomerModule() {
           await API.users.unsuspend(passwordConfirmation.customerId);
           toast.success(`Customer ${passwordConfirmation.customerName} account reactivated!`);
         }
-        
+
         // Refetch customers
         const users = await API.users.getAll({ role: 'customer' });
         const transformedCustomers: Customer[] = users.map(user => ({
@@ -257,7 +257,7 @@ export function CustomerModule() {
         // Permanently delete customer from database
         await API.users.delete(passwordConfirmation.customerId);
         toast.success(`Customer ${passwordConfirmation.customerName} permanently deleted from database!`);
-        
+
         // Refetch customers
         const users = await API.users.getAll({ role: 'customer' });
         const transformedCustomers: Customer[] = users.map(user => ({
@@ -294,7 +294,7 @@ export function CustomerModule() {
     }));
 
     const headers = ['Customer ID', 'Name', 'Email', 'Contact', 'Total Visits', 'Last Booking Date', 'Status'];
-    
+
     exportToCSV(exportData, headers, 'supremo-barber-customers');
     toast.success(`Exported ${filteredCustomers.length} customers successfully!`);
   };
@@ -375,54 +375,54 @@ export function CustomerModule() {
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-[500px]">
-                <DialogHeader>
-                  <DialogTitle>Add New Customer</DialogTitle>
-                  <DialogDescription>
-                    Add a new customer to the system
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="name">Full Name</Label>
-                    <Input 
-                      id="name" 
-                      placeholder="Juan Dela Cruz" 
-                      value={newCustomer.name}
-                      onChange={(e) => setNewCustomer(prev => ({ ...prev, name: e.target.value }))}
-                    />
+                  <DialogHeader>
+                    <DialogTitle>Add New Customer</DialogTitle>
+                    <DialogDescription>
+                      Add a new customer to the system
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="name">Full Name</Label>
+                      <Input
+                        id="name"
+                        placeholder="Juan Dela Cruz"
+                        value={newCustomer.name}
+                        onChange={(e) => setNewCustomer(prev => ({ ...prev, name: e.target.value }))}
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="email">Email</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        placeholder="juan@email.com"
+                        value={newCustomer.email}
+                        onChange={(e) => setNewCustomer(prev => ({ ...prev, email: e.target.value }))}
+                      />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="contact">Contact Number</Label>
+                      <Input
+                        id="contact"
+                        placeholder="+63 912 345 6789"
+                        value={newCustomer.contact}
+                        onChange={(e) => setNewCustomer(prev => ({ ...prev, contact: e.target.value }))}
+                      />
+                    </div>
                   </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input 
-                      id="email" 
-                      type="email" 
-                      placeholder="juan@email.com" 
-                      value={newCustomer.email}
-                      onChange={(e) => setNewCustomer(prev => ({ ...prev, email: e.target.value }))}
-                    />
+                  <div className="flex justify-end gap-3">
+                    <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+                      Cancel
+                    </Button>
+                    <Button
+                      className="bg-[#DB9D47] hover:bg-[#C88A35] text-white"
+                      onClick={handleAddCustomer}
+                    >
+                      Add Customer
+                    </Button>
                   </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="contact">Contact Number</Label>
-                    <Input 
-                      id="contact" 
-                      placeholder="+63 912 345 6789" 
-                      value={newCustomer.contact}
-                      onChange={(e) => setNewCustomer(prev => ({ ...prev, contact: e.target.value }))}
-                    />
-                  </div>
-                </div>
-                <div className="flex justify-end gap-3">
-                  <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button 
-                    className="bg-[#DB9D47] hover:bg-[#C88A35] text-white"
-                    onClick={handleAddCustomer}
-                  >
-                    Add Customer
-                  </Button>
-                </div>
-              </DialogContent>
+                </DialogContent>
               </Dialog>
             </div>
           </div>
@@ -543,28 +543,28 @@ export function CustomerModule() {
               <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
                   <Label htmlFor="edit-name">Full Name</Label>
-                  <Input 
-                    id="edit-name" 
-                    placeholder="Juan Dela Cruz" 
+                  <Input
+                    id="edit-name"
+                    placeholder="Juan Dela Cruz"
                     value={editingCustomer.name}
                     onChange={(e) => setEditingCustomer({ ...editingCustomer, name: e.target.value })}
                   />
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="edit-email">Email</Label>
-                  <Input 
-                    id="edit-email" 
-                    type="email" 
-                    placeholder="juan@email.com" 
+                  <Input
+                    id="edit-email"
+                    type="email"
+                    placeholder="juan@email.com"
                     value={editingCustomer.email}
                     onChange={(e) => setEditingCustomer({ ...editingCustomer, email: e.target.value })}
                   />
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="edit-contact">Contact Number</Label>
-                  <Input 
-                    id="edit-contact" 
-                    placeholder="+63 912 345 6789" 
+                  <Input
+                    id="edit-contact"
+                    placeholder="+63 912 345 6789"
                     value={editingCustomer.contact}
                     onChange={(e) => setEditingCustomer({ ...editingCustomer, contact: e.target.value })}
                   />
@@ -577,7 +577,7 @@ export function CustomerModule() {
                 }}>
                   Cancel
                 </Button>
-                <Button 
+                <Button
                   className="bg-[#DB9D47] hover:bg-[#C88A35] text-white"
                   onClick={handleSaveEdit}
                 >
@@ -607,26 +607,26 @@ export function CustomerModule() {
         title={
           passwordConfirmation.action === 'suspend'
             ? (() => {
-                const customer = customers.find(c => c.id === passwordConfirmation.customerId);
-                return customer?.status === 'active' 
-                  ? 'Confirm Account Suspension' 
-                  : 'Confirm Account Reactivation';
-              })()
+              const customer = customers.find(c => c.id === passwordConfirmation.customerId);
+              return customer?.status === 'active'
+                ? 'Confirm Account Suspension'
+                : 'Confirm Account Reactivation';
+            })()
             : passwordConfirmation.action === 'delete'
-            ? 'Confirm Customer Deletion'
-            : 'Confirm Customer Edit'
+              ? 'Confirm Customer Deletion'
+              : 'Confirm Customer Edit'
         }
         description={
           passwordConfirmation.action === 'suspend'
             ? (() => {
-                const customer = customers.find(c => c.id === passwordConfirmation.customerId);
-                return customer?.status === 'active'
-                  ? `Enter your password to suspend ${passwordConfirmation.customerName}'s account`
-                  : `Enter your password to reactivate ${passwordConfirmation.customerName}'s account`;
-              })()
+              const customer = customers.find(c => c.id === passwordConfirmation.customerId);
+              return customer?.status === 'active'
+                ? `Enter your password to suspend ${passwordConfirmation.customerName}'s account`
+                : `Enter your password to reactivate ${passwordConfirmation.customerName}'s account`;
+            })()
             : passwordConfirmation.action === 'delete'
-            ? `Enter your password to permanently delete ${passwordConfirmation.customerName} from the database`
-            : `Enter your password to edit ${passwordConfirmation.customerName}`
+              ? `Enter your password to permanently delete ${passwordConfirmation.customerName} from the database`
+              : `Enter your password to edit ${passwordConfirmation.customerName}`
         }
         actionType={passwordConfirmation.action || 'action'}
       />

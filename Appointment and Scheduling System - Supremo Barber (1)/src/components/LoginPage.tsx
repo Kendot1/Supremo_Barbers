@@ -175,13 +175,11 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
     // Test backend connectivity
     const testBackend = async () => {
       try {
-        console.log('🔍 Testing backend connectivity...');
-        console.log('📍 Project ID:', projectId);
-        console.log('🔑 Anon Key:', publicAnonKey?.substring(0, 20) + '...');
+
 
         // Test health endpoint
         const healthUrl = `https://${projectId}.supabase.co/functions/v1/make-server-70e1fc66/health`;
-        console.log('🌐 Testing:', healthUrl);
+
 
         const response = await fetch(healthUrl, {
           method: 'GET',
@@ -191,7 +189,7 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
         });
 
         const data = await response.json();
-        console.log('✅ Backend health check:', response.status, data);
+
       } catch (error) {
         console.error('❌ Backend health check failed:', error);
         console.error('Error details:', {
@@ -341,7 +339,7 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
             userAgent: navigator.userAgent.slice(0, 150),
             time: new Date().toLocaleString('en-PH', { timeZone: 'Asia/Manila' }),
           }
-        ).catch(() => {}); // swallow silently — never block the login flow
+        ).catch(() => { }); // swallow silently — never block the login flow
       }
 
       // For admin (always) or customers on an untrusted / revoked device — require 2FA
@@ -372,7 +370,7 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
       // Store OTP token for verification
       if (otpData.token) {
         sessionStorage.setItem('otp_token', otpData.token);
-        console.log('✅ OTP token stored in sessionStorage');
+
       } else {
         console.error('❌ No token received from server!', otpData);
       }
@@ -628,8 +626,7 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
     }
 
     try {
-      console.log('📧 Sending forgot password request for:', forgotEmail);
-      console.log('🌐 Full URL:', `https://${projectId}.supabase.co/functions/v1/make-server-70e1fc66/api/auth/forgot-password`);
+
 
       // Detect if input is email or username
       const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(forgotEmail);
@@ -637,7 +634,7 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
         ? { email: forgotEmail.toLowerCase() }
         : { username: forgotEmail.toLowerCase() };
 
-      console.log('📝 Request body:', requestBody);
+
 
       const response = await fetch(
         `https://${projectId}.supabase.co/functions/v1/make-server-70e1fc66/api/auth/forgot-password`,
@@ -651,18 +648,17 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
         }
       );
 
-      console.log('📨 Response status:', response.status);
-      console.log('📨 Response headers:', Object.fromEntries(response.headers.entries()));
+
 
       const contentType = response.headers.get('content-type');
       let data;
 
       if (contentType && contentType.includes('application/json')) {
         data = await response.json();
-        console.log('📨 Response data:', data);
+
       } else {
         const text = await response.text();
-        console.log('📨 Response text:', text);
+
         throw new Error(`Backend returned non-JSON response: ${text.substring(0, 200)}`);
       }
 
@@ -676,13 +672,13 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
       // Store OTP token
       if (data.token) {
         sessionStorage.setItem('forgot_password_token', data.token);
-        console.log('✅ Token stored in sessionStorage');
+
       }
 
       // Store the display email from backend response
       if (data.displayEmail) {
         setForgotDisplayEmail(data.displayEmail);
-        console.log('✅ Display email set:', data.displayEmail);
+
       } else {
         // Fallback to input if backend doesn't return displayEmail
         setForgotDisplayEmail(forgotEmail);
@@ -1108,7 +1104,7 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
       // Store OTP token for verification
       if (otpData.token) {
         sessionStorage.setItem('otp_token', otpData.token);
-        console.log('✅ OTP token stored in sessionStorage');
+
       } else {
         console.error('❌ No token received from server!', otpData);
       }
@@ -1162,7 +1158,7 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
         return;
       }
 
-      console.log('🔐 Verifying OTP with token:', { email: email.toLowerCase(), otp, hasToken: !!otpToken });
+
 
       // Verify OTP via backend API
       const verifyResponse = await fetch(
@@ -1416,7 +1412,7 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
                           variant="link"
                           className="h-auto p-0 text-xs text-[#DB9D47] hover:text-[#C08A3C]"
                           onClick={() => {
-                            console.log('🔐 Opening Forgot Password dialog');
+
                             setShowForgotPassword(true);
                             setForgotPasswordStep(1);
                             setForgotEmail(email);
@@ -1925,8 +1921,8 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
                                   Password Strength
                                 </span>
                                 <span className={`text-xs font-semibold ${passwordStrength.strength === 'strong' ? 'text-green-600' :
-                                    passwordStrength.strength === 'medium' ? 'text-yellow-600' :
-                                      'text-red-600'
+                                  passwordStrength.strength === 'medium' ? 'text-yellow-600' :
+                                    'text-red-600'
                                   }`}>
                                   {passwordStrength.strength === 'strong' ? '✓ Strong' :
                                     passwordStrength.strength === 'medium' ? '○ Medium' :
@@ -1936,8 +1932,8 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
                               <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
                                 <div
                                   className={`h-full transition-all duration-300 ${passwordStrength.strength === 'strong' ? 'bg-green-500' :
-                                      passwordStrength.strength === 'medium' ? 'bg-yellow-500' :
-                                        'bg-red-500'
+                                    passwordStrength.strength === 'medium' ? 'bg-yellow-500' :
+                                      'bg-red-500'
                                     }`}
                                   style={{ width: `${passwordStrength.score}%` }}
                                 />
@@ -2566,8 +2562,8 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
                             Password Strength
                           </span>
                           <span className={`text-xs font-semibold ${resetPasswordStrength.strength === 'strong' ? 'text-green-600' :
-                              resetPasswordStrength.strength === 'medium' ? 'text-yellow-600' :
-                                'text-red-600'
+                            resetPasswordStrength.strength === 'medium' ? 'text-yellow-600' :
+                              'text-red-600'
                             }`}>
                             {resetPasswordStrength.strength === 'strong' ? '✓ Strong' :
                               resetPasswordStrength.strength === 'medium' ? '○ Medium' :
@@ -2577,8 +2573,8 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
                         <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
                           <div
                             className={`h-full transition-all duration-300 ${resetPasswordStrength.strength === 'strong' ? 'bg-green-500' :
-                                resetPasswordStrength.strength === 'medium' ? 'bg-yellow-500' :
-                                  'bg-red-500'
+                              resetPasswordStrength.strength === 'medium' ? 'bg-yellow-500' :
+                                'bg-red-500'
                               }`}
                             style={{ width: `${resetPasswordStrength.score}%` }}
                           />

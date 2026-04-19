@@ -103,13 +103,13 @@ export function ImprovedSuperAdminDashboard({
   // Auto-refresh appointments and users every 30 seconds
   useEffect(() => {
     const refreshInterval = setInterval(async () => {
-      console.log("🔄 Auto-refreshing admin dashboard data...");
+
 
       // Refresh appointments if callback provided
       if (onRefreshAppointments) {
         try {
           await onRefreshAppointments();
-          console.log("✅ Appointments refreshed");
+
         } catch (error) {
           console.error("❌ Failed to refresh appointments:", error);
         }
@@ -119,7 +119,7 @@ export function ImprovedSuperAdminDashboard({
       try {
         const data = await API.users.getAll();
         setUsers(data);
-        console.log("✅ Users refreshed");
+
       } catch (error) {
         console.error("❌ Failed to refresh users:", error);
       }
@@ -132,7 +132,7 @@ export function ImprovedSuperAdminDashboard({
 
   // Manual refresh function
   const handleManualRefresh = async () => {
-    console.log("🔄 Manual refresh triggered...");
+
 
     // Refresh appointments
     if (onRefreshAppointments) {
@@ -253,7 +253,7 @@ export function ImprovedSuperAdminDashboard({
                     <p className="text-[#F5EDD8]">
                       Supremo Barber
                     </p>
-                    
+
                   </div>
                 )}
               </div>
@@ -267,11 +267,10 @@ export function ImprovedSuperAdminDashboard({
                   onClick={() => setActiveTab(item.id)}
                   className={`
                   w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all
-                  ${
-                    activeTab === item.id
+                  ${activeTab === item.id
                       ? "bg-[#DB9D47] text-white shadow-lg shadow-[#DB9D47]/50"
                       : "text-[#D4C5B0] hover:bg-[#6E5A48] hover:text-[#F5EDD8]"
-                  }
+                    }
                 `}
                 >
                   <item.icon className="w-5 h-5 flex-shrink-0" />
@@ -343,7 +342,7 @@ export function ImprovedSuperAdminDashboard({
                     // Parse URL and extract query parameters
                     const [path, queryString] = url.split('?');
                     const params = new URLSearchParams(queryString || '');
-                    
+
                     // Map the URL to dashboard tabs (Admin uses 'bookings', not 'appointments')
                     if (path === '/appointments' || path === '/bookings') {
                       setActiveTab('bookings');
@@ -478,10 +477,9 @@ export function ImprovedSuperAdminDashboard({
               onClick={() => setActiveTab(item.id)}
               className={`
                 flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-lg transition-all min-w-0
-                ${
-                  activeTab === item.id
-                    ? "bg-[#DB9D47] text-white"
-                    : "text-[#87765E] hover:bg-[#FBF7EF]"
+                ${activeTab === item.id
+                  ? "bg-[#DB9D47] text-white"
+                  : "text-[#87765E] hover:bg-[#FBF7EF]"
                 }
               `}
             >
@@ -501,12 +499,11 @@ export function ImprovedSuperAdminDashboard({
               <button
                 className={`
                   flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-lg transition-all min-w-0
-                  ${
-                    menuItems
-                      .slice(4)
-                      .some((item) => item.id === activeTab)
-                      ? "bg-[#DB9D47] text-white"
-                      : "text-[#87765E] hover:bg-[#FBF7EF]"
+                  ${menuItems
+                    .slice(4)
+                    .some((item) => item.id === activeTab)
+                    ? "bg-[#DB9D47] text-white"
+                    : "text-[#87765E] hover:bg-[#FBF7EF]"
                   }
                 `}
               >
@@ -538,10 +535,9 @@ export function ImprovedSuperAdminDashboard({
                     }}
                     className={`
                       flex items-center gap-3 px-4 py-3 rounded-lg transition-all
-                      ${
-                        activeTab === item.id
-                          ? "bg-[#DB9D47] text-white"
-                          : "text-[#5C4A3A] bg-[#FBF7EF] hover:bg-[#F5EDD8]"
+                      ${activeTab === item.id
+                        ? "bg-[#DB9D47] text-white"
+                        : "text-[#5C4A3A] bg-[#FBF7EF] hover:bg-[#F5EDD8]"
                       }
                     `}
                   >

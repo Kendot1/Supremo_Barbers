@@ -1,10 +1,10 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
-import { 
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue 
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from './ui/select';
-import { 
-  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, 
-  Tooltip, Legend, ResponsiveContainer 
+import {
+  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
 import { TrendingUp, Users, Calendar, Download, FileText, FileSpreadsheet } from 'lucide-react';
 import { useState, useEffect, useMemo } from 'react';
@@ -46,7 +46,7 @@ export function ReportsAnalytics({ appointments: propAppointments }: ReportsAnal
   // Calculate data from real appointments
   const { dailyData, weeklyData, monthlyData, stats } = useMemo(() => {
     const completed = appointments.filter(apt => apt.status === 'completed');
-    
+
     // Daily data (last 7 days)
     const dailyRevenue = new Map();
     const today = new Date();
@@ -56,7 +56,7 @@ export function ReportsAnalytics({ appointments: propAppointments }: ReportsAnal
       const dateStr = date.toISOString().split('T')[0];
       dailyRevenue.set(dateStr, { revenue: 0, bookings: 0 });
     }
-    
+
     completed.forEach(apt => {
       if (dailyRevenue.has(apt.date)) {
         const day = dailyRevenue.get(apt.date);
@@ -177,40 +177,40 @@ export function ReportsAnalytics({ appointments: propAppointments }: ReportsAnal
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={getChartData()}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-              <XAxis 
-                dataKey={timeRange === 'daily' ? 'date' : timeRange === 'weekly' ? 'week' : 'month'} 
-                stroke="#64748b" 
+              <XAxis
+                dataKey={timeRange === 'daily' ? 'date' : timeRange === 'weekly' ? 'week' : 'month'}
+                stroke="#64748b"
               />
               <YAxis stroke="#64748b" />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: '#fff', 
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: '#fff',
                   border: '1px solid #e2e8f0',
-                  borderRadius: '8px' 
-                }} 
+                  borderRadius: '8px'
+                }}
               />
               <Legend />
-              <Line 
-                type="monotone" 
-                dataKey="revenue" 
-                stroke="#3b82f6" 
+              <Line
+                type="monotone"
+                dataKey="revenue"
+                stroke="#3b82f6"
                 strokeWidth={2}
                 name="Revenue ($)"
               />
               {timeRange === 'daily' && (
-                <Line 
-                  type="monotone" 
-                  dataKey="bookings" 
-                  stroke="#10b981" 
+                <Line
+                  type="monotone"
+                  dataKey="bookings"
+                  stroke="#10b981"
                   strokeWidth={2}
                   name="Bookings"
                 />
               )}
               {(timeRange === 'weekly' || timeRange === 'monthly') && (
-                <Line 
-                  type="monotone" 
-                  dataKey="customers" 
-                  stroke="#10b981" 
+                <Line
+                  type="monotone"
+                  dataKey="customers"
+                  stroke="#10b981"
                   strokeWidth={2}
                   name="Customers"
                 />

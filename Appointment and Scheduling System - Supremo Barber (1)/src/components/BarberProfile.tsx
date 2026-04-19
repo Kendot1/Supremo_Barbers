@@ -21,10 +21,10 @@ import {
 import type { User as UserType, Appointment } from '../App';
 import API from '../services/api.service';
 import { normalizeR2Url } from '../utils/avatarUrl';
-import { 
-  logProfileUpdate, 
-  logPasswordChange, 
-  logAvatarUpload 
+import {
+  logProfileUpdate,
+  logPasswordChange,
+  logAvatarUpload
 } from '../services/audit-notification.service';
 import { PasswordInput, ConfirmPasswordInput } from './ui/PasswordInput';
 import { validatePassword } from '@/utils/passwordValidator';
@@ -66,7 +66,7 @@ export function BarberProfile({ user, appointments, onUserUpdate }: BarberProfil
 
   // Update profile state when user prop changes (e.g., after avatar upload)
   useEffect(() => {
-    console.log('👤 User prop changed, updating profile state with:', user);
+
     setProfile(prev => ({
       ...prev,
       name: user.name,
@@ -113,7 +113,7 @@ export function BarberProfile({ user, appointments, onUserUpdate }: BarberProfil
       toast.error('New passwords do not match');
       return;
     }
-    
+
     // Comprehensive password validation
     const passwordValidation = validatePassword(passwordData.newPassword, user.name);
     if (!passwordValidation.isValid) {
@@ -126,20 +126,13 @@ export function BarberProfile({ user, appointments, onUserUpdate }: BarberProfil
     setShowPasswordConfirm(false);
     setPasswordLoading(true);
     try {
-      // Debug: Log the user ID being sent
-      console.log('🔐 Attempting password change for user:', {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        userObject: user
-      });
+
 
       // WORKAROUND: First verify the user exists in the database
-      console.log('🔍 Verifying user exists in database...');
+
       try {
         const userInDb = await API.users.getById(user.id);
-        console.log('✅ User found in database:', userInDb);
+
       } catch (verifyError: any) {
         console.error('❌ User not found in database:', verifyError);
         toast.error('Account verification failed', {
@@ -148,14 +141,14 @@ export function BarberProfile({ user, appointments, onUserUpdate }: BarberProfil
         setPasswordLoading(false);
         return;
       }
-      
+
       // Call API to change password
       const result = await API.users.changePassword(user.id, {
         currentPassword: passwordData.currentPassword,
         newPassword: passwordData.newPassword,
       });
 
-      console.log('✅ Password change result:', result);
+
 
       // Log password change to audit logs
       await logPasswordChange(
@@ -172,7 +165,7 @@ export function BarberProfile({ user, appointments, onUserUpdate }: BarberProfil
       setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
     } catch (error: any) {
       console.error('❌ Error changing password:', error);
-      
+
       // Better error message handling
       let errorMsg = 'Please check your current password and try again.';
       if (error.message) {
@@ -184,7 +177,7 @@ export function BarberProfile({ user, appointments, onUserUpdate }: BarberProfil
           errorMsg = error.message;
         }
       }
-      
+
       toast.error('Failed to change password', {
         description: errorMsg
       });
@@ -297,41 +290,39 @@ export function BarberProfile({ user, appointments, onUserUpdate }: BarberProfil
       uploadFormData.append('file', file);
       uploadFormData.append('type', 'avatar'); // Specify upload type for proper folder organization
 
-      console.log('📤 Uploading avatar to Cloudflare R2...');
+
       const response = await API.uploadImage(uploadFormData);
-      console.log('✅ Upload response:', response);
-      
+
+
       // Validate response
       if (!response || !response.url) {
         console.error('❌ Invalid response from upload API:', response);
         throw new Error('Upload failed: No URL returned from server');
       }
-      
-      console.log('🖼️ Avatar URL received:', response.url);
-      
+
+
       // Set the R2 URL in profile data
       setProfile({ ...profile, avatarUrl: response.url });
-      
-      // Update user in database
-      console.log('💾 Updating user in database with avatarUrl:', response.url);
+
+
       const updatedUser = await API.users.update(user.id, { avatarUrl: response.url });
-      console.log('✅ Database update response:', updatedUser);
-      
+
+
       // Update localStorage
       const storedUser = localStorage.getItem('currentUser');
       if (storedUser) {
         const parsedUser = JSON.parse(storedUser);
         parsedUser.avatarUrl = response.url;
         localStorage.setItem('currentUser', JSON.stringify(parsedUser));
-        console.log('💾 Updated localStorage with new avatarUrl');
+
       }
-      
+
       // Update parent component's user state
       if (onUserUpdate) {
-        console.log('🔄 Calling onUserUpdate with new avatarUrl');
+
         onUserUpdate({ ...user, avatarUrl: response.url });
       }
-      
+
       // Log avatar upload to audit logs
       await logAvatarUpload(
         user.id,
@@ -340,12 +331,12 @@ export function BarberProfile({ user, appointments, onUserUpdate }: BarberProfil
         user.email,
         response.url
       );
-      
+
       toast.success('Avatar uploaded successfully!', { id: 'avatar-upload' });
     } catch (error) {
       console.error('❌ Avatar upload error:', error);
       toast.error('Failed to upload avatar', { id: 'avatar-upload' });
-      
+
       // Clear the file input on error
       if (event.target) {
         event.target.value = '';
@@ -514,7 +505,7 @@ export function BarberProfile({ user, appointments, onUserUpdate }: BarberProfil
             />
           </div>
 
-          <Button 
+          <Button
             onClick={() => setShowProfileConfirm(true)}
             disabled={loading}
             className="bg-[#DB9D47] hover:bg-[#C88B3A] text-white"
@@ -572,7 +563,7 @@ export function BarberProfile({ user, appointments, onUserUpdate }: BarberProfil
             className="border-[#E8DCC8] focus:border-[#DB9D47] focus:ring-[#DB9D47]"
           />
 
-          <Button 
+          <Button
             onClick={() => {
               // Validate first before showing confirmation
               if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
@@ -583,7 +574,7 @@ export function BarberProfile({ user, appointments, onUserUpdate }: BarberProfil
                 toast.error('New passwords do not match');
                 return;
               }
-              
+
               // Comprehensive password validation
               const passwordValidation = validatePassword(passwordData.newPassword, user.name);
               if (!passwordValidation.isValid) {
@@ -592,7 +583,7 @@ export function BarberProfile({ user, appointments, onUserUpdate }: BarberProfil
                 });
                 return;
               }
-              
+
               setShowPasswordConfirm(true);
             }}
             disabled={passwordLoading}
@@ -721,7 +712,7 @@ export function BarberProfile({ user, appointments, onUserUpdate }: BarberProfil
             <AlertDialogCancel className="border-[#E8DCC8] text-[#5C4A3A] hover:bg-[#FBF7EF]">
               Cancel
             </AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogAction
               onClick={handleSaveProfile}
               className="bg-[#DB9D47] hover:bg-[#C88B3A] text-white"
             >
@@ -754,7 +745,7 @@ export function BarberProfile({ user, appointments, onUserUpdate }: BarberProfil
             <AlertDialogCancel className="border-[#E8DCC8] text-[#5C4A3A] hover:bg-[#FBF7EF]">
               Cancel
             </AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogAction
               onClick={handleChangePassword}
               className="bg-[#D98555] hover:bg-[#C77545] text-white"
             >
@@ -796,7 +787,7 @@ export function BarberProfile({ user, appointments, onUserUpdate }: BarberProfil
             <AlertDialogCancel className="border-[#E8DCC8] text-[#5C4A3A] hover:bg-[#FBF7EF]">
               Cancel
             </AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogAction
               onClick={handleChangeEmail}
               className="bg-[#D98555] hover:bg-[#C77545] text-white"
             >

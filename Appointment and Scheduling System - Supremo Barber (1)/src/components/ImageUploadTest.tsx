@@ -56,17 +56,17 @@ export function ImageUploadTest() {
       const formData = new FormData();
       formData.append('file', uploadedFile);
 
-     
+
       const response = await API.uploadImage(formData);
-      
-     
+
+
       setUploadedUrl(response.url);
       setUploadStatus('success');
       toast.success('Image uploaded successfully to Cloudflare R2!');
     } catch (error) {
       console.error('❌ Upload failed:', error);
       setUploadStatus('error');
-      
+
       if (error instanceof Error) {
         toast.error(`Upload failed: ${error.message}`);
       } else {
@@ -197,7 +197,7 @@ export function ImageUploadTest() {
                     toast.error('Failed to load image. Check if CLOUDFLARE_R2_PUBLIC_URL is configured correctly.');
                   }}
                   onLoad={() => {
-                  
+
                     toast.success('Image is publicly accessible!');
                   }}
                 />

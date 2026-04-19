@@ -52,7 +52,7 @@ export function createNotification(
     normal: 'system_alert',
     high: 'system_alert',
   };
-  
+
   return {
     id: `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
     userId,
@@ -80,46 +80,46 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
-  
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const PAGE_SIZE = 20; // Load 20 notifications per page
-  
+
   // Virtual scrolling state
   const [scrollTop, setScrollTop] = useState(0);
   const ITEM_HEIGHT = 120; // Height of each notification item in pixels
   const CONTAINER_HEIGHT = 400; // Height of scroll container
   const OVERSCAN = 3; // Render extra items above/below viewport for smooth scrolling
-  
+
   // Use refs to track fetch function and prevent infinite loops
   const fetchNotificationsRef = useRef<() => Promise<void>>();
   const lastFetchParams = useRef<string>('');
   const isFetchingRef = useRef(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  
+
   // Aggressive caching - 5 minutes cache duration
   const pagesCache = useRef<Map<number, Notification[]>>(new Map());
   const cacheTimestamp = useRef<Map<number, number>>(new Map()); // Cache timestamp per page
   const CACHE_DURATION = 300000; // 5 minutes cache (was 30 seconds)
   const hasInitialDataRef = useRef(false); // Track if we have any data
-  
+
   // Track total count from cache
   const totalCountRef = useRef<number>(0);
 
   // Fetch a specific page of notifications
   const fetchPage = async (page: number, append: boolean = false) => {
     if (isFetchingRef.current) {
-      console.log('⏳ NotificationCenter: Already fetching, skipping...');
+
       return;
     }
-    
+
     // Check if page is already cached and cache is fresh
     const now = Date.now();
     if (pagesCache.current.has(page) && (now - (cacheTimestamp.current.get(page) || 0) < CACHE_DURATION)) {
-      console.log(`💾 NotificationCenter: Using cached page ${page}`);
+
       const cachedPage = pagesCache.current.get(page)!;
-      
+
       if (append) {
         setNotifications(prev => [...prev, ...cachedPage]);
       } else {
@@ -128,7 +128,7 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
       hasInitialDataRef.current = true;
       return;
     }
-    
+
     try {
       isFetchingRef.current = true;
       if (append) {
@@ -136,44 +136,44 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
       } else {
         setIsLoading(true);
       }
-      
-      console.log(`📡 NotificationCenter: Fetching page ${page} for userId:`, userId, 'role:', userRole);
-      
+
+
+
       // Calculate offset and limit
       const offset = page * PAGE_SIZE;
       const limit = PAGE_SIZE;
-      
+
       // Fetch paginated data
       const data = await API.notifications.getByUserId(userId, userRole, limit, offset);
-      
-      console.log(`✅ NotificationCenter: Fetched ${data?.length || 0} notifications for page ${page}`);
-      
+
+
+
       // Ensure data is always an array
       const notificationsArray = Array.isArray(data) ? data : [];
-      
+
       // Cache this page
       pagesCache.current.set(page, notificationsArray);
       cacheTimestamp.current.set(page, now);
-      
+
       // Update hasMore flag
       if (notificationsArray.length < PAGE_SIZE) {
         setHasMore(false);
-        console.log('📭 NotificationCenter: No more pages to load');
+
       }
-      
+
       // Update state
       if (append) {
         setNotifications(prev => [...prev, ...notificationsArray]);
       } else {
         setNotifications(notificationsArray);
       }
-      
+
       hasInitialDataRef.current = true;
-      
-      console.log(`💾 NotificationCenter: State updated with page ${page}`);
+
+
     } catch (error: any) {
       console.error(`❌ NotificationCenter: Error fetching page ${page}:`, error);
-      
+
       if (!append) {
         // Set empty state only if not appending
         setNotifications([]);
@@ -187,14 +187,14 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
 
   // Shared fetch function for initial load
   const fetchNotifications = async () => {
-    console.log('🔄 NotificationCenter: Refreshing notifications...');
-    
+
+
     // Clear cache and reset pagination
     pagesCache.current.clear();
     cacheTimestamp.current.clear();
     setCurrentPage(0);
     setHasMore(true);
-    
+
     // Fetch first page
     await fetchPage(0, false);
   };
@@ -202,13 +202,12 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
   // Load more notifications (next page)
   const loadMore = async () => {
     if (!hasMore || isLoadingMore || isFetchingRef.current) {
-      console.log('⏸️ NotificationCenter: Cannot load more', { hasMore, isLoadingMore, isFetching: isFetchingRef.current });
+
       return;
     }
-    
+
     const nextPage = currentPage + 1;
-    console.log(`📄 NotificationCenter: Loading page ${nextPage}...`);
-    
+
     await fetchPage(nextPage, true);
     setCurrentPage(nextPage);
   };
@@ -217,10 +216,10 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
     const target = e.currentTarget;
     const scrollPercentage = (target.scrollTop + target.clientHeight) / target.scrollHeight;
-    
+
     // Load more when user scrolls to 90% of the container (LAZY - near bottom only)
     if (scrollPercentage > 0.9 && hasMore && !isLoadingMore && !isFetchingRef.current) {
-      console.log('📜 NotificationCenter: Scroll threshold reached, loading more...');
+
       loadMore();
     }
   };
@@ -228,10 +227,10 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
   // Load cached data instantly on mount (NO API CALL)
   useEffect(() => {
     if (!userId) return;
-    
+
     // Check if we have cached data for page 0
     if (pagesCache.current.has(0)) {
-      console.log('⚡ NotificationCenter: Loading from cache instantly');
+
       const cachedPage = pagesCache.current.get(0)!;
       setNotifications(cachedPage);
       hasInitialDataRef.current = true;
@@ -242,23 +241,23 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
   // Fetch when dropdown opens (ONLY if no cache exists)
   useEffect(() => {
     if (!isOpen || !userId) return;
-    
+
     // If we have cached data, show it instantly
     if (pagesCache.current.has(0)) {
       const now = Date.now();
       const cacheAge = now - (cacheTimestamp.current.get(0) || 0);
-      
+
       if (cacheAge < CACHE_DURATION) {
-        console.log('⚡ NotificationCenter: Using cached data (fresh)');
+
         const cachedPage = pagesCache.current.get(0)!;
         setNotifications(cachedPage);
         hasInitialDataRef.current = true;
         return; // Don't fetch if cache is fresh
       }
     }
-    
+
     // No cache or cache expired - fetch data
-    console.log('📡 NotificationCenter: Dropdown opened, fetching data...');
+
     fetchPage(0, false);
   }, [isOpen, userId]);
 
@@ -267,10 +266,8 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
     // Optimistically update UI first
     const notificationToMark = notifications.find(n => n.id === notificationId);
     if (!notificationToMark || notificationToMark.isRead) return; // Already read or doesn't exist
-    
-    console.log('🔵 [NotificationCenter] Marking notification as read:', notificationId);
-    console.log('📋 [NotificationCenter] Notification before:', notificationToMark);
-    
+
+
     // Update local state immediately
     setNotifications(prev =>
       prev.map(n =>
@@ -278,12 +275,11 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
       )
     );
     setUnreadCount(prev => Math.max(0, prev - 1));
-    
+
     // Then sync with backend (silently fail if backend has issues)
     try {
       const result = await API.notifications.markAsRead(notificationId);
-      console.log('✅ [NotificationCenter] Backend response:', result);
-      console.log('✅ [NotificationCenter] Notification marked as read in backend');
+
     } catch (error: any) {
       console.error('❌ [NotificationCenter] Error marking notification as read in backend:', error);
       console.error('❌ [NotificationCenter] Error details:', JSON.stringify(error, null, 2));
@@ -296,19 +292,19 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
   const handleMarkAllAsRead = async () => {
     const unreadNotifications = notifications.filter(n => !n.isRead);
     if (unreadNotifications.length === 0) return;
-    
+
     // Optimistically update UI first
     const now = new Date().toISOString();
     setNotifications(prev =>
       prev.map(n => ({ ...n, isRead: true, readAt: now }))
     );
     setUnreadCount(0);
-    
+
     // Then sync with backend (silently fail if backend has issues)
     try {
       await API.notifications.markAllAsRead(userId, userRole);
       toast.success('All notifications marked as read');
-      console.log('✅ All notifications marked as read in backend');
+
     } catch (error: any) {
       console.error('❌ Error marking all as read in backend:', error);
       // UI is already updated, just show a generic success message
@@ -320,12 +316,12 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
   const handleDelete = async (notificationId: string) => {
     try {
       await API.notifications.delete(notificationId);
-      
+
       // Update local state
       setNotifications(prev => prev.filter(n => n.id !== notificationId));
-      
+
       toast.success('Notification deleted');
-      console.log('✅ Notification deleted');
+
     } catch (error: any) {
       console.error('❌ Error deleting notification:', error);
       toast.error('Failed to delete notification');
@@ -368,7 +364,7 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
       appointment_rejected: 'text-red-600',
       appointment_completed: 'text-green-600',
       appointment_rescheduled: 'text-orange-600',
-      
+
       // Payment notifications
       payment_approved: 'text-green-600',
       payment_verified: 'text-green-600',
@@ -376,29 +372,29 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
       payment_received: 'text-green-600',
       payment_reminder: 'text-orange-600',
       payment_proof_uploaded: 'text-blue-600',
-      
+
       // Review notifications
       review_received: 'text-purple-600',
       review_submitted: 'text-purple-600',
-      
+
       // User notifications
       new_customer: 'text-blue-600',
       account_created: 'text-green-600',
       account_suspended: 'text-red-600',
       account_unsuspended: 'text-green-600',
       user_registered: 'text-blue-600',
-      
+
       // System notifications
       system_alert: 'text-yellow-600',
       earnings_updated: 'text-green-600',
       profile_updated: 'text-gray-600',
       password_changed: 'text-orange-600',
-      
+
       // Security notifications
       new_device_login: 'text-red-600',
       security_alert: 'text-red-600',
       sign_out_all_devices: 'text-orange-600',
-      
+
       // Barber notifications
       barber_created: 'text-blue-600',
       barber_deleted: 'text-red-600',
@@ -425,7 +421,7 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
   // REMOVED: No auto-fetch on hover
   // REMOVED: No auto-fetch on open
   // REMOVED: No auto-fetch on stale cache
-  
+
   // Only fetch when:
   // 1. User clicks refresh button
   // 2. User scrolls to load more
@@ -434,7 +430,7 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
   // Fetch unread count badge ONLY (lightweight) - runs on mount and every 60s
   useEffect(() => {
     if (!userId) return;
-    
+
     const fetchUnreadCountOnly = async () => {
       try {
         const count = await API.notifications.getUnreadCount(userId, userRole);
@@ -443,13 +439,13 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
         console.error('❌ Error fetching unread count:', error);
       }
     };
-    
+
     // Initial fetch
     fetchUnreadCountOnly();
-    
+
     // Poll for unread count only (very lightweight)
     const pollInterval = setInterval(fetchUnreadCountOnly, 60000); // Every 60 seconds
-    
+
     return () => clearInterval(pollInterval);
   }, [userId, userRole]);
 
@@ -469,7 +465,7 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
           )}
         </Button>
       </DropdownMenuTrigger>
-      
+
       <DropdownMenuContent
         align="end"
         className="w-[380px] max-h-[500px] overflow-hidden flex flex-col animate-none data-[state=open]:animate-none data-[state=closed]:animate-none"
@@ -545,9 +541,8 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
                 {filteredNotifications.map((notification) => (
                   <div
                     key={notification.id}
-                    className={`p-4 hover:bg-[#FBF7EF] transition-colors cursor-pointer group relative ${
-                      !notification.isRead ? 'bg-blue-50/30' : ''
-                    }`}
+                    className={`p-4 hover:bg-[#FBF7EF] transition-colors cursor-pointer group relative ${!notification.isRead ? 'bg-blue-50/30' : ''
+                      }`}
                     onClick={() => handleNotificationClick(notification)}
                   >
                     {/* Unread indicator */}
@@ -621,7 +616,7 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
                   </div>
                 ))}
               </div>
-              
+
               {/* Loading More Indicator */}
               {isLoadingMore && (
                 <div className="flex items-center justify-center p-4 border-t border-[#E8DCC8]">
@@ -629,7 +624,7 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
                   <span className="text-sm text-[#87765E]">Loading more...</span>
                 </div>
               )}
-              
+
               {/* End of List Indicator */}
               {!hasMore && notifications.length > 0 && (
                 <div className="flex items-center justify-center p-4 border-t border-[#E8DCC8]">

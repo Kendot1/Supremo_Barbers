@@ -124,8 +124,7 @@ export function BarberEarningsOverview({
       try {
         const data =
           await API.appointments.getByBarberId(barberId);
-        console.log("📊 Barber Appointments fetched:", data);
-        console.log("📊 Sample appointment:", data?.[0]);
+
         setBarberAppointments(data || []);
       } catch (error) {
         console.warn(
@@ -146,9 +145,8 @@ export function BarberEarningsOverview({
 
       try {
         const data = await API.reviews.getByBarberId(barberId);
-        console.log("⭐ Barber Reviews fetched:", data);
-        console.log("⭐ Reviews count:", data?.length);
-        console.log("⭐ Sample review:", data?.[0]);
+
+
         setBarberReviews(data || []);
       } catch (error) {
         console.warn("⚠️ Reviews data not available:", error);
@@ -185,9 +183,7 @@ export function BarberEarningsOverview({
         console.warn(
           "⚠️ Earnings data not available - using fallback data",
         );
-        console.log(
-          "ℹ️ This is normal if no completed appointments exist yet",
-        );
+
         // Fallback to empty data
         setEarningsData({
           totalEarnings: 0,
@@ -245,12 +241,7 @@ export function BarberEarningsOverview({
     const today = new Date();
     const todayString = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
-    console.log("💡 Calculating stats...");
-    console.log(
-      "💡 Total appointments:",
-      barberAppointments.length,
-    );
-    console.log("💡 Total reviews:", barberReviews.length);
+
 
     // All appointments (excluding cancelled) for total bookings
     const allAppointments = barberAppointments.filter(
@@ -260,10 +251,6 @@ export function BarberEarningsOverview({
       (apt) => apt.status === "completed",
     );
 
-    console.log(
-      "💡 Completed appointments:",
-      completedAppointments.length,
-    );
 
     // Total bookings count (all non-cancelled appointments)
     const totalBookings = allAppointments.length;
@@ -274,26 +261,21 @@ export function BarberEarningsOverview({
       (sum, apt) => {
         const price =
           apt.totalPrice || apt.total_amount || apt.price || 0;
-        console.log("💰 Appointment price:", price, "Fields:", {
-          totalPrice: apt.totalPrice,
-          total_amount: apt.total_amount,
-          price: apt.price,
-        });
+
         return sum + price;
       },
       0,
     );
 
-    console.log("💰 Total Earnings calculated:", totalEarnings);
 
     // Completion rate
     const completionRate =
       allAppointments.length > 0
         ? Math.round(
-            (completedAppointments.length /
-              allAppointments.length) *
-              100,
-          )
+          (completedAppointments.length /
+            allAppointments.length) *
+          100,
+        )
         : 0;
 
     // Average rating from reviews
@@ -304,22 +286,19 @@ export function BarberEarningsOverview({
       return reviewBarberId === barberId;
     });
 
-    console.log(
-      "⭐ Relevant reviews for barber:",
-      relevantReviews.length,
-    );
+
 
     const avgRating =
       relevantReviews.length > 0
         ? (
-            relevantReviews.reduce((sum, review) => {
-              console.log("⭐ Review rating:", review.rating);
-              return sum + (review.rating || 0);
-            }, 0) / relevantReviews.length
-          ).toFixed(1)
+          relevantReviews.reduce((sum, review) => {
+
+            return sum + (review.rating || 0);
+          }, 0) / relevantReviews.length
+        ).toFixed(1)
         : "0";
 
-    console.log("⭐ Average Rating calculated:", avgRating);
+
 
     // Weekly stats from database
     const weeklyEarnings = earningsData?.totalEarnings || 0;
@@ -493,7 +472,7 @@ export function BarberEarningsOverview({
                   <TableRow className="bg-[#FBF7EF]">
                     <TableHead className="text-[#5C4A3A]">ID</TableHead>
                     <TableHead className="text-[#5C4A3A]">Service</TableHead>
-                    
+
                     <TableHead className="text-[#5C4A3A]">Customer</TableHead>
                     <TableHead className="text-[#5C4A3A]">Date</TableHead>
                     <TableHead className="text-[#5C4A3A] text-right">Price</TableHead>
@@ -523,7 +502,7 @@ export function BarberEarningsOverview({
                           <TableCell className="text-[#5C4A3A]">
                             {service}
                           </TableCell>
-                         
+
                           <TableCell className="text-[#5C4A3A]">
                             {customer}
                           </TableCell>

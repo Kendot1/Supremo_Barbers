@@ -4,8 +4,8 @@ import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Switch } from './ui/switch';
 import { Label } from './ui/label';
-import { 
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from './ui/table';
 import { Scissors, Calendar, Clock, CheckCircle2, XCircle, UserCog } from 'lucide-react';
 import { toast } from 'sonner';
@@ -87,7 +87,7 @@ export function BarberScheduleManager() {
       try {
         setIsLoading(true);
         const users = await API.barbers.getAll();
-        
+
         const transformedBarbers: Barber[] = users.map(user => ({
           id: user.id,
           name: user.name,
@@ -104,7 +104,7 @@ export function BarberScheduleManager() {
             { day: 'Sunday', startTime: '', endTime: '', available: false },
           ],
         }));
-        
+
         setBarbers(transformedBarbers);
       } catch (error) {
         console.error('Error fetching barbers:', error);
@@ -120,12 +120,12 @@ export function BarberScheduleManager() {
     try {
       const barber = barbers.find(b => b.id === barberId);
       if (!barber) return;
-      
+
       await API.barbers.update(barberId, {
         isActive: !barber.available,
       });
-      
-      setBarbers(barbers.map(b => 
+
+      setBarbers(barbers.map(b =>
         b.id === barberId ? { ...b, available: !b.available } : b
       ));
       toast.success('Barber availability updated in database');
@@ -177,8 +177,8 @@ export function BarberScheduleManager() {
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <span className={
-                          barber.todayBookings >= barber.maxBookings 
-                            ? 'text-red-600' 
+                          barber.todayBookings >= barber.maxBookings
+                            ? 'text-red-600'
                             : 'text-slate-900'
                         }>
                           {barber.todayBookings} / {barber.maxBookings}
@@ -223,7 +223,7 @@ export function BarberScheduleManager() {
           <CardContent>
             <div className="space-y-4">
               {selectedBarber.schedule.map((day, index) => (
-                <div 
+                <div
                   key={index}
                   className="flex items-center justify-between p-4 bg-slate-50 rounded-lg border border-slate-200"
                 >

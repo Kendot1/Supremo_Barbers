@@ -90,7 +90,7 @@ export function AnalyticsOverview({
           fetchAppointments();
         },
       )
-      .subscribe((status) => {});
+      .subscribe((status) => { });
 
     // Cleanup subscription on unmount
     return () => {
@@ -169,10 +169,10 @@ export function AnalyticsOverview({
     });
 
     const totalServices = appointments.length || 1; // Prevent division by zero
-    
+
     // Pre-defined colors for consistency
     const serviceColors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316'];
-    
+
     const serviceDistribution = Array.from(
       serviceCount.entries(),
     )
@@ -264,7 +264,7 @@ export function AnalyticsOverview({
           status: apt.status,
           payment:
             paymentStatus === "verified" ||
-            paymentStatus === "paid"
+              paymentStatus === "paid"
               ? "verified"
               : "pending",
         };
@@ -299,7 +299,7 @@ export function AnalyticsOverview({
           status: apt.status,
           payment:
             paymentStatus === "verified" ||
-            paymentStatus === "paid"
+              paymentStatus === "paid"
               ? "verified"
               : "pending",
         };
@@ -420,16 +420,15 @@ export function AnalyticsOverview({
                           </span>
                           <Badge
                             variant="outline"
-                            className={`text-xs ${
-                              booking.status === "confirmed"
+                            className={`text-xs ${booking.status === "confirmed"
                                 ? "border-green-500 text-green-700"
                                 : booking.status === "pending"
                                   ? "border-orange-500 text-orange-700"
                                   : booking.status ===
-                                      "verified"
+                                    "verified"
                                     ? "border-green-500 text-green-700"
                                     : "border-blue-500 text-blue-700"
-                            }`}
+                              }`}
                           >
                             {booking.status}
                           </Badge>

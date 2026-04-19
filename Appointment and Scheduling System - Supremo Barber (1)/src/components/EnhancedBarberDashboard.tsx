@@ -202,17 +202,7 @@ export function EnhancedBarberDashboard({
       completionRate: 0,
     });
 
-  // Log when appointments update
-  console.log(
-    "💈 EnhancedBarberDashboard - All appointments received:",
-    allAppointments.length,
-  );
-  console.log("💈 Current barber:", user.name, "ID:", user.id);
-  console.log(
-    "💈 All appointments data:",
-    JSON.stringify(allAppointments, null, 2),
-  );
-  console.log("💈 User avatarUrl:", user.avatarUrl);
+  /
 
   // Barber Profile State
   const [barberDbId, setBarberDbId] = useState<string | null>(null);
@@ -232,10 +222,7 @@ export function EnhancedBarberDashboard({
     availableHours: {} as any,
   });
 
-  console.log(
-    "💈 barberProfile.avatarUrl:",
-    barberProfile.avatarUrl,
-  );
+
 
   // Profile update states
   const [isSavingProfile, setIsSavingProfile] = useState(false);
@@ -268,26 +255,11 @@ export function EnhancedBarberDashboard({
   const barberAppointments = allAppointments.filter((apt) => {
     const matchByName = apt.barber === user.name;
     const matchById = apt.barber_id === user.id;
-    console.log(`💈 Checking appointment ${apt.id}:`, {
-      aptBarber: apt.barber,
-      aptBarberId: apt.barber_id,
-      userBarber: user.name,
-      userBarberId: user.id,
-      matchByName,
-      matchById,
-      included: matchByName || matchById,
-    });
+
     return matchByName || matchById;
   });
 
-  console.log(
-    "💈 Filtered barber appointments:",
-    barberAppointments.length,
-  );
-  console.log(
-    "💈 Barber appointments data:",
-    JSON.stringify(barberAppointments, null, 2),
-  );
+
 
   // Sync user avatarUrl changes to barberProfile state
   useEffect(() => {
@@ -304,10 +276,7 @@ export function EnhancedBarberDashboard({
       try {
         // IMPORTANT: For barbers, user.id is the USER ID, not the BARBER ID
         // We need to first get the barber profile to get the actual barber_id
-        console.log(
-          "💈 Fetching barber profile for user:",
-          user.id,
-        );
+
         const barberData = await API.barbers.getByUserId(
           user.id,
         );
@@ -337,20 +306,13 @@ export function EnhancedBarberDashboard({
             end: dbAvailableHours?.end || prev.workingHours.end,
           },
         }));
-        console.log("💈 Loaded specialties from DB:", dbSpecialties);
-        console.log("💈 Loaded available_hours from DB:", dbAvailableHours);
 
-        console.log("💈 Barber profile found:", barberData);
-        console.log(
-          "💈 Fetching reviews for barber ID:",
-          barberData.id,
-        );
 
         // Now fetch reviews using the barber profile ID
         const reviews = await API.reviews.getByBarberId(
           barberData.id,
         );
-        console.log("💈 Fetched reviews:", reviews);
+
 
         setBarberReviews(reviews);
 
@@ -363,7 +325,7 @@ export function EnhancedBarberDashboard({
           );
           const avg = totalRating / reviews.length;
           setAverageRating(Math.round(avg * 10) / 10); // Round to 1 decimal
-          console.log("💈 Calculated average rating:", avg);
+
         } else {
           setAverageRating(0);
         }
@@ -657,7 +619,7 @@ export function EnhancedBarberDashboard({
     appointmentId: string,
   ) => {
     try {
-      console.log('🎯 Marking appointment as complete:', appointmentId);
+
 
       // Update in database - also clear remaining balance and mark payment as paid
       const updated = await API.appointments.update(appointmentId, {
@@ -666,19 +628,19 @@ export function EnhancedBarberDashboard({
         payment_status: "paid",
       });
 
-      console.log('✅ Database updated:', updated);
+
 
       // Update local state with payment info cleared
       const updatedAppointments = allAppointments.map((apt) =>
         apt.id === appointmentId
           ? {
-              ...apt,
-              status: "completed" as const,
-              remainingBalance: 0,
-              remaining_amount: 0,
-              paymentStatus: "paid",
-              payment_status: "paid",
-            }
+            ...apt,
+            status: "completed" as const,
+            remainingBalance: 0,
+            remaining_amount: 0,
+            paymentStatus: "paid",
+            payment_status: "paid",
+          }
           : apt,
       );
       onUpdateAppointments(updatedAppointments);
@@ -705,7 +667,7 @@ export function EnhancedBarberDashboard({
               price: appointment.price || appointment.total_amount || 0,
             }
           );
-          console.log('✅ Completion notifications sent to customer and admin');
+
         } catch (notifError) {
           console.warn(
             "Failed to create notification:",
@@ -865,7 +827,7 @@ export function EnhancedBarberDashboard({
           specialties: barberProfile.specialties,
           available_hours: availableHoursData,
         });
-        console.log('✅ Barbers table updated with specialties and hours');
+
       }
 
       // Update the user object in App.tsx state
@@ -1169,7 +1131,7 @@ export function EnhancedBarberDashboard({
             reason: finalReason,
           }
         );
-        console.log('✅ Cancellation notifications sent to customer and admin');
+
       } catch (notifError) {
         console.warn(
           "Failed to create notifications:",
@@ -1244,7 +1206,7 @@ export function EnhancedBarberDashboard({
             actionLabel: 'View Appointments',
           });
 
-          console.log('✅ Confirmation notifications sent to customer and admin');
+
         } catch (notifError) {
           console.warn(
             "Failed to create notification:",
@@ -1317,7 +1279,7 @@ export function EnhancedBarberDashboard({
             actionLabel: 'View Appointments',
           });
 
-          console.log('✅ Rejection notifications sent to customer and admin');
+
         } catch (notifError) {
           console.warn(
             "Failed to create notification:",
@@ -3040,11 +3002,10 @@ export function EnhancedBarberDashboard({
                           <span className="text-green-600">
                             Payment Status:
                           </span>
-                          <Badge className={`text-xs text-white ${
-                            (selectedAppointment.paymentStatus || selectedAppointment.payment_status) === 'verified' ? 'bg-green-500' :
-                            (selectedAppointment.paymentStatus || selectedAppointment.payment_status) === 'rejected' ? 'bg-red-500' :
-                            'bg-orange-500'
-                          }`}>
+                          <Badge className={`text-xs text-white ${(selectedAppointment.paymentStatus || selectedAppointment.payment_status) === 'verified' ? 'bg-green-500' :
+                              (selectedAppointment.paymentStatus || selectedAppointment.payment_status) === 'rejected' ? 'bg-red-500' :
+                                'bg-orange-500'
+                            }`}>
                             {selectedAppointment.paymentStatus || selectedAppointment.payment_status}
                           </Badge>
                         </div>

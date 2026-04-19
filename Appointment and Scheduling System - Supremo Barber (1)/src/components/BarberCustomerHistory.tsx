@@ -53,7 +53,7 @@ export function BarberCustomerHistory({ appointments }: BarberCustomerHistoryPro
       const customer = customerMap.get(apt.userId)!;
       customer.totalVisits += 1;
       customer.appointments.push(apt);
-      
+
       if (apt.status === 'completed') {
         customer.totalSpent += apt.price;
       }
@@ -65,7 +65,7 @@ export function BarberCustomerHistory({ appointments }: BarberCustomerHistoryPro
     });
 
     // Convert to array and sort by last visit
-    return Array.from(customerMap.values()).sort((a, b) => 
+    return Array.from(customerMap.values()).sort((a, b) =>
       new Date(b.lastVisit).getTime() - new Date(a.lastVisit).getTime()
     );
   }, [appointments]);
@@ -227,7 +227,7 @@ export function BarberCustomerHistory({ appointments }: BarberCustomerHistoryPro
                 <Button variant="outline" onClick={() => setIsNotesDialogOpen(false)}>
                   Close
                 </Button>
-                <Button 
+                <Button
                   className="bg-[#DB9D47] hover:bg-[#C88A35] text-white"
                   onClick={handleSaveNotes}
                 >

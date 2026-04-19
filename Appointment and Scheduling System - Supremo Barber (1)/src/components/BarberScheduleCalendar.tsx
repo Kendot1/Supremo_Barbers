@@ -18,7 +18,7 @@ export function BarberScheduleCalendar({ appointments, barberName }: BarberSched
 
   return (
     <>
-      <AppointmentCalendar 
+      <AppointmentCalendar
         appointments={appointments}
         viewMode="all"
         onEventClick={(apt) => {
@@ -42,14 +42,13 @@ export function BarberScheduleCalendar({ appointments, barberName }: BarberSched
               {/* Status Badge */}
               <div className="flex items-center justify-between">
                 <span className="text-sm text-[#87765E]">Status</span>
-                <Badge 
-                  className={`${
-                    selectedAppointment.status === 'upcoming' || selectedAppointment.status === 'completed' 
-                      ? 'bg-[#DB9D47] hover:bg-[#C88A3A]' 
+                <Badge
+                  className={`${selectedAppointment.status === 'upcoming' || selectedAppointment.status === 'completed'
+                      ? 'bg-[#DB9D47] hover:bg-[#C88A3A]'
                       : selectedAppointment.status === 'cancelled'
-                      ? 'bg-red-500 hover:bg-red-600'
-                      : 'bg-orange-500 hover:bg-orange-600'
-                  } text-white capitalize`}
+                        ? 'bg-red-500 hover:bg-red-600'
+                        : 'bg-orange-500 hover:bg-orange-600'
+                    } text-white capitalize`}
                 >
                   {selectedAppointment.status}
                 </Badge>
@@ -136,14 +135,13 @@ export function BarberScheduleCalendar({ appointments, barberName }: BarberSched
                   {selectedAppointment.paymentStatus && (
                     <div>
                       <p className="text-xs text-[#87765E]">Payment Status</p>
-                      <Badge 
-                        className={`${
-                          selectedAppointment.paymentStatus === 'verified'
+                      <Badge
+                        className={`${selectedAppointment.paymentStatus === 'verified'
                             ? 'bg-green-500 hover:bg-green-600'
                             : selectedAppointment.paymentStatus === 'rejected'
-                            ? 'bg-red-500 hover:bg-red-600'
-                            : 'bg-orange-500 hover:bg-orange-600'
-                        } text-white capitalize text-xs`}
+                              ? 'bg-red-500 hover:bg-red-600'
+                              : 'bg-orange-500 hover:bg-orange-600'
+                          } text-white capitalize text-xs`}
                       >
                         {selectedAppointment.paymentStatus}
                       </Badge>
@@ -178,9 +176,9 @@ export function BarberScheduleCalendar({ appointments, barberName }: BarberSched
                   <div className="space-y-3">
                     <h4 className="text-sm font-medium text-[#5C4A3A]">Payment Proof</h4>
                     <div className="rounded-lg overflow-hidden border border-[#E8DCC8]">
-                      <img 
-                        src={selectedAppointment.paymentProof} 
-                        alt="Payment Proof" 
+                      <img
+                        src={selectedAppointment.paymentProof}
+                        alt="Payment Proof"
                         className="w-full h-auto max-h-[300px] object-contain bg-white"
                       />
                     </div>

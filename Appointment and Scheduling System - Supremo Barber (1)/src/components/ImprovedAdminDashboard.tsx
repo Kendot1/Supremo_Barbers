@@ -18,7 +18,7 @@ export function ImprovedAdminDashboard() {
 
   // Calculate stats from real data
   const today = new Date().toISOString().split('T')[0];
-  
+
   const todayBookings = appointments.filter(apt => apt.date === today);
   const pendingApprovals = appointments.filter(apt => apt.status === 'pending').length;
   const completedToday = todayBookings.filter(apt => apt.status === 'completed');
@@ -50,9 +50,9 @@ export function ImprovedAdminDashboard() {
           {/* Logo */}
           <div className="p-4 border-b border-[#796653]">
             <div className="flex items-center gap-3">
-              <img 
-                src="figma:asset/977b2768ef70cae70ca08f72c19d58ae8904def2.png" 
-                alt="Supremo Barber Logo" 
+              <img
+                src="figma:asset/977b2768ef70cae70ca08f72c19d58ae8904def2.png"
+                alt="Supremo Barber Logo"
                 className="h-10 w-10 flex-shrink-0"
               />
               {sidebarOpen && (
@@ -72,8 +72,8 @@ export function ImprovedAdminDashboard() {
                 onClick={() => setActiveTab(item.id)}
                 className={`
                   w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all
-                  ${activeTab === item.id 
-                    ? 'bg-[#DB9D47] text-white' 
+                  ${activeTab === item.id
+                    ? 'bg-[#DB9D47] text-white'
                     : 'text-[#C4B494] hover:bg-[#6E5A48] hover:text-[#F5EDD8]'
                   }
                 `}
@@ -128,7 +128,7 @@ export function ImprovedAdminDashboard() {
         {/* Content Area */}
         <div className="p-6">
           <LocalBackendBanner />
-          
+
           {activeTab === 'appointments' && (
             <div className="space-y-6">
               {/* Stats Grid */}

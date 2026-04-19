@@ -4,8 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Badge } from './ui/badge';
-import { 
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from './ui/table';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
@@ -94,7 +94,7 @@ export function AuditLogs({ isActive = true }: AuditLogsProps) {
 
   const filteredLogs = logs.filter(log => {
     const description = getDescription(log);
-    const matchesSearch = 
+    const matchesSearch =
       (log.id?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
       (log.userName?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
       (log.userEmail?.toLowerCase() || '').includes(searchTerm.toLowerCase()) ||
@@ -117,7 +117,7 @@ export function AuditLogs({ isActive = true }: AuditLogsProps) {
   // Format action names from snake_case to readable format
   const formatActionName = (action: string): string => {
     if (!action) return '';
-    
+
     // Split by underscore and capitalize each word
     return action
       .split('_')
@@ -125,7 +125,7 @@ export function AuditLogs({ isActive = true }: AuditLogsProps) {
       .join(' ');
   };
 
- 
+
   const handleExportCSV = () => {
     const exportData = filteredLogs.map(log => ({
       'Log ID': log.id,
@@ -142,7 +142,7 @@ export function AuditLogs({ isActive = true }: AuditLogsProps) {
     }));
 
     const headers = ['Log ID', 'Timestamp', 'User', 'Email', 'Role', 'Action', 'Entity Type', 'Entity ID', 'Description', 'Status', 'IP Address'];
-    
+
     exportToCSV(exportData, headers, 'supremo-barber-audit-logs');
     toast.success(`Exported ${filteredLogs.length} audit logs successfully!`);
   };
@@ -219,119 +219,119 @@ export function AuditLogs({ isActive = true }: AuditLogsProps) {
               </div>
             </div>
             <DropdownMenu>
-              
-                <Button onClick={handleExportCSV} className="bg-[#DB9D47] hover:bg-[#C88A35] text-white">
-                  <Download className="w-4 h-4 mr-2" />
-                  Export
-                </Button>
-              
+
+              <Button onClick={handleExportCSV} className="bg-[#DB9D47] hover:bg-[#C88A35] text-white">
+                <Download className="w-4 h-4 mr-2" />
+                Export
+              </Button>
+
             </DropdownMenu>
           </div>
         </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <Input
-              placeholder="Search logs..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9"
-            />
+        <CardContent className="space-y-4">
+          {/* Filters */}
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Input
+                placeholder="Search logs..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="w-full sm:w-48">
+                <SelectValue placeholder="Filter by status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="success">Success</SelectItem>
+                <SelectItem value="warning">Warning</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="failed">Failed</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
-          <Select value={filterStatus} onValueChange={setFilterStatus}>
-            <SelectTrigger className="w-full sm:w-48">
-              <SelectValue placeholder="Filter by status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="success">Success</SelectItem>
-              <SelectItem value="warning">Warning</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
-              <SelectItem value="failed">Failed</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
 
-        {/* Results Count */}
-        <div className="text-sm text-[#87765E]">
-          Showing {filteredLogs.length} of {logs.length} logs
-        </div>
+          {/* Results Count */}
+          <div className="text-sm text-[#87765E]">
+            Showing {filteredLogs.length} of {logs.length} logs
+          </div>
 
-        {/* Logs Table */}
-        <div className="border rounded-lg border-[#E8DCC8] overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-[#FBF7EF] hover:bg-[#FBF7EF]">
-                <TableHead className="text-[#5C4A3A]">Timestamp</TableHead>
-                <TableHead className="text-[#5C4A3A] hidden md:table-cell">User</TableHead>
-                <TableHead className="text-[#5C4A3A]">Action</TableHead>
-                <TableHead className="text-[#5C4A3A] hidden lg:table-cell">Details</TableHead>
-                <TableHead className="text-[#5C4A3A]">Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {currentLogs.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-[#87765E]">
-                    No audit logs found matching your criteria
-                  </TableCell>
+          {/* Logs Table */}
+          <div className="border rounded-lg border-[#E8DCC8] overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-[#FBF7EF] hover:bg-[#FBF7EF]">
+                  <TableHead className="text-[#5C4A3A]">Timestamp</TableHead>
+                  <TableHead className="text-[#5C4A3A] hidden md:table-cell">User</TableHead>
+                  <TableHead className="text-[#5C4A3A]">Action</TableHead>
+                  <TableHead className="text-[#5C4A3A] hidden lg:table-cell">Details</TableHead>
+                  <TableHead className="text-[#5C4A3A]">Status</TableHead>
                 </TableRow>
-              ) : (
-                currentLogs.map((log, index) => (
-                  <TableRow key={`audit-log-${log.id || index}`} className="hover:bg-[#FFFDF8]">
-                    <TableCell className="text-sm text-[#87765E]">
-                      {new Date(log.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                      <div className="text-xs">{new Date(log.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
-                    </TableCell>
-                    <TableCell className="text-[#5C4A3A] hidden md:table-cell">
-                      {log.userName || log.userEmail || log.userId}
-                    </TableCell>
-                    <TableCell className="text-sm text-[#5C4A3A]">{formatActionName(log.action)}</TableCell>
-                    <TableCell className="text-sm text-[#87765E] hidden lg:table-cell">{getDescription(log)}</TableCell>
-                    <TableCell>
-                      <Badge variant={getStatusBadgeVariant(log.status)} className="text-xs whitespace-nowrap">
-                        {log.status}
-                      </Badge>
+              </TableHeader>
+              <TableBody>
+                {currentLogs.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-8 text-[#87765E]">
+                      No audit logs found matching your criteria
                     </TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
-
-        {/* Pagination */}
-        <Pagination
-          totalItems={filteredLogs.length}
-          itemsPerPage={logsPerPage}
-          currentPage={currentPage}
-          totalPages={Math.ceil(filteredLogs.length / logsPerPage)}
-          onPageChange={setCurrentPage}
-          onItemsPerPageChange={(newSize) => {
-            setLogsPerPage(newSize);
-            setCurrentPage(1); // Reset to first page when changing page size
-          }}
-        />
-
-        {/* Loading State */}
-        {isLoading && (
-          <div className="text-center py-8 text-[#87765E]">
-            Loading audit logs...
+                ) : (
+                  currentLogs.map((log, index) => (
+                    <TableRow key={`audit-log-${log.id || index}`} className="hover:bg-[#FFFDF8]">
+                      <TableCell className="text-sm text-[#87765E]">
+                        {new Date(log.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        <div className="text-xs">{new Date(log.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
+                      </TableCell>
+                      <TableCell className="text-[#5C4A3A] hidden md:table-cell">
+                        {log.userName || log.userEmail || log.userId}
+                      </TableCell>
+                      <TableCell className="text-sm text-[#5C4A3A]">{formatActionName(log.action)}</TableCell>
+                      <TableCell className="text-sm text-[#87765E] hidden lg:table-cell">{getDescription(log)}</TableCell>
+                      <TableCell>
+                        <Badge variant={getStatusBadgeVariant(log.status)} className="text-xs whitespace-nowrap">
+                          {log.status}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           </div>
-        )}
 
-        {/* Empty State */}
-        {!isLoading && logs.length === 0 && (
-          <div className="text-center py-8 text-[#87765E]">
-            <Activity className="w-12 h-12 mx-auto mb-4 text-[#E8DCC8]" />
-            <p>No audit logs available.</p>
-            <p className="text-sm mt-2">Backend server must be running to display audit logs.</p>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+          {/* Pagination */}
+          <Pagination
+            totalItems={filteredLogs.length}
+            itemsPerPage={logsPerPage}
+            currentPage={currentPage}
+            totalPages={Math.ceil(filteredLogs.length / logsPerPage)}
+            onPageChange={setCurrentPage}
+            onItemsPerPageChange={(newSize) => {
+              setLogsPerPage(newSize);
+              setCurrentPage(1); // Reset to first page when changing page size
+            }}
+          />
+
+          {/* Loading State */}
+          {isLoading && (
+            <div className="text-center py-8 text-[#87765E]">
+              Loading audit logs...
+            </div>
+          )}
+
+          {/* Empty State */}
+          {!isLoading && logs.length === 0 && (
+            <div className="text-center py-8 text-[#87765E]">
+              <Activity className="w-12 h-12 mx-auto mb-4 text-[#E8DCC8]" />
+              <p>No audit logs available.</p>
+              <p className="text-sm mt-2">Backend server must be running to display audit logs.</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

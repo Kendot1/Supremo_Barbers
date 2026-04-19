@@ -165,15 +165,15 @@ export function PaymentProofUpload({
                 {idx > 0 && (
                   <div
                     className={`flex-1 h-1 transition-colors ${currentStep > idx
-                        ? "bg-[#DB9D47]"
-                        : "bg-[#E8DCC8]"
+                      ? "bg-[#DB9D47]"
+                      : "bg-[#E8DCC8]"
                       }`}
                   />
                 )}
                 <div
                   className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors shadow-sm mx-2 text-sm font-medium ${currentStep >= s.num
-                      ? "bg-gradient-to-br from-[#DB9D47] to-[#C56E33] text-white"
-                      : "bg-[#F8F0E0] text-[#87765E]"
+                    ? "bg-gradient-to-br from-[#DB9D47] to-[#C56E33] text-white"
+                    : "bg-[#F8F0E0] text-[#87765E]"
                     }`}
                 >
                   {currentStep > s.num ? (
@@ -185,8 +185,8 @@ export function PaymentProofUpload({
                 {idx < 1 && (
                   <div
                     className={`flex-1 h-1 transition-colors ${currentStep > s.num
-                        ? "bg-[#DB9D47]"
-                        : "bg-[#E8DCC8]"
+                      ? "bg-[#DB9D47]"
+                      : "bg-[#E8DCC8]"
                       }`}
                   />
                 )}

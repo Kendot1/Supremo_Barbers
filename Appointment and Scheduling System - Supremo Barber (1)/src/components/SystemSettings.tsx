@@ -58,8 +58,7 @@ export function SystemSettings() {
         }
       } catch (error) {
         // Silently handle - settings endpoint is optional
-        // Using default settings if backend isn't configured
-        console.log('Settings endpoint not available, using defaults');
+
         setIsConnected(false);
       } finally {
         setIsLoading(false);
@@ -106,7 +105,7 @@ export function SystemSettings() {
 
   return (
     <div className="space-y-6">
-      
+
 
       {/* Working Hours */}
       <Card>
@@ -299,7 +298,7 @@ export function SystemSettings() {
       </div>
 
 
-     
+
     </div>
   );
 }

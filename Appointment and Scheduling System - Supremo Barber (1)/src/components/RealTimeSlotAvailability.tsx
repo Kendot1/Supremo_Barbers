@@ -157,13 +157,13 @@ export function RealTimeSlotAvailability() {
   // Fetch barbers with their availability schedules
   const fetchBarbers = async () => {
     try {
-      console.log('🔍 Fetching barbers...');
+
       const fetchedBarbers = await API.barbers.getAll();
-      console.log('📋 All barbers from API:', fetchedBarbers);
+
 
       // Only include active barbers
       const activeBarbers = fetchedBarbers.filter(b => b.status === 'active' || b.isActive !== false);
-      console.log('✅ Active barbers:', activeBarbers);
+
 
       // Fetch availability for each barber
       const barbersWithAvailability = await Promise.all(
@@ -171,7 +171,7 @@ export function RealTimeSlotAvailability() {
           try {
             // Fetch barber's availability schedule from backend
             const availability = await API.barbers.getAvailability(barber.id || barber._id || '');
-            console.log(`📅 Availability for ${barber.name}:`, availability);
+
             return {
               ...barber,
               availability: availability || [], // Use real availability or empty array
@@ -187,7 +187,7 @@ export function RealTimeSlotAvailability() {
         })
       );
 
-      console.log('👥 Barbers with availability:', barbersWithAvailability);
+
       setBarbers(barbersWithAvailability as BarberData[]);
     } catch (error) {
       console.error('Error fetching barbers:', error);
@@ -205,22 +205,21 @@ export function RealTimeSlotAvailability() {
       const day = String(date.getDate()).padStart(2, '0');
       const dateString = `${year}-${month}-${day}`;
 
-      console.log('🔍 Fetching appointments for date (local timezone):', dateString);
-      console.log('🌍 User timezone offset:', -date.getTimezoneOffset() / 60, 'hours from UTC');
+
 
       const allAppointments = await API.appointments.getAll({
         dateFrom: dateString,
         dateTo: dateString,
       });
 
-      console.log('📅 Raw appointments from API:', allAppointments);
+
 
       // Only include confirmed appointments (pending and confirmed status)
       const relevantAppointments = allAppointments.filter(
         apt => apt.status === 'pending' || apt.status === 'confirmed'
       );
 
-      console.log('✅ Filtered appointments (pending/confirmed):', relevantAppointments);
+
 
       setAppointments(relevantAppointments);
     } catch (error) {
@@ -369,18 +368,7 @@ export function RealTimeSlotAvailability() {
     loadAppointments();
   }, [selectedDate]);
 
-  // Recalculate slots when barbers, appointments, selected date, or selected barber changes
-  useEffect(() => {
-    console.log('🔄 Recalculating slots...');
-    console.log('  - Barbers:', barbers.length);
-    console.log('  - Appointments:', appointments.length);
-    console.log('  - Selected Date:', selectedDate);
-    console.log('  - Selected Barber:', selectedBarber);
 
-    const slots = calculateSlotAvailability();
-    console.log('⏰ Generated time slots:', slots);
-    setTimeSlots(slots);
-  }, [barbers, appointments, selectedBarber, selectedDate]);
 
   // Manual refresh function
   const handleRefresh = async () => {

@@ -4,8 +4,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Badge } from './ui/badge';
-import { 
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from './ui/table';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
@@ -13,8 +13,8 @@ import {
 import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle
 } from './ui/dialog';
-import { 
-  Search, Star, Filter, Eye, EyeOff, Trash2, Download, TrendingUp 
+import {
+  Search, Star, Filter, Eye, EyeOff, Trash2, Download, TrendingUp
 } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
@@ -125,9 +125,9 @@ const mockReviews: Review[] = [
   },
 ];
 
-export function ReviewsManagement({ 
-  reviews: propReviews, 
-  onUpdateReviews 
+export function ReviewsManagement({
+  reviews: propReviews,
+  onUpdateReviews
 }: ReviewsManagementProps) {
   const [reviews, setReviews] = useState<Review[]>(propReviews || mockReviews);
   const [isLoading, setIsLoading] = useState(true);
@@ -172,10 +172,10 @@ export function ReviewsManagement({
     const total = reviews.length;
     const approved = reviews.filter(r => r.status === 'approved').length;
     const featured = reviews.filter(r => r.featured).length;
-    const avgRating = reviews.length > 0 
+    const avgRating = reviews.length > 0
       ? (reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length).toFixed(1)
       : '0.0';
-    
+
     return { total, approved, featured, avgRating };
   }, [reviews]);
 
@@ -184,8 +184,8 @@ export function ReviewsManagement({
     return reviews.filter(review => {
       // Format date for better search experience (supports both YYYY-MM-DD and formatted dates)
       const formattedDate = parseLocalDate(review.date).toLocaleDateString();
-      
-      const matchesSearch = 
+
+      const matchesSearch =
         review.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
         review.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         review.comment.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -195,14 +195,14 @@ export function ReviewsManagement({
         formattedDate.toLowerCase().includes(searchTerm.toLowerCase()) ||
         review.rating.toString().includes(searchTerm) ||
         review.status.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      const matchesRating = filterRating === 'all' || 
-                           (filterRating === '5' && review.rating === 5) ||
-                           (filterRating === '4+' && review.rating >= 4) ||
-                           (filterRating === '3-' && review.rating <= 3);
-      
+
+      const matchesRating = filterRating === 'all' ||
+        (filterRating === '5' && review.rating === 5) ||
+        (filterRating === '4+' && review.rating >= 4) ||
+        (filterRating === '3-' && review.rating <= 3);
+
       const matchesStatus = filterStatus === 'all' || review.status === filterStatus;
-      
+
       return matchesSearch && matchesRating && matchesStatus;
     });
   }, [reviews, searchTerm, filterRating, filterStatus]);
@@ -213,7 +213,7 @@ export function ReviewsManagement({
       const fetchedReviews = await API.reviews.getAll();
       setReviews(fetchedReviews);
       onUpdateReviews?.(fetchedReviews);
-      
+
       const review = reviews.find(r => r.id === reviewId);
       if (review) {
         toast.success(review.featured ? 'Review removed from featured' : 'Review added to featured');
@@ -312,11 +312,10 @@ export function ReviewsManagement({
         {[1, 2, 3, 4, 5].map((star) => (
           <Star
             key={star}
-            className={`w-4 h-4 ${
-              star <= rating
+            className={`w-4 h-4 ${star <= rating
                 ? 'fill-[#DB9D47] text-[#DB9D47]'
                 : 'text-[#E8DCC8]'
-            }`}
+              }`}
           />
         ))}
       </div>
@@ -384,7 +383,7 @@ export function ReviewsManagement({
                 Manage and showcase customer feedback
               </CardDescription>
             </div>
-            <Button 
+            <Button
               onClick={handleExportReviews}
               className="bg-[#DB9D47] hover:bg-[#C88A35] text-white text-xs md:text-sm px-3 md:px-4"
             >
@@ -470,11 +469,10 @@ export function ReviewsManagement({
                           {[1, 2, 3, 4, 5].map((star) => (
                             <Star
                               key={star}
-                              className={`w-3 h-3 md:w-4 md:h-4 ${
-                                star <= review.rating
+                              className={`w-3 h-3 md:w-4 md:h-4 ${star <= review.rating
                                   ? 'fill-[#DB9D47] text-[#DB9D47]'
                                   : 'text-[#E8DCC8]'
-                              }`}
+                                }`}
                             />
                           ))}
                         </div>
@@ -485,15 +483,14 @@ export function ReviewsManagement({
                         {parseLocalDate(review.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                       </TableCell>
                       <TableCell>
-                        <Badge 
+                        <Badge
                           variant="outline"
-                          className={`text-[10px] md:text-xs ${
-                            review.status === 'approved' 
+                          className={`text-[10px] md:text-xs ${review.status === 'approved'
                               ? 'bg-green-100 text-green-700 border-green-200'
                               : review.status === 'pending'
-                              ? 'bg-yellow-100 text-yellow-700 border-yellow-200'
-                              : 'bg-red-100 text-red-700 border-red-200'
-                          }`}
+                                ? 'bg-yellow-100 text-yellow-700 border-yellow-200'
+                                : 'bg-red-100 text-red-700 border-red-200'
+                            }`}
                         >
                           {review.status}
                         </Badge>
@@ -613,14 +610,14 @@ export function ReviewsManagement({
                 </div>
                 <div>
                   <p className="text-sm text-[#87765E] mb-1">Status</p>
-                  <Badge 
+                  <Badge
                     variant="outline"
                     className={
-                      selectedReview.status === 'approved' 
+                      selectedReview.status === 'approved'
                         ? 'bg-green-100 text-green-700 border-green-200'
                         : selectedReview.status === 'pending'
-                        ? 'bg-yellow-100 text-yellow-700 border-yellow-200'
-                        : 'bg-red-100 text-red-700 border-red-200'
+                          ? 'bg-yellow-100 text-yellow-700 border-yellow-200'
+                          : 'bg-red-100 text-red-700 border-red-200'
                     }
                   >
                     {selectedReview.status}
@@ -634,8 +631,8 @@ export function ReviewsManagement({
             </div>
           )}
           <DialogFooter>
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => setIsViewDialogOpen(false)}
             >
               Close
@@ -663,15 +660,15 @@ export function ReviewsManagement({
           passwordConfirmation.action === 'delete'
             ? 'Confirm Review Deletion'
             : passwordConfirmation.action === 'approve'
-            ? 'Confirm Review Approval'
-            : 'Confirm Review Rejection'
+              ? 'Confirm Review Approval'
+              : 'Confirm Review Rejection'
         }
         description={
           passwordConfirmation.action === 'delete'
             ? `Enter your password to confirm deletion of review by ${passwordConfirmation.customerName}`
             : passwordConfirmation.action === 'approve'
-            ? `Enter your password to approve review by ${passwordConfirmation.customerName}`
-            : `Enter your password to reject review by ${passwordConfirmation.customerName}`
+              ? `Enter your password to approve review by ${passwordConfirmation.customerName}`
+              : `Enter your password to reject review by ${passwordConfirmation.customerName}`
         }
         actionType={passwordConfirmation.action === 'delete' ? 'delete' : 'edit'}
       />

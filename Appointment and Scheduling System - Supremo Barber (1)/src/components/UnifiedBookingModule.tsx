@@ -64,7 +64,7 @@ export function UnifiedBookingModule({
             {tabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
-              
+
               return (
                 <button
                   key={tab.id}
@@ -79,8 +79,8 @@ export function UnifiedBookingModule({
                 >
                   <div className={`
                     w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0
-                    ${isActive 
-                      ? 'bg-white/20' 
+                    ${isActive
+                      ? 'bg-white/20'
                       : 'bg-gradient-to-br from-[#DB9D47]/10 to-[#D98555]/10'
                     }
                   `}>

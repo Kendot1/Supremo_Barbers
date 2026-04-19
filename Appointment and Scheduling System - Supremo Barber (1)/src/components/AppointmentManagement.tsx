@@ -24,10 +24,10 @@ interface Appointment {
 }
 
 const mockAppointments: Appointment[] = [
-  { 
-    id: '1', 
-    customer: 'Mike Customer', 
-    barber: 'Tony Stark', 
+  {
+    id: '1',
+    customer: 'Mike Customer',
+    barber: 'Tony Stark',
     service: 'Gupit Supremo w/ Banlaw',
     date: '2025-10-15',
     time: '10:00 AM',
@@ -35,10 +35,10 @@ const mockAppointments: Appointment[] = [
     price: 300,
     downPayment: 150
   },
-  { 
-    id: '2', 
-    customer: 'John Doe', 
-    barber: 'Peter Parker', 
+  {
+    id: '2',
+    customer: 'John Doe',
+    barber: 'Peter Parker',
     service: 'Gupit Supremo',
     date: '2025-10-15',
     time: '11:00 AM',
@@ -46,10 +46,10 @@ const mockAppointments: Appointment[] = [
     price: 250,
     downPayment: 125
   },
-  { 
-    id: '3', 
-    customer: 'Sarah Wilson', 
-    barber: 'Tony Stark', 
+  {
+    id: '3',
+    customer: 'Sarah Wilson',
+    barber: 'Tony Stark',
     service: 'Supremo Espesyal',
     date: '2025-10-16',
     time: '02:00 PM',
@@ -57,10 +57,10 @@ const mockAppointments: Appointment[] = [
     price: 450,
     downPayment: 225
   },
-  { 
-    id: '4', 
-    customer: 'Emily Johnson', 
-    barber: 'Bruce Wayne', 
+  {
+    id: '4',
+    customer: 'Emily Johnson',
+    barber: 'Bruce Wayne',
     service: 'Ahit Supremo',
     date: '2025-10-14',
     time: '09:00 AM',
@@ -68,10 +68,10 @@ const mockAppointments: Appointment[] = [
     price: 200,
     downPayment: 100
   },
-  { 
-    id: '5', 
-    customer: 'David Smith', 
-    barber: 'Peter Parker', 
+  {
+    id: '5',
+    customer: 'David Smith',
+    barber: 'Peter Parker',
     service: 'Tina (Hair Color)',
     date: '2025-10-13',
     time: '03:00 PM',
@@ -108,11 +108,11 @@ export function AppointmentManagement({ user }: AppointmentManagementProps = {})
 
   const filteredAppointments = appointments.filter(apt => {
     const matchesStatus = filterStatus === 'all' || apt.status === filterStatus;
-    
+
     // Format date for better search experience
     const formattedDate = parseLocalDate(apt.date).toLocaleDateString();
-    
-    const matchesSearch = 
+
+    const matchesSearch =
       apt.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       apt.customer.toLowerCase().includes(searchTerm.toLowerCase()) ||
       apt.service.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -122,7 +122,7 @@ export function AppointmentManagement({ user }: AppointmentManagementProps = {})
       apt.time.toLowerCase().includes(searchTerm.toLowerCase()) ||
       apt.price.toString().includes(searchTerm);
     const matchesBarber = filterBarber === 'all' || apt.barber === filterBarber;
-    
+
     return matchesStatus && matchesSearch && matchesBarber;
   });
 
@@ -151,18 +151,18 @@ export function AppointmentManagement({ user }: AppointmentManagementProps = {})
   const confirmApprove = async () => {
     if (passwordConfirmation.appointmentId && user) {
       const appointment = appointments.find(apt => apt.id === passwordConfirmation.appointmentId);
-      
+
       if (appointment) {
         // Update local state
-        setAppointments(appointments.map(apt => 
+        setAppointments(appointments.map(apt =>
           apt.id === passwordConfirmation.appointmentId ? { ...apt, status: 'approved' as const } : apt
         ));
         toast.success('Appointment approved');
-        
+
         // Send notification to customer
         try {
           const fullAppointment = await API.appointments.getById(passwordConfirmation.appointmentId);
-          
+
           await logAppointmentStatusUpdate(
             user.id,
             user.role as 'customer' | 'barber' | 'admin',
@@ -180,7 +180,7 @@ export function AppointmentManagement({ user }: AppointmentManagementProps = {})
               time: appointment.time,
             }
           );
-       
+
         } catch (error) {
           console.error('❌ Failed to send notification:', error);
           // Don't fail the operation if notification fails
@@ -201,18 +201,18 @@ export function AppointmentManagement({ user }: AppointmentManagementProps = {})
   const confirmCancel = async () => {
     if (passwordConfirmation.appointmentId && user) {
       const appointment = appointments.find(apt => apt.id === passwordConfirmation.appointmentId);
-      
+
       if (appointment) {
         // Update local state
-        setAppointments(appointments.map(apt => 
+        setAppointments(appointments.map(apt =>
           apt.id === passwordConfirmation.appointmentId ? { ...apt, status: 'cancelled' as const } : apt
         ));
         toast.success('Appointment cancelled');
-        
+
         // Send notification to customer
         try {
           const fullAppointment = await API.appointments.getById(passwordConfirmation.appointmentId);
-          
+
           await logAppointmentStatusUpdate(
             user.id,
             user.role as 'customer' | 'barber' | 'admin',
@@ -230,7 +230,7 @@ export function AppointmentManagement({ user }: AppointmentManagementProps = {})
               time: appointment.time,
             }
           );
-     
+
         } catch (error) {
           console.error('❌ Failed to send notification:', error);
           // Don't fail the operation if notification fails
@@ -251,18 +251,18 @@ export function AppointmentManagement({ user }: AppointmentManagementProps = {})
   const confirmComplete = async () => {
     if (passwordConfirmation.appointmentId && user) {
       const appointment = appointments.find(apt => apt.id === passwordConfirmation.appointmentId);
-      
+
       if (appointment) {
         // Update local state
-        setAppointments(appointments.map(apt => 
+        setAppointments(appointments.map(apt =>
           apt.id === passwordConfirmation.appointmentId ? { ...apt, status: 'completed' as const } : apt
         ));
         toast.success('Appointment marked as completed');
-        
+
         // Send notification to customer
         try {
           const fullAppointment = await API.appointments.getById(passwordConfirmation.appointmentId);
-          
+
           await logAppointmentStatusUpdate(
             user.id,
             user.role as 'customer' | 'barber' | 'admin',
@@ -280,7 +280,7 @@ export function AppointmentManagement({ user }: AppointmentManagementProps = {})
               time: appointment.time,
             }
           );
-       
+
         } catch (error) {
           console.error('❌ Failed to send notification:', error);
           // Don't fail the operation if notification fails
@@ -472,20 +472,20 @@ export function AppointmentManagement({ user }: AppointmentManagementProps = {})
           </TabsContent>
 
           <TabsContent value="calendar" className="space-y-4">
-            <AppointmentCalendar 
+            <AppointmentCalendar
               appointments={convertedAppointments}
               viewMode="all"
             />
           </TabsContent>
 
           <TabsContent value="payments" className="space-y-4">
-            <PaymentVerification 
+            <PaymentVerification
               appointments={convertedAppointments}
               onUpdateAppointment={(appointmentId, updates) => {
                 // Update the local appointments state
-                setAppointments(appointments.map(apt => 
-                  apt.id === appointmentId 
-                    ? { ...apt, status: updates.paymentStatus === 'verified' ? 'approved' : apt.status } 
+                setAppointments(appointments.map(apt =>
+                  apt.id === appointmentId
+                    ? { ...apt, status: updates.paymentStatus === 'verified' ? 'approved' : apt.status }
                     : apt
                 ));
               }}
@@ -515,15 +515,15 @@ export function AppointmentManagement({ user }: AppointmentManagementProps = {})
           passwordConfirmation.action === 'approve'
             ? 'Confirm Appointment Approval'
             : passwordConfirmation.action === 'cancel'
-            ? 'Confirm Appointment Cancellation'
-            : 'Confirm Appointment Completion'
+              ? 'Confirm Appointment Cancellation'
+              : 'Confirm Appointment Completion'
         }
         description={
           passwordConfirmation.action === 'approve'
             ? `Enter your password to approve appointment for ${passwordConfirmation.customerName}`
             : passwordConfirmation.action === 'cancel'
-            ? `Enter your password to cancel appointment for ${passwordConfirmation.customerName}`
-            : `Enter your password to mark appointment as completed for ${passwordConfirmation.customerName}`
+              ? `Enter your password to cancel appointment for ${passwordConfirmation.customerName}`
+              : `Enter your password to mark appointment as completed for ${passwordConfirmation.customerName}`
         }
         actionType={passwordConfirmation.action === 'cancel' ? 'delete' : 'edit'}
       />

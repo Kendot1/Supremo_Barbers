@@ -73,10 +73,10 @@ export function FavoritesCart({
 
     try {
       setIsLoading(true);
-      
+
       // Get favorite service IDs
       const favorites = await API.favorites.getAll(userId);
-      
+
       if (!favorites || favorites.length === 0) {
         setFavoriteServices([]);
         setFavoriteCount(0);
@@ -88,7 +88,7 @@ export function FavoritesCart({
 
       // Get all services
       const allServices = await API.services.getAll();
-      
+
       // Filter services that are in favorites
       const favoriteServiceIds = favorites.map((f: any) => f.serviceId);
       const favServices = allServices.filter((s: Service) =>
@@ -107,7 +107,7 @@ export function FavoritesCart({
   // Load favorites count on mount and when userId changes (for badge)
   useEffect(() => {
     fetchFavoritesCount();
-    
+
     // Listen to favorite events for real-time updates (like notifications)
     const unsubscribe = favoriteEvents.subscribe((event) => {
       // Only update if event is for current user
@@ -118,17 +118,17 @@ export function FavoritesCart({
         } else if (event.type === 'removed') {
           // Decrement count instantly
           setFavoriteCount(prev => Math.max(0, prev - 1));
-          
+
           // Also update the detailed list if sheet is open
           if (isOpen) {
-            setFavoriteServices(prev => 
+            setFavoriteServices(prev =>
               prev.filter(s => String(s.id) !== event.serviceId)
             );
           }
         }
       }
     });
-    
+
     return () => unsubscribe();
   }, [userId, isOpen]);
 
@@ -142,19 +142,19 @@ export function FavoritesCart({
   const handleRemoveFavorite = async (serviceId: string) => {
     try {
       setRemovingId(serviceId);
-      
+
       // OPTIMISTIC UPDATE: Update UI immediately
       setFavoriteServices((prev) =>
         prev.filter((s) => String(s.id) !== serviceId)
       );
       setFavoriteCount((prev) => Math.max(0, prev - 1));
-      
+
       // Then update database
       await API.favorites.remove(userId, serviceId);
-      
+
       // Emit event for other components to update in real-time
       favoriteEvents.removeFavorite(userId, serviceId);
-      
+
       toast.success("Removed from favorites");
     } catch (error) {
       console.error("Error removing favorite:", error);
@@ -169,19 +169,19 @@ export function FavoritesCart({
   const handleDeleteSelected = async () => {
     try {
       setRemovingId("all");
-      
+
       // OPTIMISTIC UPDATE: Update UI immediately
       setFavoriteServices((prev) =>
         prev.filter((s) => !selectedServiceIds.includes(String(s.id)))
       );
       setFavoriteCount((prev) => Math.max(0, prev - selectedServiceIds.length));
-      
+
       // Then update database
       await API.favorites.removeMultiple(userId, selectedServiceIds);
-      
+
       // Emit event for other components to update in real-time
       selectedServiceIds.forEach(serviceId => favoriteEvents.removeFavorite(userId, serviceId));
-      
+
       toast.success("Selected favorites removed");
     } catch (error) {
       console.error("Error removing selected favorites:", error);
@@ -209,7 +209,7 @@ export function FavoritesCart({
   };
 
   const toggleSelectService = (serviceId: string) => {
-    setSelectedServiceIds(prev => 
+    setSelectedServiceIds(prev =>
       prev.includes(serviceId)
         ? prev.filter(id => id !== serviceId)
         : [...prev, serviceId]
@@ -225,7 +225,7 @@ export function FavoritesCart({
   };
 
   // Calculate totals for selected services only
-  const selectedServices = favoriteServices.filter(s => 
+  const selectedServices = favoriteServices.filter(s =>
     selectedServiceIds.includes(String(s.id))
   );
   const selectedTotalPrice = selectedServices.reduce((sum, s) => sum + s.price, 0);
@@ -329,9 +329,8 @@ export function FavoritesCart({
                       return (
                         <Card
                           key={serviceId}
-                          className={`border-[#E8DCC8] overflow-hidden hover:shadow-md transition-all ${
-                            isSelected ? "ring-2 ring-[#DB9D47] bg-[#FBF7EF]" : ""
-                          }`}
+                          className={`border-[#E8DCC8] overflow-hidden hover:shadow-md transition-all ${isSelected ? "ring-2 ring-[#DB9D47] bg-[#FBF7EF]" : ""
+                            }`}
                         >
                           <div className="flex gap-3 p-3">
                             {/* Checkbox */}

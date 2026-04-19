@@ -45,13 +45,13 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
             Privacy Policy - Supremo Barber
           </h2>
           <p className="text-[#5C4A3A] leading-relaxed mb-3">
-            At Supremo Barber, we take your privacy seriously. This Privacy Policy explains how we collect, 
-            use, store, and protect your personal information when you use our online booking system. 
+            At Supremo Barber, we take your privacy seriously. This Privacy Policy explains how we collect,
+            use, store, and protect your personal information when you use our online booking system.
             We believe in transparency, so we've written this in clear, straightforward language.
           </p>
           <div className="p-3 bg-blue-50 rounded-md">
             <p className="text-sm text-blue-900">
-              <strong>In Short:</strong> We collect only what we need to provide you with excellent service, 
+              <strong>In Short:</strong> We collect only what we need to provide you with excellent service,
               we never sell your data, and we protect it with industry-standard security measures.
             </p>
           </div>
@@ -81,7 +81,7 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
 
                 <div>
                   <h4 className="font-semibold text-[#6E5A48] mb-2">1. Information You Provide Directly</h4>
-                  
+
                   <div className="space-y-3">
                     <div className="p-3 bg-[#F5EDD8] rounded-md">
                       <p className="font-semibold text-[#6E5A48] mb-2 text-sm">Account Registration Information</p>
@@ -144,7 +144,7 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
 
                 <div className="p-3 bg-blue-50 rounded-md border-l-4 border-blue-400">
                   <p className="text-sm text-blue-900">
-                    <strong>Voluntary Information:</strong> We only collect information you voluntarily provide. 
+                    <strong>Voluntary Information:</strong> We only collect information you voluntarily provide.
                     You can use our website to browse services without creating an account, though booking requires registration.
                   </p>
                 </div>
@@ -268,7 +268,7 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
 
                 <div className="p-3 bg-amber-50 rounded-md border-l-4 border-amber-400">
                   <p className="text-sm text-amber-900">
-                    <strong>Purpose Limitation:</strong> We only use your information for the purposes described in this policy. 
+                    <strong>Purpose Limitation:</strong> We only use your information for the purposes described in this policy.
                     We will not use your information for unrelated purposes without your explicit consent.
                   </p>
                 </div>
@@ -300,8 +300,8 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
                   <div className="p-3 bg-[#F5EDD8] rounded-md">
                     <p className="font-semibold text-[#6E5A48] mb-2 text-sm">With Our Team</p>
                     <p className="text-sm text-[#5C4A3A]">
-                      Your information is shared with our barbers and administrative staff who need it to provide services 
-                      (e.g., your barber sees your name, appointment details, and special requests). All staff are bound by 
+                      Your information is shared with our barbers and administrative staff who need it to provide services
+                      (e.g., your barber sees your name, appointment details, and special requests). All staff are bound by
                       confidentiality obligations.
                     </p>
                   </div>
@@ -318,7 +318,7 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
                       <li>• <strong>SMS Gateway:</strong> Text message delivery for appointment reminders</li>
                     </ul>
                     <p className="text-xs text-[#5C4A3A] mt-2">
-                      These providers only access information necessary to perform their functions and are contractually 
+                      These providers only access information necessary to perform their functions and are contractually
                       obligated to keep it confidential.
                     </p>
                   </div>
@@ -340,8 +340,8 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
                   <div className="p-3 bg-[#F5EDD8] rounded-md">
                     <p className="font-semibold text-[#6E5A48] mb-2 text-sm">Business Transfers</p>
                     <p className="text-sm text-[#5C4A3A]">
-                      If Supremo Barber is involved in a merger, acquisition, or sale of assets, your information may be 
-                      transferred as part of that transaction. We will notify you via email and/or prominent notice on our 
+                      If Supremo Barber is involved in a merger, acquisition, or sale of assets, your information may be
+                      transferred as part of that transaction. We will notify you via email and/or prominent notice on our
                       website before your information is transferred and becomes subject to a different privacy policy.
                     </p>
                   </div>
@@ -349,7 +349,7 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
                   <div className="p-3 bg-[#F5EDD8] rounded-md">
                     <p className="font-semibold text-[#6E5A48] mb-2 text-sm">With Your Consent</p>
                     <p className="text-sm text-[#5C4A3A]">
-                      We may share your information with third parties when you explicitly consent to such sharing 
+                      We may share your information with third parties when you explicitly consent to such sharing
                       (e.g., if you authorize us to share information with a partner promotion).
                     </p>
                   </div>
@@ -357,7 +357,7 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
 
                 <div className="p-3 bg-green-50 rounded-md border-l-4 border-green-400">
                   <p className="text-sm text-green-900">
-                    <strong>No Selling:</strong> We will never sell your personal information to data brokers, 
+                    <strong>No Selling:</strong> We will never sell your personal information to data brokers,
                     advertisers, or other third parties. Your trust is more valuable to us than any profit from selling data.
                   </p>
                 </div>
@@ -378,7 +378,7 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
             <AccordionContent className="px-6 pb-6 pt-2">
               <div className="space-y-4">
                 <p className="text-[#5C4A3A] text-sm">
-                  We implement multiple layers of security to protect your personal information from unauthorized access, 
+                  We implement multiple layers of security to protect your personal information from unauthorized access,
                   disclosure, alteration, or destruction:
                 </p>
 
@@ -447,16 +447,16 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
 
                 <div className="p-3 bg-amber-50 rounded-md border-l-4 border-amber-400">
                   <p className="text-sm text-amber-900">
-                    <strong>Your Responsibility:</strong> While we implement strong security measures, you also play a role. 
-                    Use a strong, unique password, don't share your login credentials, and log out from shared devices. 
+                    <strong>Your Responsibility:</strong> While we implement strong security measures, you also play a role.
+                    Use a strong, unique password, don't share your login credentials, and log out from shared devices.
                     Report any suspicious activity immediately.
                   </p>
                 </div>
 
                 <div className="p-3 bg-red-50 rounded-md border-l-4 border-red-400">
                   <p className="text-sm text-red-900">
-                    <strong>Data Breach Notification:</strong> In the unlikely event of a data breach affecting your 
-                    personal information, we will notify you within 72 hours via email and provide details about what 
+                    <strong>Data Breach Notification:</strong> In the unlikely event of a data breach affecting your
+                    personal information, we will notify you within 72 hours via email and provide details about what
                     happened and what steps we're taking.
                   </p>
                 </div>
@@ -533,7 +533,7 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
 
                 <div className="p-3 bg-blue-50 rounded-md border-l-4 border-blue-400">
                   <p className="text-sm text-blue-900">
-                    <strong>Data Minimization:</strong> We regularly review and delete data that's no longer needed. 
+                    <strong>Data Minimization:</strong> We regularly review and delete data that's no longer needed.
                     Anonymized aggregate data (e.g., "100 haircuts in January") may be kept indefinitely for business analytics.
                   </p>
                 </div>
@@ -660,7 +660,7 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
 
                 <div className="p-3 bg-amber-50 rounded-md border-l-4 border-amber-400">
                   <p className="text-sm text-amber-900">
-                    <strong>Right to Complain:</strong> If you believe we've mishandled your data, you have the right to 
+                    <strong>Right to Complain:</strong> If you believe we've mishandled your data, you have the right to
                     file a complaint with the Philippine National Privacy Commission (NPC) at complaints@privacy.gov.ph or visit their website at privacy.gov.ph
                   </p>
                 </div>
@@ -681,7 +681,7 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
             <AccordionContent className="px-6 pb-6 pt-2">
               <div className="space-y-4">
                 <p className="text-[#5C4A3A] text-sm">
-                  Cookies are small text files stored on your device that help us provide a better experience. 
+                  Cookies are small text files stored on your device that help us provide a better experience.
                   Here's what we use and why:
                 </p>
 
@@ -794,7 +794,7 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
                       <li>• <strong>Email Providers:</strong> Gmail/Google servers worldwide</li>
                     </ul>
                     <p className="text-sm text-[#5C4A3A] mt-2">
-                      All service providers comply with data protection standards equivalent to Philippine laws and are bound 
+                      All service providers comply with data protection standards equivalent to Philippine laws and are bound
                       by data processing agreements ensuring your information remains protected.
                     </p>
                   </div>
@@ -807,12 +807,12 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
                       <strong>Age Requirement:</strong> You must be at least 13 years old to create an account.
                     </p>
                     <p className="text-sm text-amber-900 mb-2">
-                      <strong>For Users 13-17:</strong> You may create an account, but we recommend parental consent for bookings. 
+                      <strong>For Users 13-17:</strong> You may create an account, but we recommend parental consent for bookings.
                       Parents/guardians can accompany minors to appointments.
                     </p>
                     <p className="text-sm text-amber-900">
-                      <strong>Under 13:</strong> We do not knowingly collect personal information from children under 13. 
-                      If we discover we've collected such data, we'll delete it immediately. Parents who believe we have 
+                      <strong>Under 13:</strong> We do not knowingly collect personal information from children under 13.
+                      If we discover we've collected such data, we'll delete it immediately. Parents who believe we have
                       information about a child under 13 should contact us at info@supremobarber.com
                     </p>
                   </div>

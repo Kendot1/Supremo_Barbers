@@ -114,7 +114,7 @@ export function BookingReservationModule({ appointments, onUpdateAppointments, o
         ]);
         setAvailableServices(services || []);
         setAvailableBarbers(barbers || []);
-        console.log('✅ Loaded services:', services?.length, 'barbers:', barbers?.length);
+
       } catch (error) {
         console.error('❌ Failed to load services/barbers:', error);
       }
@@ -259,11 +259,11 @@ export function BookingReservationModule({ appointments, onUpdateAppointments, o
         dbUpdate.total_amount = formData.price;
       }
 
-      console.log('📡 Updating booking in database:', selectedBooking.id, dbUpdate);
+
 
       // Persist to database FIRST
       await API.appointments.update(selectedBooking.id, dbUpdate);
-      console.log('✅ Booking updated in database');
+
 
       // Then update local state for immediate UI reflection
       const updatedAppointments = appointments.map(b =>
@@ -359,7 +359,7 @@ export function BookingReservationModule({ appointments, onUpdateAppointments, o
         cancelled_by: `Admin - ${adminUser?.name || 'Admin'}`,
         notes: `Admin cancelled: ${cancelReason}`,
       });
-      console.log('✅ Booking cancelled in database with reason:', cancelReason);
+
 
       // Send notifications to customer and barber (don't block UI)
       if (adminUser && booking) {
@@ -379,7 +379,7 @@ export function BookingReservationModule({ appointments, onUpdateAppointments, o
             reason: cancelReason,
           }
         ).then(() => {
-          console.log('✅ Cancellation notifications sent to customer and barber');
+
         }).catch((notifError) => {
           console.error('❌ Failed to send cancellation notifications:', notifError);
         });
@@ -864,14 +864,14 @@ export function BookingReservationModule({ appointments, onUpdateAppointments, o
                   key={reason}
                   onClick={() => setSelectedCancelReason(reason)}
                   className={`p-3 rounded-lg border-2 text-left text-sm transition-all ${selectedCancelReason === reason
-                      ? 'border-[#DB9D47] bg-[#DB9D47]/10 text-[#5C4A3A] font-medium'
-                      : 'border-[#E8DCC8] bg-white text-[#87765E] hover:border-[#D4C5B0] hover:bg-[#FBF7EF]'
+                    ? 'border-[#DB9D47] bg-[#DB9D47]/10 text-[#5C4A3A] font-medium'
+                    : 'border-[#E8DCC8] bg-white text-[#87765E] hover:border-[#D4C5B0] hover:bg-[#FBF7EF]'
                     } ${reason === 'other' ? 'col-span-2' : ''}`}
                 >
                   <div className="flex items-center gap-2">
                     <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${selectedCancelReason === reason
-                        ? 'border-[#DB9D47] bg-[#DB9D47]'
-                        : 'border-[#D4C5B0]'
+                      ? 'border-[#DB9D47] bg-[#DB9D47]'
+                      : 'border-[#D4C5B0]'
                       }`}>
                       {selectedCancelReason === reason && (
                         <div className="w-2 h-2 rounded-full bg-white" />

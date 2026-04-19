@@ -42,8 +42,8 @@ export function DatabaseWiper() {
 
       if (result.success) {
         toast.success('Database wiped successfully! All data has been deleted.');
-       
-        
+
+
         // Reload the page after a short delay to reset the application state
         setTimeout(() => {
           window.location.reload();

@@ -50,7 +50,7 @@ export function SuperAdminDashboard({
   user,
   onLogout,
   appointments = [],
-  onUpdateAppointment = () => {},
+  onUpdateAppointment = () => { },
 }: SuperAdminDashboardProps) {
   const [activeTab, setActiveTab] = useState("overview");
   const [users, setUsers] = useState<User[]>([]);
@@ -223,14 +223,14 @@ export function SuperAdminDashboard({
             </div>
 
             {/* Analytics with navigation handlers */}
-            <AnalyticsOverview 
+            <AnalyticsOverview
               onNavigateToPaymentVerification={() => setActiveTab('payments')}
               onNavigateToBookings={() => setActiveTab('bookings')}
             />
           </TabsContent>
 
           <TabsContent value="services">
-            <ServicesModule 
+            <ServicesModule
               user={user}
               onBookService={(serviceId) => {
                 setActiveTab("bookings");
@@ -243,7 +243,7 @@ export function SuperAdminDashboard({
           </TabsContent>
 
           <TabsContent value="payments">
-            <PaymentVerification 
+            <PaymentVerification
               appointments={appointments}
               onUpdateAppointment={onUpdateAppointment}
               userRole="admin"

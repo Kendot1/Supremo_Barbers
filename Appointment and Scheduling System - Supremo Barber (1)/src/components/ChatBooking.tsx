@@ -149,15 +149,7 @@ export function ChatBooking({
       .includes(barberSearch.toLowerCase()),
   );
 
-  // Debug: Log when component mounts
-  useEffect(() => {
-    console.log("🔧 ChatBooking mounted with:", {
-      hasOnAddAppointment: !!onAddAppointment,
-      onAddAppointmentType: typeof onAddAppointment,
-      currentUser: currentUser?.name,
-      role: currentUser?.role,
-    });
-  }, [onAddAppointment, currentUser]);
+
 
   // Fetch data on mount
   useEffect(() => {
@@ -181,24 +173,11 @@ export function ChatBooking({
     return () => clearInterval(interval);
   }, [currentUser]);
 
-  // Debug: Log when services/barbers/customers change
-  useEffect(() => {
-    console.log("📊 ChatBooking data state updated:", {
-      servicesCount: services.length,
-      barbersCount: barbers.length,
-      customersCount: customers.length,
-      appointmentsCount: appointments.length,
-      services: services,
-      barbers: barbers,
-      appointments: appointments,
-    });
-  }, [services, barbers, customers, appointments]);
+
 
   const fetchServices = async () => {
     try {
-      console.log(
-        "🔍 ChatBooking: Fetching services from API...",
-      );
+
       const response = await fetch(
         `https://${projectId}.supabase.co/functions/v1/make-server-70e1fc66/api/services`,
         {
@@ -207,16 +186,10 @@ export function ChatBooking({
           },
         },
       );
-      console.log(
-        "🔍 ChatBooking: Services API response status:",
-        response.status,
-      );
+
       if (response.ok) {
         const data = await response.json();
-        console.log(
-          "✅ ChatBooking: Services fetched successfully:",
-          data,
-        );
+
         setServices(data.data || data.services || []);
       } else {
         const errorText = await response.text();
@@ -333,17 +306,17 @@ export function ChatBooking({
     // Format the selected date to match appointment date format (YYYY-MM-DD)
     const dateObj = new Date(selectedDate + "T00:00:00");
     const dateString = `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, "0")}-${String(dateObj.getDate()).padStart(2, "0")}`;
-    
+
     const newBookingStart = timeToMinutes(time);
     const newBookingEnd = newBookingStart + selectedService.duration;
 
     return appointments.some((apt) => {
       // Only consider active appointments (not cancelled or completed)
-      const isActiveAppointment = 
-        apt.status === 'pending' || 
-        apt.status === 'confirmed' || 
+      const isActiveAppointment =
+        apt.status === 'pending' ||
+        apt.status === 'confirmed' ||
         apt.status === 'upcoming';
-      
+
       if (
         apt.barber !== selectedBarber.name ||
         apt.date !== dateString ||
@@ -437,31 +410,23 @@ export function ChatBooking({
         serviceId: selectedService.id,
       };
 
-      console.log(
-        "📦 Creating appointment with data:",
-        newAppointment,
-      );
+
 
       // Use the proper onAddAppointment function if available (preferred method)
       let createdAppointment;
       if (onAddAppointment) {
-        console.log(
-          "✅ Using onAddAppointment function from App.tsx",
-        );
+
         try {
           createdAppointment =
             await onAddAppointment(newAppointment);
-          console.log(
-            "✅ Appointment created via onAddAppointment:",
-            createdAppointment,
-          );
+
         } catch (error) {
           console.error("❌ onAddAppointment failed:", error);
           throw error;
         }
       } else {
         // Fallback to direct API call if onAddAppointment not available
-        console.log("⚠️ Fallback: Using direct API call");
+
         const response = await fetch(
           `https://${projectId}.supabase.co/functions/v1/make-server-70e1fc66/api/appointments`,
           {
@@ -484,16 +449,10 @@ export function ChatBooking({
 
         const result = await response.json();
         createdAppointment = result.appointment || result;
-        console.log(
-          "✅ Appointment created via API:",
-          createdAppointment,
-        );
+
       }
 
-      console.log(
-        "✅ Booking created successfully:",
-        createdAppointment,
-      );
+
 
       // Create payment record
       const paymentData = {
@@ -507,7 +466,7 @@ export function ChatBooking({
         notes: "Down payment via AI Chat booking",
       };
 
-      console.log("💳 Creating payment record:", paymentData);
+
 
       const paymentResponse = await fetch(
         `https://${projectId}.supabase.co/functions/v1/make-server-70e1fc66/api/payments`,
@@ -523,10 +482,7 @@ export function ChatBooking({
 
       if (paymentResponse.ok) {
         const paymentResult = await paymentResponse.json();
-        console.log(
-          "✅ Payment record created:",
-          paymentResult,
-        );
+
       } else {
         const paymentError = await paymentResponse.json();
         console.error(
@@ -715,7 +671,7 @@ export function ChatBooking({
                   if (!selectedDateValue) return;
 
                   const date = new Date(selectedDateValue + "T00:00:00");
-                  
+
                   // Check if Sunday
                   if (date.getDay() === 0) {
                     toast.error(
@@ -757,7 +713,7 @@ export function ChatBooking({
                 </p>
               )}
               <p className="text-xs text-gray-500 mt-1">
-               Sundays closed. Please select another day.
+                Sundays closed. Please select another day.
               </p>
             </div>
 
@@ -768,12 +724,12 @@ export function ChatBooking({
                   <Clock className="w-4 h-4 text-[#DB9D47]" />
                   Select Time Slot
                 </label>
-                
-                
+
+
                 <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto p-1" key={`slots-${appointments.length}-${selectedDate}-${selectedBarber?.id}`}>
                   {timeSlots.map((time) => {
                     const isTaken = isTimeSlotTaken(time);
-                    console.log(`🎨 Rendering button for ${time}: isTaken=${isTaken}`);
+
                     return (
                       <Button
                         key={time}
@@ -789,13 +745,12 @@ export function ChatBooking({
                             ? "default"
                             : "outline"
                         }
-                        className={`text-xs py-2 flex flex-col gap-0.5 ${
-                          selectedTime === time
+                        className={`text-xs py-2 flex flex-col gap-0.5 ${selectedTime === time
                             ? "bg-[#DB9D47] hover:bg-[#C88D3F] text-white"
                             : isTaken
                               ? "opacity-40 cursor-not-allowed bg-gray-100 border-red-300"
                               : "hover:bg-[#FBF7EF] hover:border-[#DB9D47]"
-                        }`}
+                          }`}
                         disabled={isTaken}
                         type="button"
                       >

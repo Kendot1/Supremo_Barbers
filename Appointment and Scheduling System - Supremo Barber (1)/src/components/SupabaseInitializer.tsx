@@ -115,7 +115,7 @@ export function SupabaseInitializer() {
             </div>
           </div>
 
-          <Button 
+          <Button
             onClick={() => {
               setInitData(null);
               window.location.reload();
@@ -140,17 +140,17 @@ export function SupabaseInitializer() {
           </div>
           <h2 className="text-2xl mb-2">Initialize System</h2>
           <p className="text-gray-600 mb-6">
-            Welcome to Supremo Barber Management System. 
+            Welcome to Supremo Barber Management System.
             Click the button below to set up the database with initial data.
           </p>
-          
+
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-3 mb-4 text-sm">
               {error}
             </div>
           )}
 
-          <Button 
+          <Button
             onClick={handleInitialize}
             disabled={loading}
             className="w-full bg-[#DB9D47] hover:bg-[#c28a3d] text-white"

@@ -93,18 +93,8 @@ export function AIChatbot({
   appointments,
   onAddAppointment,
 }: AIChatbotProps) {
-  // DEBUG: Log props on mount and when they change
-  useEffect(() => {
-    console.log("🔍 AIChatbot Props Debug:", {
-      hasCurrentUser: !!currentUser,
-      currentUserName: currentUser?.name,
-      hasAppointments: !!appointments,
-      appointmentsCount: appointments?.length,
-      hasOnAddAppointment: !!onAddAppointment,
-      onAddAppointmentType: typeof onAddAppointment,
-    });
-  }, [currentUser, appointments, onAddAppointment]);
-  
+
+
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState("");
@@ -119,13 +109,50 @@ export function AIChatbot({
   const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
   const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/gif", "image/webp"];
 
-  console.log("🤖 AIChatbot rendered with:", { 
-    hasOnAddAppointment: !!onAddAppointment, 
-    currentUser: currentUser?.name,
-    isOpen,
-    isBookingMode,
-    messagesCount: messages.length
-  });
+  // ===== OFF-TOPIC GUARDRAIL =====
+  // Client-side pre-filter to avoid wasting AI tokens on unrelated questions
+  const OFF_TOPIC_RESPONSE = "I appreciate your curiosity, but I'm specifically designed to help with Supremo Barber services! ✂️\n\nI can assist you with:\n• 📅 Booking appointments\n• ✂️ Service info & pricing\n• 💇 Barber recommendations\n• ⏰ Operating hours\n• 💰 Payment & policies\n• 📍 Location & directions\n\nWhat can I help you with regarding our barbershop?";
+
+  const isOffTopicMessage = (msg: string): boolean => {
+    const lower = msg.toLowerCase().trim();
+
+    // Allow short greetings and pleasantries through
+    if (lower.length < 15) return false;
+
+    // Off-topic keyword patterns (things NOT related to barbershop)
+    const offTopicPatterns = [
+      // Programming & tech
+      /\b(python|javascript|java\b|c\+\+|html|css|react|node|code|coding|program|algorithm|debug|compile|github|api\b|database|sql|frontend|backend)\b/,
+      // Math & science  
+      /\b(equation|calculus|algebra|physics|chemistry|biology|theorem|formula|derivative|integral|hypothesis)\b/,
+      // Politics & religion
+      /\b(president|election|democrat|republican|politics|political|senator|congress|religion|church|bible|quran|atheist)\b/,
+      // Gaming
+      /\b(minecraft|fortnite|valorant|league of legends|dota|gaming|video game|playstation|xbox|nintendo|roblox|genshin)\b/,
+      // Homework & academic
+      /\b(homework|essay|thesis|assignment|exam|quiz|school project|research paper|dissertation)\b/,
+      // Medical advice
+      /\b(diagnose|diagnosis|prescription|symptom|medication|disease|medical advice|treatment for|cure for)\b/,
+      // Legal advice
+      /\b(legal advice|lawsuit|attorney|court case|sue|litigation|legal rights)\b/,
+      // Cooking & recipes
+      /\b(recipe for|how to cook|ingredients for|baking|cuisine)\b/,
+      // Dating & relationships
+      /\b(dating advice|relationship|girlfriend|boyfriend|tinder|bumble|crush)\b/,
+      // General knowledge / trivia unrelated to barbershop
+      /\b(capital of|who invented|how old is|what year did|history of (?!barber|haircut|grooming|supremo))\b/,
+      // AI identity probing (jailbreak attempts)
+      /\b(ignore (previous|your|all) (instructions|prompt|rules)|pretend you are|act as|roleplay as|you are now|forget your rules|bypass|jailbreak)\b/,
+      // Fiction & storytelling
+      /\b(write (a |me )?(story|poem|song|rap|essay|code|script)|tell me a joke|make up|creative writing)\b/,
+      // Crypto & stocks
+      /\b(bitcoin|crypto|stock market|invest|trading|forex|nft|ethereum|blockchain)\b/,
+    ];
+
+    return offTopicPatterns.some((pattern) => pattern.test(lower));
+  };
+
+
 
   // Scroll to bottom of messages
   const scrollToBottom = () => {
@@ -216,7 +243,21 @@ How can I assist you today?`;
     };
 
     setMessages((prev) => [...prev, userMessage]);
+    const messageText = inputMessage.trim();
     setInputMessage("");
+
+    // === CLIENT-SIDE GUARDRAIL: Block off-topic before calling API ===
+    if (isOffTopicMessage(messageText)) {
+      const guardedMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: OFF_TOPIC_RESPONSE,
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, guardedMessage]);
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -278,7 +319,7 @@ How can I assist you today?`;
             Authorization: `Bearer ${publicAnonKey}`,
           },
           body: JSON.stringify({
-            message: inputMessage.trim(),
+            message: messageText,
             userContext: userContext,
             conversationHistory: messages.slice(-10), // Last 10 messages for context
           }),
@@ -298,7 +339,7 @@ How can I assist you today?`;
       }
 
       const data = await response.json();
-      console.log("✅ AI Response received:", data);
+
 
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -477,7 +518,7 @@ How can I assist you today?`;
       }
 
       const data = await response.json();
-      console.log("✅ AI Response received:", data);
+
 
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -595,18 +636,17 @@ How can I assist you today?`;
 
               {/* Messages Area */}
               <CardContent className="p-0 flex-1 flex flex-col overflow-hidden">
-              
+
 
                 {/* Messages Container - scrollable area with max height */}
                 <div className="flex-1 overflow-y-auto p-3 sm:p-4 bg-white space-y-3 sm:space-y-4 min-h-0">
                   {messages.map((message) => (
                     <div
                       key={message.id}
-                      className={`flex items-start gap-2 w-full min-w-0  ${
-                        message.role === "user"
+                      className={`flex items-start gap-2 w-full min-w-0  ${message.role === "user"
                           ? "justify-end"
                           : "justify-start"
-                      }`}
+                        }`}
                     >
                       {/* Bot Avatar - Only show for assistant */}
                       {message.role === "assistant" && (
@@ -628,10 +668,9 @@ How can I assist you today?`;
                           rounded-2xl shadow-md
                           break-words whitespace-pre-wrap
 
-                          ${
-                            message.role === "user"
-                              ? "bg-[#DB9D47] text-white self-end"
-                              : "bg-white border border-[#E8DCC8] text-[#2D2D2D] self-start"
+                          ${message.role === "user"
+                            ? "bg-[#DB9D47] text-white self-end"
+                            : "bg-white border border-[#E8DCC8] text-[#2D2D2D] self-start"
                           }
                         `}
                       >
@@ -646,11 +685,10 @@ How can I assist you today?`;
                           {cleanMessageContent(message.content)}
                         </p>
                         <p
-                          className={`text-[10px] sm:text-[12px] mt-1.5 sm:mt-2 ${
-                            message.role === "user"
+                          className={`text-[10px] sm:text-[12px] mt-1.5 sm:mt-2 ${message.role === "user"
                               ? "text-white/70"
                               : "text-[#87765E]"
-                          }`}
+                            }`}
                         >
                           {message.timestamp.toLocaleTimeString(
                             [],
@@ -737,14 +775,14 @@ How can I assist you today?`;
                           content: "I want to book an appointment",
                           timestamp: new Date(),
                         };
-                        
+
                         const botMsg: Message = {
                           id: (Date.now() + 1).toString(),
                           role: "assistant",
                           content: "Great! Let me help you book an appointment. First, please choose a service:",
                           timestamp: new Date(),
                         };
-                        
+
                         setMessages((prev) => [...prev, userMsg, botMsg]);
                         setIsBookingMode(true);
                         toast.success("Booking started! Follow the steps below.");

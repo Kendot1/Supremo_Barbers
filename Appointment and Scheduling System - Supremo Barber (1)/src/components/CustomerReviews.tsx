@@ -69,7 +69,7 @@ export function CustomerReviews({ isActive = true }: CustomerReviewsProps) {
       setIsLoading(true);
       setError(null);
 
-    
+
 
       // Fetch all data in parallel
       const [reviewsData, usersData, barbersData] = await Promise.all([
@@ -84,7 +84,7 @@ export function CustomerReviews({ isActive = true }: CustomerReviewsProps) {
         })
       ]);
 
-     
+
 
       setReviews(reviewsData || []);
       setUsers(usersData || []);
@@ -115,7 +115,7 @@ export function CustomerReviews({ isActive = true }: CustomerReviewsProps) {
   // Refetch data when component becomes active (tab is switched)
   useEffect(() => {
     if (isActive) {
-      
+
       fetchData();
     }
   }, [isActive]);

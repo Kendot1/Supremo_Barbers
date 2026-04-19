@@ -4,11 +4,11 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Badge } from './ui/badge';
-import { 
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow
 } from './ui/table';
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, 
+  Dialog, DialogContent, DialogDescription, DialogFooter,
   DialogHeader, DialogTitle, DialogTrigger
 } from './ui/dialog';
 import {
@@ -75,14 +75,14 @@ export function UserManagement() {
           role: user.role,
           isActive: user.isActive !== undefined ? user.isActive : (user.is_active !== undefined ? user.is_active : true),
           createdAt: user.createdAt || user.created_at || new Date().toISOString(),
-          joinDate: (user.createdAt || user.created_at) ? new Date(user.createdAt || user.created_at).toLocaleDateString('en-US', { 
-            year: 'numeric', 
-            month: 'short', 
-            day: 'numeric' 
-          }) : new Date().toLocaleDateString('en-US', { 
-            year: 'numeric', 
-            month: 'short', 
-            day: 'numeric' 
+          joinDate: (user.createdAt || user.created_at) ? new Date(user.createdAt || user.created_at).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+          }) : new Date().toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
           }),
         }));
       setUsers(formattedUsers);
@@ -98,7 +98,7 @@ export function UserManagement() {
   // Calculate analytics
   const totalCustomers = users.length;
   const activeCustomers = users.filter(user => user.isActive).length;
-  
+
   // New customers (joined within last 30 days)
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -109,7 +109,7 @@ export function UserManagement() {
 
   const filteredUsers = users.filter(user => {
     const statusText = user.isActive ? 'active' : 'inactive';
-    const matchesSearch = 
+    const matchesSearch =
       user.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -135,7 +135,7 @@ export function UserManagement() {
 
       // Refresh users list
       await fetchUsers();
-      
+
       setIsAddDialogOpen(false);
       setNewUser({ name: '', email: '', role: 'customer' });
       toast.success('User added successfully to database');
@@ -193,7 +193,7 @@ export function UserManagement() {
 
         // Refresh users list
         await fetchUsers();
-        
+
         toast.success('User deleted from database');
       } catch (error) {
         console.error('Error deleting user:', error);

@@ -57,7 +57,7 @@ export function AuditLogViewer() {
   const [filteredLogs, setFilteredLogs] = useState<AuditLog[]>([]);
   const [statistics, setStatistics] = useState<AuditLogStatistics | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  
+
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
   const [filterAction, setFilterAction] = useState<string>('all');
@@ -69,17 +69,17 @@ export function AuditLogViewer() {
   const fetchLogs = async () => {
     try {
       setIsLoading(true);
-    
-      
+
+
       const [logsData, statsData] = await Promise.all([
         API.auditLogs.getAll(limit),
         API.auditLogs.getStatistics(),
       ]);
-      
-     
+
+
       setLogs(logsData);
       setStatistics(statsData);
-      
+
       toast.success(`Loaded ${logsData.length} audit logs`);
     } catch (error: any) {
       console.error('❌ Error fetching audit logs:', error);
@@ -156,12 +156,12 @@ export function AuditLogViewer() {
       log.description.replace(/"/g, '""'),
       log.status,
     ]);
-    
+
     const csvContent = [
       headers.join(','),
       ...csvData.map(row => row.map(cell => `"${cell}"`).join(','))
     ].join('\n');
-    
+
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');

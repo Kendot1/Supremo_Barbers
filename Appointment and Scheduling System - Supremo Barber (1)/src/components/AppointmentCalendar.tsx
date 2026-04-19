@@ -371,7 +371,7 @@ export function AppointmentCalendar({
                         className={cn(
                           "min-h-[60px] sm:min-h-[100px] p-1 sm:p-2 border-b border-r border-[#E8DCC8] last:border-r-0",
                           !isCurrentMonth(day) &&
-                            "bg-[#FAFAF8]",
+                          "bg-[#FAFAF8]",
                           isToday(day) && "bg-[#FFF9F0]",
                         )}
                       >
@@ -490,11 +490,11 @@ export function AppointmentCalendar({
                             className={cn(
                               "p-2 relative border-b border-r border-[#E8DCC8] last:border-r-0",
                               isToday(day) &&
-                                timeIdx % 2 === 0 &&
-                                "bg-[#FFFDF8]",
+                              timeIdx % 2 === 0 &&
+                              "bg-[#FFFDF8]",
                               isToday(day) &&
-                                timeIdx % 2 !== 0 &&
-                                "bg-[#FFF9F0]",
+                              timeIdx % 2 !== 0 &&
+                              "bg-[#FFF9F0]",
                             )}
                           >
                             {dayAppointments.map((apt) => (

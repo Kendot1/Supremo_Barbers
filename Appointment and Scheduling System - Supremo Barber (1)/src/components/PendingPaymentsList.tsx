@@ -1,6 +1,6 @@
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
-import { 
+import {
   CreditCard, Scissors, Calendar as CalendarIcon
 } from 'lucide-react';
 import type { Appointment } from '../App';
@@ -11,13 +11,13 @@ interface PendingPaymentsListProps {
   maxDisplay?: number;
 }
 
-export function PendingPaymentsList({ 
-  appointments, 
+export function PendingPaymentsList({
+  appointments,
   onViewAll,
-  maxDisplay = 5 
+  maxDisplay = 5
 }: PendingPaymentsListProps) {
   // Filter appointments with pending payment verification
-  const pendingPaymentVerifications = appointments.filter(apt => 
+  const pendingPaymentVerifications = appointments.filter(apt =>
     apt.paymentProof && apt.paymentStatus === 'pending' && apt.status === 'upcoming'
   );
 
