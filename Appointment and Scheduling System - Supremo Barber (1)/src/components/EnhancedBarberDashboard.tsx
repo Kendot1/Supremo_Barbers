@@ -411,7 +411,8 @@ export function EnhancedBarberDashboard({
   );
   const upcomingAppointments = barberAppointments.filter(
     (apt) =>
-      (apt.status === "confirmed" ||
+      (apt.status === "verified" ||
+        apt.status === "confirmed" ||
         apt.status === "upcoming") &&
       new Date(apt.date) >= new Date(today),
   );
@@ -619,7 +620,16 @@ export function EnhancedBarberDashboard({
     appointmentId: string,
   ) => {
     try {
+      const appointmentToComplete = allAppointments.find(
+        (apt) => apt.id === appointmentId,
+      );
 
+      if (!appointmentToComplete) return;
+
+      if (new Date(appointmentToComplete.date) > new Date(today)) {
+        toast.error("You can only mark appointments as complete on or after their scheduled date.");
+        return;
+      }
 
       // Update in database - also clear remaining balance and mark payment as paid
       const updated = await API.appointments.update(appointmentId, {
@@ -1358,16 +1368,22 @@ export function EnhancedBarberDashboard({
 
     // Search filter
     if (searchQuery) {
+      const query = searchQuery.toLowerCase();
       filtered = filtered.filter((apt) => {
-        const customerName =
-          apt.customer || apt.customerName || "";
+        const customerName = (apt.customer || apt.customerName || "").toLowerCase();
+        const serviceName = (apt.service || apt.service_name || "").toLowerCase();
+        const barberName = (apt.barber || apt.barber_name || "").toLowerCase();
+        const status = (apt.status || "").toLowerCase();
+        const date = (apt.date || "").toLowerCase();
+        const price = (apt.price || 0).toString();
+
         return (
-          customerName
-            .toLowerCase()
-            .includes(searchQuery.toLowerCase()) ||
-          apt.service
-            .toLowerCase()
-            .includes(searchQuery.toLowerCase())
+          customerName.includes(query) ||
+          serviceName.includes(query) ||
+          barberName.includes(query) ||
+          status.includes(query) ||
+          date.includes(query) ||
+          price.includes(query)
         );
       });
     }
@@ -1488,9 +1504,11 @@ export function EnhancedBarberDashboard({
               <div className="flex items-center gap-2">
                 <Badge
                   variant="secondary"
-                  className="bg-[#94A670] text-white hidden sm:flex"
+                  className="bg-[#DB9D47] text-white hidden sm:flex cursor-pointer hover:bg-[#C88A34]"
+                  onClick={() => setActiveTab("reviews")}
                 >
-                  {pendingAppointments.length} Pending
+                  <Star className="w-3.5 h-3.5 mr-1 fill-white" />
+                  {barberReviews.length} Reviews
                 </Badge>
                 <NotificationCenter
                   userId={stableUserId}
@@ -1648,14 +1666,14 @@ export function EnhancedBarberDashboard({
                     <CardHeader className="pb-3">
                       <div className="flex items-center justify-between">
                         <CardTitle className="text-[#5C4A3A]">
-                          Pending Requests
+                          Recent Reviews
                         </CardTitle>
-                        <Badge variant="destructive">
-                          {pendingAppointments.length} pending
+                        <Badge className="bg-[#DB9D47]">
+                          {barberReviews.length} reviews
                         </Badge>
                       </div>
                       <CardDescription className="text-[#87765E]">
-                        Appointments awaiting your response
+                        Latest customer feedback
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -1663,69 +1681,68 @@ export function EnhancedBarberDashboard({
                         className="space-y-3 max-h-[350px] overflow-y-auto pr-1"
                         style={{ scrollbarWidth: 'thin', scrollbarColor: '#DB9D47 #FBF7EF' }}
                       >
-                        {pendingAppointments.length === 0 ? (
+                        {isLoadingReviews ? (
+                          <div className="flex items-center justify-center py-8">
+                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#DB9D47]"></div>
+                            <span className="ml-2 text-sm text-[#87765E]">Loading reviews...</span>
+                          </div>
+                        ) : barberReviews.length === 0 ? (
                           <div className="text-center py-8 text-[#87765E]">
-                            <CheckCircle2 className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                            <Star className="w-12 h-12 mx-auto mb-2 opacity-50" />
                             <p>
-                              All caught up! No pending
-                              requests.
+                              No reviews yet. Keep up the
+                              great work!
                             </p>
                           </div>
                         ) : (
-                          pendingAppointments.map((apt) => (
+                          barberReviews.slice(0, 5).map((review: any) => (
                             <div
-                              key={apt.id}
-                              className="p-3 bg-orange-50 rounded-lg border border-orange-200"
+                              key={review.id}
+                              className="p-3 bg-[#FBF7EF] rounded-lg border border-[#E8DCC8]"
                             >
-                              <div className="flex items-start justify-between mb-2">
+                              <div className="flex items-start justify-between mb-1.5">
                                 <div className="flex-1 min-w-0">
                                   <p className="text-sm font-medium text-[#5C4A3A] truncate">
-                                    {apt.customer ||
-                                      apt.customerName ||
-                                      "Unknown"}
+                                    {review.customerName ||
+                                      "Anonymous"}
                                   </p>
                                   <p className="text-xs text-[#87765E] truncate">
-                                    {apt.service}
+                                    {review.service || "General"}
                                   </p>
                                 </div>
                                 <div className="text-right ml-2 flex-shrink-0">
-                                  <p className="text-xs text-[#5C4A3A]">
-                                    {apt.date}
-                                  </p>
-                                  <p className="text-xs text-[#87765E]">
-                                    {apt.time}
+                                  <div className="flex gap-0.5">
+                                    {[1, 2, 3, 4, 5].map((i) => (
+                                      <Star
+                                        key={i}
+                                        className={`w-3.5 h-3.5 ${i <= review.rating ? "fill-[#DB9D47] text-[#DB9D47]" : "text-gray-300"}`}
+                                      />
+                                    ))}
+                                  </div>
+                                  <p className="text-[10px] text-[#87765E] mt-0.5">
+                                    {review.date || review.createdAt
+                                      ? new Date(review.date || review.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+                                      : ""}
                                   </p>
                                 </div>
                               </div>
-                              <div className="flex gap-3">
-                                <Button
-                                  size="sm"
-                                  className="flex-1 bg-[#94A670] hover:bg-[#7E8F5E] h-8 text-xs"
-                                  onClick={() =>
-                                    handleAcceptAppointment(
-                                      apt.id,
-                                    )
-                                  }
-                                >
-                                  <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
-                                  Accept
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="destructive"
-                                  className="flex-1 h-8 text-xs"
-                                  onClick={() =>
-                                    handleRejectAppointment(
-                                      apt.id,
-                                    )
-                                  }
-                                >
-                                  <XCircle className="w-3.5 h-3.5 mr-1" />
-                                  Reject
-                                </Button>
-                              </div>
+                              {review.comment && (
+                                <p className="text-xs text-[#5C4A3A] line-clamp-2 leading-relaxed">
+                                  "{review.comment}"
+                                </p>
+                              )}
                             </div>
                           ))
+                        )}
+                        {barberReviews.length > 5 && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="w-full text-[#DB9D47] hover:bg-[#FBF7EF] text-xs"
+                            onClick={() => setActiveTab("reviews")}
+                          >
+                            View all {barberReviews.length} reviews →
+                          </Button>
                         )}
                       </div>
                     </CardContent>
@@ -1840,12 +1857,12 @@ export function EnhancedBarberDashboard({
                           {
                             allAppointments.filter(
                               (apt) =>
-                                apt.status === "confirmed",
+                                apt.status === "verified" || apt.status === "confirmed" || apt.status === "upcoming",
                             ).length
                           }
                         </div>
                         <div className="text-sm text-[#87765E]">
-                          Confirmed
+                          Verified
                         </div>
                       </div>
                       <div className="bg-[#FBF7EF] p-4 rounded-lg border border-[#E8DCC8]">
@@ -1867,7 +1884,7 @@ export function EnhancedBarberDashboard({
                     <div className="flex flex-col md:flex-row gap-4 mb-6">
                       <div className="flex-1">
                         <Input
-                          placeholder="Search by customer name, barber, or service..."
+                          placeholder="Search by date, customer, barber, service, status, or price..."
                           value={searchQuery}
                           onChange={(e) =>
                             setSearchQuery(e.target.value)
@@ -1889,8 +1906,8 @@ export function EnhancedBarberDashboard({
                           <SelectItem value="pending">
                             Pending
                           </SelectItem>
-                          <SelectItem value="confirmed">
-                            Confirmed
+                          <SelectItem value="verified">
+                            Verified
                           </SelectItem>
                           <SelectItem value="completed">
                             Completed
@@ -1917,9 +1934,7 @@ export function EnhancedBarberDashboard({
                               <TableHead className="text-[#5C4A3A]">
                                 Customer
                               </TableHead>
-                              <TableHead className="text-[#5C4A3A]">
-                                Barber
-                              </TableHead>
+
                               <TableHead className="text-[#5C4A3A]">
                                 Service
                               </TableHead>
@@ -1981,11 +1996,7 @@ export function EnhancedBarberDashboard({
                                           "N/A"}
                                       </div>
                                     </TableCell>
-                                    <TableCell>
-                                      <div className="text-[#5C4A3A]">
-                                        {appointment.barber}
-                                      </div>
-                                    </TableCell>
+
                                     <TableCell>
                                       <div className="text-[#5C4A3A]">
                                         {appointment.service}
@@ -1999,20 +2010,21 @@ export function EnhancedBarberDashboard({
                                     </TableCell>
                                     <TableCell>
                                       <Badge
+                                        variant="outline"
                                         className={
                                           appointment.status ===
-                                            "confirmed"
-                                            ? "bg-[#94A670] hover:bg-[#94A670]"
+                                            "verified" || appointment.status === "confirmed" || appointment.status === "upcoming"
+                                            ? "bg-blue-100 text-blue-700 border-blue-200 hover:bg-blue-200"
                                             : appointment.status ===
                                               "pending"
-                                              ? "bg-[#DB9D47] hover:bg-[#DB9D47]"
+                                              ? "bg-orange-100 text-orange-700 border-orange-200 hover:bg-orange-200"
                                               : appointment.status ===
                                                 "completed"
-                                                ? "bg-[#5C4A3A] hover:bg-[#5C4A3A]"
+                                                ? "bg-green-100 text-green-700 border-green-200 hover:bg-green-200"
                                                 : appointment.status ===
-                                                  "cancelled"
-                                                  ? "bg-red-500 hover:bg-red-500"
-                                                  : "bg-[#87765E] hover:bg-[#87765E]"
+                                                  "cancelled" || appointment.status === "rejected"
+                                                  ? "bg-red-100 text-red-700 border-red-200 hover:bg-red-200"
+                                                  : "bg-gray-100 text-gray-700 border-gray-200 hover:bg-gray-200"
                                         }
                                       >
                                         {appointment.status
@@ -2043,7 +2055,8 @@ export function EnhancedBarberDashboard({
                                           appointment.status ===
                                           "upcoming" ||
                                           appointment.status ===
-                                          "verified") && (
+                                          "verified") &&
+                                          new Date(appointment.date) <= new Date(today) && (
                                             <Button
                                               size="sm"
                                               variant="ghost"
@@ -2088,6 +2101,20 @@ export function EnhancedBarberDashboard({
                                             </Button>
                                           )}
 
+                                        {/* Show placeholder for completed/cancelled to maintain alignment */}
+                                        {(appointment.status ===
+                                          "completed" ||
+                                          appointment.status ===
+                                          "cancelled" ||
+                                          appointment.status ===
+                                          "rejected") && (
+                                            <div className="h-8 w-8 flex items-center justify-center text-[#87765E]">
+                                              <span className="text-xs">
+                                                —
+                                              </span>
+                                            </div>
+                                          )}
+
                                         <Button
                                           variant="ghost"
                                           size="sm"
@@ -2105,20 +2132,6 @@ export function EnhancedBarberDashboard({
                                         >
                                           <Eye className="w-4 h-4" />
                                         </Button>
-
-                                        {/* Show placeholder for completed/cancelled to maintain alignment */}
-                                        {(appointment.status ===
-                                          "completed" ||
-                                          appointment.status ===
-                                          "cancelled" ||
-                                          appointment.status ===
-                                          "rejected") && (
-                                            <div className="h-8 w-8 flex items-center justify-center text-[#87765E]">
-                                              <span className="text-xs">
-                                                —
-                                              </span>
-                                            </div>
-                                          )}
                                       </div>
                                     </TableCell>
                                   </TableRow>
@@ -2931,21 +2944,20 @@ export function EnhancedBarberDashboard({
                 </Label>
                 <div className="mt-1">
                   <Badge
+                    variant="outline"
                     className={`${selectedAppointment.status === "completed"
-                      ? "bg-green-500 hover:bg-green-600"
-                      : selectedAppointment.status ===
-                        "pending"
-                        ? "bg-orange-500 hover:bg-orange-600"
-                        : selectedAppointment.status ===
-                          "confirmed" ||
-                          selectedAppointment.status ===
-                          "upcoming"
-                          ? "bg-[#DB9D47] hover:bg-[#C88A3A]"
-                          : selectedAppointment.status ===
-                            "cancelled"
-                            ? "bg-red-500 hover:bg-red-600"
-                            : "bg-gray-500 hover:bg-gray-600"
-                      } text-white capitalize`}
+                      ? "bg-green-100 text-green-700 border-green-200"
+                      : selectedAppointment.status === "pending"
+                        ? "bg-orange-100 text-orange-700 border-orange-200"
+                        : selectedAppointment.status === "verified" ||
+                          selectedAppointment.status === "confirmed" ||
+                          selectedAppointment.status === "upcoming"
+                          ? "bg-blue-100 text-blue-700 border-blue-200"
+                          : selectedAppointment.status === "cancelled" ||
+                            selectedAppointment.status === "rejected"
+                            ? "bg-red-100 text-red-700 border-red-200"
+                            : "bg-gray-100 text-gray-700 border-gray-200"
+                      } capitalize hover:bg-opacity-80`}
                   >
                     {selectedAppointment.status}
                   </Badge>
@@ -3072,7 +3084,8 @@ export function EnhancedBarberDashboard({
                     selectedAppointment?.status ===
                     "confirmed" ||
                     selectedAppointment?.status ===
-                    "verified") && (
+                    "verified") &&
+                    new Date(selectedAppointment.date) <= new Date(today) && (
                       <Button
                         onClick={() =>
                           handleCompleteAppointment(

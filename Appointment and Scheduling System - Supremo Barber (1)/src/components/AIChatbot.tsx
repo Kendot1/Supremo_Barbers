@@ -768,6 +768,19 @@ How can I assist you today?`;
                   <div className="flex gap-2 overflow-x-auto pb-2">
                     <QuickActionButton
                       onClick={() => {
+                        // Guard: Block booking for guests/unregistered users
+                        if (!currentUser || !currentUser.id || currentUser.role === "guest") {
+                          const guardMsg: Message = {
+                            id: Date.now().toString(),
+                            role: "assistant",
+                            content: "To book an appointment, you need to be logged in po! 🔒\n\nPlease register or log in first to access our booking system. You can create an account from the login page.\n\n• ✂️ Once logged in, you can book services, track appointments, and more!\n• 📅 It only takes a minute to register.",
+                            timestamp: new Date(),
+                          };
+                          setMessages((prev) => [...prev, guardMsg]);
+                          toast.error("Please log in or register to book an appointment.");
+                          return;
+                        }
+
                         // Start interactive booking
                         const userMsg: Message = {
                           id: Date.now().toString(),

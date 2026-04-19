@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "./ui/button";
 import API from "../services/api.service";
 import { Card, CardContent } from "./ui/card";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "./ui/dialog";
 import { ImageWithFallback } from "./fallback/ImageWithFallback";
 import { Footer } from "./Footer";
 import { normalizeR2Url } from "../utils/avatarUrl";
@@ -88,6 +89,7 @@ export function LandingPage({
   const [testimonials, setTestimonials] = useState<Review[]>(
     [],
   );
+  const [selectedTestimonial, setSelectedTestimonial] = useState<Review | null>(null);
   const [isLoadingServices, setIsLoadingServices] =
     useState(true);
   const [isLoadingReviews, setIsLoadingReviews] =
@@ -265,11 +267,15 @@ export function LandingPage({
 
     const scroll = () => {
       if (scrollContainer) {
+        // Exact width of card (w-96 = 384px) + flex gap (gap-8 = 32px)
         const cardWidth = 384 + 32;
-        const maxScroll = cardWidth * testimonials.length;
+        // The total scrollable width of ONE full set of testimonials
+        const singleSetWidth = cardWidth * testimonials.length;
 
-        if (scrollContainer.scrollLeft >= maxScroll - 10) {
-          scrollContainer.scrollLeft = 1;
+        if (scrollContainer.scrollLeft >= singleSetWidth) {
+          // Seamless pixel-perfect reset to exactly match the duplicate offset
+          scrollContainer.scrollLeft -= singleSetWidth;
+          scrollContainer.scrollLeft += 1;
         } else {
           scrollContainer.scrollLeft += 1;
         }
@@ -1255,8 +1261,8 @@ export function LandingPage({
                           }
                         }}
                         className={`h-2.5 rounded-full transition-all duration-300 ${index === currentServiceIndex
-                            ? "bg-[#DB9D47] w-8"
-                            : "bg-slate-300 hover:bg-slate-400 w-2.5"
+                          ? "bg-[#DB9D47] w-8"
+                          : "bg-slate-300 hover:bg-slate-400 w-2.5"
                           }`}
                         aria-label={`Go to service ${index + 1}`}
                       />
@@ -1341,13 +1347,14 @@ export function LandingPage({
                   setIsTestimonialsPaused(false)
                 }
               >
-                {[...testimonials, ...testimonials].map(
+                {[...testimonials, ...testimonials, ...testimonials, ...testimonials, ...testimonials, ...testimonials].map(
                   (testimonial, index) => (
                     <Card
                       key={`${testimonial.id}-${index}`}
-                      className="flex-shrink-0 w-96 p-10 transition-all duration-500 hover:shadow-2xl border-2 border-slate-100 hover:border-[#DB9D47]/30 rounded-3xl"
+                      className="flex-shrink-0 w-96 h-[450px] p-10 transition-all duration-500 hover:shadow-2xl border-2 border-slate-100 hover:border-[#DB9D47]/30 rounded-3xl cursor-pointer hover:bg-slate-50"
+                      onClick={() => setSelectedTestimonial(testimonial)}
                     >
-                      <div className="flex flex-col items-center text-center">
+                      <div className="flex flex-col items-center text-center h-full justify-between">
                         {testimonial.customerAvatar ? (
                           <div className="w-20 h-20 rounded-full mb-6 shadow-xl overflow-hidden ring-4 ring-[#DB9D47]/20">
                             <ImageWithFallback
@@ -1378,7 +1385,7 @@ export function LandingPage({
                             ),
                           )}
                         </div>
-                        <p className="text-lg text-slate-700 mb-6 italic leading-relaxed min-h-[100px]">
+                        <p className="text-lg text-slate-700 mb-6 italic leading-relaxed line-clamp-4">
                           "{testimonial.comment}"
                         </p>
                         <div className="border-t-2 border-[#DB9D47]/20 pt-6 w-full">
@@ -1386,9 +1393,7 @@ export function LandingPage({
                             {testimonial.customerName ||
                               "Anonymous Customer"}
                           </p>
-                          <p className="text-sm text-slate-500">
-                            Verified Customer
-                          </p>
+
                         </div>
                       </div>
                     </Card>
@@ -1405,6 +1410,49 @@ export function LandingPage({
         onNavigateToTerms={onNavigateToTerms}
         onNavigateToPrivacy={onNavigateToPrivacy}
       />
+
+      {/* Testimonial Modal */}
+      <Dialog open={!!selectedTestimonial} onOpenChange={(open) => !open && setSelectedTestimonial(null)}>
+        <DialogContent className="sm:max-w-md md:max-w-lg lg:max-w-xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-center text-[#5C4A3A]">Review</DialogTitle>
+            <DialogDescription className="text-center">
+              Customer Feedback
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col items-center text-center p-4">
+            {selectedTestimonial?.customerAvatar ? (
+              <div className="w-24 h-24 rounded-full mb-6 shadow-xl overflow-hidden ring-4 ring-[#DB9D47]/20">
+                <ImageWithFallback
+                  src={normalizeR2Url(selectedTestimonial.customerAvatar)}
+                  alt={selectedTestimonial.customerName || "Customer"}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+            ) : (
+              <div className="w-24 h-24 bg-gradient-to-br from-[#DB9D47] to-[#C56E33] rounded-full flex items-center justify-center text-white text-3xl mb-6 shadow-xl">
+                {selectedTestimonial?.customerName?.substring(0, 2).toUpperCase() || "CU"}
+              </div>
+            )}
+            <div className="flex gap-1 mb-6">
+              {[...Array(selectedTestimonial?.rating || 5)].map((_, i) => (
+                <Star key={i} className="w-6 h-6 fill-[#DB9D47] text-[#DB9D47]" />
+              ))}
+            </div>
+            <p className="text-lg md:text-xl text-slate-700 mb-8 italic leading-relaxed">
+              "{selectedTestimonial?.comment}"
+            </p>
+            <div className="border-t-2 border-[#DB9D47]/20 pt-6 w-full">
+              <p className="font-bold text-2xl text-slate-900 mb-1">
+                {selectedTestimonial?.customerName || "Anonymous Customer"}
+              </p>
+              <p className="text-sm md:text-base text-slate-500">
+                Verified Customer
+              </p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

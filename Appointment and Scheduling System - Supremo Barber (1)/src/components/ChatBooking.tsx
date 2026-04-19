@@ -67,6 +67,31 @@ export function ChatBooking({
   onCancel,
   onAddAppointment,
 }: ChatBookingProps) {
+  // Guard: If user is not logged in, show login prompt
+  if (!currentUser || !currentUser.id || currentUser.role === "guest") {
+    return (
+      <Card className="border border-[#E8DCC8] bg-[#FBF7EF] rounded-xl">
+        <CardContent className="p-4 text-center space-y-3">
+          <div className="text-3xl">🔒</div>
+          <h3 className="font-semibold text-[#2D2D2D] text-sm">
+            Login Required
+          </h3>
+          <p className="text-xs text-[#5C4A3A]">
+            You need to be logged in to book an appointment. Please register or log in first.
+          </p>
+          <Button
+            onClick={onCancel}
+            variant="outline"
+            size="sm"
+            className="border-[#DB9D47] text-[#DB9D47] hover:bg-[#DB9D47] hover:text-white"
+          >
+            Got it
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
   const [step, setStep] = useState<
     | "customer"
     | "service"
