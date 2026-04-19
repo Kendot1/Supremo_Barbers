@@ -371,7 +371,7 @@ export function LandingPage({
       <nav className="fixed top-0 left-0 right-0 bg-white/80 backdrop-blur-2xl border-b border-slate-200/60 z-50 transition-all duration-300">
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <div className="flex items-center justify-between h-24">
-            <div className="flex items-center gap-4 group cursor-pointer">
+            <a href="/" className="flex items-center gap-4 group cursor-pointer outline-none rounded-xl">
               <div className="relative">
                 <div className="absolute inset-0 bg-[#DB9D47]/20 rounded-2xl blur-xl group-hover:bg-[#DB9D47]/30 transition-all"></div>
                 <img
@@ -381,11 +381,11 @@ export function LandingPage({
                 />
               </div>
               <div>
-                <div className="text-2xl font-bold text-slate-900">
+                <div className="text-2xl font-bold text-slate-900 group-hover:text-[#DB9D47] transition-colors">
                   Supremo Barber
                 </div>
               </div>
-            </div>
+            </a>
 
             {/* Desktop Navigation */}
             <div className="hidden lg:flex items-center gap-12">

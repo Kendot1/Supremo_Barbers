@@ -11,25 +11,22 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Switch } from "./ui/switch";
 import { Separator } from "./ui/separator";
-import { Clock, Award, Bell, Save, Database, CheckCircle2, XCircle } from "lucide-react";
+import { Clock, Download, Upload, Save, Database, Server } from "lucide-react";
 import { toast } from "sonner";
 import API from "../services/api.service";
-import { DatabaseWiper } from "./DatabaseWiper";
 import { ImageUploadTest } from "./ImageUploadTest";
 import { Alert, AlertDescription } from "./ui/alert";
+import { convertToCSV } from "./utils/exportUtils";
+import { ZipWriter, BlobWriter, TextReader } from "@zip.js/zip.js";
 
 export function SystemSettings() {
   const [settings, setSettings] = useState({
     openTime: "09:00",
     closeTime: "18:00",
-    bookingsPerBarber: 5,
     loyaltyPointsPerVisit: 10,
     pointsPerDollar: 1,
     cancellationDays: 2,
     downPaymentPercentage: 50,
-    emailNotifications: true,
-    smsNotifications: false,
-    reminderHours: 24,
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -45,14 +42,10 @@ export function SystemSettings() {
           setSettings({
             openTime: data.businessHours?.openTime || "09:00",
             closeTime: data.businessHours?.closeTime || "18:00",
-            bookingsPerBarber: data.bookingLimits?.maxBookingsPerBarber || 5,
             loyaltyPointsPerVisit: data.loyaltySettings?.pointsPerVisit || 10,
             pointsPerDollar: data.loyaltySettings?.pointsPerDollar || 1,
             cancellationDays: data.bookingPolicies?.cancellationNoticeDays || 2,
             downPaymentPercentage: data.bookingPolicies?.downPaymentPercentage || 50,
-            emailNotifications: data.notifications?.emailEnabled ?? true,
-            smsNotifications: data.notifications?.smsEnabled ?? false,
-            reminderHours: data.notifications?.reminderHours || 24,
           });
           setIsConnected(true);
         }
@@ -75,9 +68,6 @@ export function SystemSettings() {
           openTime: settings.openTime,
           closeTime: settings.closeTime,
         },
-        bookingLimits: {
-          maxBookingsPerBarber: settings.bookingsPerBarber,
-        },
         loyaltySettings: {
           pointsPerVisit: settings.loyaltyPointsPerVisit,
           pointsPerDollar: settings.pointsPerDollar,
@@ -85,11 +75,6 @@ export function SystemSettings() {
         bookingPolicies: {
           cancellationNoticeDays: settings.cancellationDays,
           downPaymentPercentage: settings.downPaymentPercentage,
-        },
-        notifications: {
-          emailEnabled: settings.emailNotifications,
-          smsEnabled: settings.smsNotifications,
-          reminderHours: settings.reminderHours,
         },
       });
       setIsConnected(true); // Mark as connected after successful save
@@ -101,6 +86,82 @@ export function SystemSettings() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleCreateBackup = async () => {
+    try {
+      // Use standard default password for automated creation
+      const password = "Supremo_Backup_Admin";
+      
+      setIsSaving(true);
+      toast.info("Gathering database files...", { id: "backup-toast" });
+
+      // Fetch all system data
+      const [users, barbers, appointments, services, reviews, payments, logsData] = await Promise.all([
+        API.users.getAll().catch(() => []),
+        API.barbers.getAll().catch(() => []),
+        API.appointments.getAll().catch(() => []),
+        API.services.getAll().catch(() => []),
+        API.reviews.getAll().catch(() => []),
+        API.payments.getAll().catch(() => []),
+        API.auditLogs.getAll().catch(() => [])
+      ]);
+
+      const zipWriter = new ZipWriter(new BlobWriter("application/zip"), {
+        password: password,
+        zipCrypto: true, // Crucial for native Windows Explorer compatibility
+      });
+
+      toast.loading("Compressing and locking database...", { id: "backup-toast" });
+
+      // Helper to dynamically convert to CSV based on the object's keys
+      const addCsvToZip = async (filename: string, dataArray: any[]) => {
+        if (!dataArray || dataArray.length === 0) return;
+        const headers = Object.keys(dataArray[0]);
+        const csvString = convertToCSV(dataArray, headers);
+        await zipWriter.add(filename, new TextReader(csvString));
+      };
+
+      await addCsvToZip("users.csv", users);
+      await addCsvToZip("barbers.csv", barbers);
+      await addCsvToZip("appointments.csv", appointments);
+      await addCsvToZip("services.csv", services);
+      await addCsvToZip("reviews.csv", reviews);
+      await addCsvToZip("payments.csv", payments);
+      await addCsvToZip("audit_logs.csv", logsData);
+
+      // Add settings as JSON metadata
+      const settingsData = {
+        version: "3.0-zip-encrypted",
+        timestamp: new Date().toISOString(),
+        settings
+      };
+      await zipWriter.add("system_settings.json", new TextReader(JSON.stringify(settingsData, null, 2)));
+      
+      const blob = await zipWriter.close();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `supremo-database-secure-${new Date().toISOString().split('T')[0]}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      toast.success("Password-Protected ZIP Database created successfully!", { id: "backup-toast" });
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to create locked zip backup", { id: "backup-toast" });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleRestoreBackup = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Restore logic using ZipReader could be added here, but for now we'll reset
+    // since restoring an entire normalized relational DB requires server integration.
+    e.target.value = "";
+    toast.error("Database Restoration requires Admin CLI currently. Please un-zip your files manually and import them onto the SQL Console.", { duration: 6000 });
   };
 
   return (
@@ -150,22 +211,6 @@ export function SystemSettings() {
                 }
               />
             </div>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="bookingsPerBarber">
-              Max Bookings Per Barber Per Day
-            </Label>
-            <Input
-              id="bookingsPerBarber"
-              type="number"
-              value={settings.bookingsPerBarber}
-              onChange={(e) =>
-                setSettings({
-                  ...settings,
-                  bookingsPerBarber: parseInt(e.target.value),
-                })
-              }
-            />
           </div>
         </CardContent>
       </Card>
@@ -217,74 +262,60 @@ export function SystemSettings() {
               }
             />
           </div>
+
         </CardContent>
       </Card>
 
-      {/* Notifications */}
+      {/* Database Management & Backups */}
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
-            <Bell className="w-5 h-5" />
+            <Server className="w-5 h-5" />
             <div>
-              <CardTitle>Notification Settings</CardTitle>
+              <CardTitle>Database & Backups</CardTitle>
               <CardDescription>
-                Configure customer notifications
+                Manage system data and export backup configurations
               </CardDescription>
             </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label>Email Notifications</Label>
+          <div className="flex flex-col sm:flex-row items-center gap-4 py-2">
+            <div className="flex-1 space-y-1">
+              <Label>Export Backup</Label>
               <p className="text-sm text-slate-500">
-                Send booking confirmations via email
+                Download a Password-Locked ZIP file containing .csv files of every database table.
               </p>
             </div>
-            <Switch
-              checked={settings.emailNotifications}
-              onCheckedChange={(checked) =>
-                setSettings({
-                  ...settings,
-                  emailNotifications: checked,
-                })
-              }
-            />
+            <Button onClick={handleCreateBackup} variant="outline" disabled={isSaving}>
+              <Download className="w-4 h-4 mr-2" />
+              Download Config
+            </Button>
           </div>
           <Separator />
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label>SMS Notifications</Label>
+          <div className="flex flex-col sm:flex-row items-center gap-4 py-2">
+            <div className="flex-1 space-y-1">
+              <Label>Restore Backup</Label>
               <p className="text-sm text-slate-500">
-                Send reminders via SMS
+                Data restore from ZIP format is intended for direct backend deployment.
               </p>
             </div>
-            <Switch
-              checked={settings.smsNotifications}
-              onCheckedChange={(checked) =>
-                setSettings({
-                  ...settings,
-                  smsNotifications: checked,
-                })
-              }
-            />
-          </div>
-          <Separator />
-          <div className="space-y-2">
-            <Label htmlFor="reminderHours">
-              Reminder Time (Hours Before)
-            </Label>
-            <Input
-              id="reminderHours"
-              type="number"
-              value={settings.reminderHours}
-              onChange={(e) =>
-                setSettings({
-                  ...settings,
-                  reminderHours: parseInt(e.target.value),
-                })
-              }
-            />
+            <div className="relative">
+              <Input
+                type="file"
+                accept=".zip"
+                className="hidden"
+                id="restore-file"
+                onChange={handleRestoreBackup}
+              />
+              <Label
+                htmlFor="restore-file"
+                className="cursor-pointer inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
+              >
+                <Upload className="w-4 h-4 mr-2" />
+                Upload Config
+              </Label>
+            </div>
           </div>
         </CardContent>
       </Card>

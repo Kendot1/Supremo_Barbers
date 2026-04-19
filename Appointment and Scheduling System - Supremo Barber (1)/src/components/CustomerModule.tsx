@@ -44,35 +44,52 @@ export function CustomerModule() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  const fetchCustomers = async () => {
+    try {
+      setIsLoading(true);
+      const users = await API.users.getAll({ role: 'customer' });
+
+      const customerUsers = users.filter(user => user.role === 'customer');
+
+      const transformedCustomers: Customer[] = customerUsers.map(user => ({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        contact: user.phone || 'N/A',
+        totalVisits: 0,
+        lastBookingDate: 'N/A',
+        status: (user.isActive ?? true) ? 'active' : 'inactive',
+      }));
+
+      setCustomers(transformedCustomers);
+    } catch (error) {
+      setCustomers([]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchCustomersSilently = async () => {
+    try {
+      const users = await API.users.getAll({ role: 'customer' });
+      const customerUsers = users.filter(user => user.role === 'customer');
+      const transformedCustomers: Customer[] = customerUsers.map(user => ({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        contact: user.phone || 'N/A',
+        totalVisits: 0,
+        lastBookingDate: 'N/A',
+        status: (user.isActive ?? true) ? 'active' : 'inactive',
+      }));
+      setCustomers(transformedCustomers);
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
   // Fetch customers from database
   useEffect(() => {
-    const fetchCustomers = async () => {
-      try {
-        setIsLoading(true);
-        const users = await API.users.getAll({ role: 'customer' });
-
-        // Filter to ensure ONLY customer role (exclude admin and barber)
-        const customerUsers = users.filter(user => user.role === 'customer');
-
-        // Transform users to customers format
-        const transformedCustomers: Customer[] = customerUsers.map(user => ({
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          contact: user.phone || 'N/A',
-          totalVisits: 0,   // Will be calculated from appointments in real implementation
-          lastBookingDate: 'N/A',
-          status: (user.isActive ?? true) ? 'active' : 'inactive',
-        }));
-
-        setCustomers(transformedCustomers);
-      } catch (error) {
-        // Silently handle - backend might not be running
-        setCustomers([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
     fetchCustomers();
   }, []);
 
@@ -107,35 +124,38 @@ export function CustomerModule() {
     }
 
     try {
-      await API.users.create({
+      // Optimistic UI Update
+      setIsAddDialogOpen(false);
+      const tempUser: Customer = {
+        id: 'optimistic_' + Date.now().toString(),
         name: newCustomer.name,
         email: newCustomer.email,
-        phone: newCustomer.contact,
+        contact: newCustomer.contact,
+        totalVisits: 0,
+        lastBookingDate: 'N/A',
+        status: 'active',
+      };
+      setCustomers(prev => [tempUser, ...prev]);
+
+      const payload = { ...newCustomer };
+      setNewCustomer({ name: "", email: "", contact: "" });
+
+      await API.users.create({
+        name: payload.name,
+        email: payload.email,
+        phone: payload.contact,
         password: 'customer123',
         role: 'customer',
       });
 
-      toast.success(`Customer ${newCustomer.name} added to database!`);
-      setNewCustomer({ name: "", email: "", contact: "" });
-      setIsAddDialogOpen(false);
+      toast.success(`Customer ${payload.name} added to database!`);
 
-      // Refetch customers
-      const users = await API.users.getAll({ role: 'customer' });
-      // Filter to ensure ONLY customer role (exclude admin and barber)
-      const customerUsers = users.filter(user => user.role === 'customer');
-      const transformedCustomers: Customer[] = customerUsers.map(user => ({
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        contact: user.phone || 'N/A',
-        totalVisits: 0,
-        lastBookingDate: 'N/A',
-        status: (user.isActive ?? true) ? 'active' : 'inactive',
-      }));
-      setCustomers(transformedCustomers);
+      // Refetch customers silently
+      fetchCustomersSilently();
     } catch (error) {
       console.error('Error adding customer:', error);
       toast.error('Failed to add customer to database');
+      fetchCustomersSilently(); // Revert on failure
     }
   };
 
@@ -170,6 +190,14 @@ export function CustomerModule() {
     }
 
     try {
+      // Optimistic UI update
+      setIsEditDialogOpen(false);
+      setCustomers(prev => prev.map(c => 
+        c.id === editingCustomer.id 
+          ? { ...c, name: editingCustomer.name, email: editingCustomer.email, contact: editingCustomer.contact }
+          : c
+      ));
+
       await API.users.update(editingCustomer.id, {
         name: editingCustomer.name,
         email: editingCustomer.email,
@@ -179,23 +207,13 @@ export function CustomerModule() {
 
       toast.success(`Customer ${editingCustomer.name} updated in database!`);
       setEditingCustomer(null);
-      setIsEditDialogOpen(false);
 
-      // Refetch customers
-      const users = await API.users.getAll({ role: 'customer' });
-      const transformedCustomers: Customer[] = users.map(user => ({
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        contact: user.phone || 'N/A',
-        totalVisits: 0,
-        lastBookingDate: 'N/A',
-        status: (user.isActive ?? true) ? 'active' : 'inactive',
-      }));
-      setCustomers(transformedCustomers);
+      // Refetch customers silently
+      fetchCustomersSilently();
     } catch (error) {
       console.error('Error updating customer:', error);
       toast.error('Failed to update customer in database');
+      fetchCustomersSilently(); // Revert on failure
     }
   };
 
@@ -219,60 +237,57 @@ export function CustomerModule() {
 
   const confirmSuspendCustomer = async () => {
     if (passwordConfirmation.customerId && passwordConfirmation.customerName) {
-      const customer = customers.find(c => c.id === passwordConfirmation.customerId);
+      const targetId = passwordConfirmation.customerId;
+      const targetName = passwordConfirmation.customerName;
+
+      const customer = customers.find(c => c.id === targetId);
       if (!customer) return;
+
+      // Optimistic UI Update
+      setPasswordConfirmation({ isOpen: false, action: null, customerId: null, customerName: null });
+      setCustomers(prev => prev.map(c => 
+        c.id === targetId ? { ...c, status: c.status === 'active' ? 'inactive' : 'active' } : c
+      ));
 
       try {
         // Toggle suspend/unsuspend
         if (customer.status === 'active') {
-          await API.users.suspend(passwordConfirmation.customerId);
-          toast.success(`Customer ${passwordConfirmation.customerName} account suspended!`);
+          await API.users.suspend(targetId);
+          toast.success(`Customer ${targetName} account suspended!`);
         } else {
-          await API.users.unsuspend(passwordConfirmation.customerId);
-          toast.success(`Customer ${passwordConfirmation.customerName} account reactivated!`);
+          await API.users.unsuspend(targetId);
+          toast.success(`Customer ${targetName} account reactivated!`);
         }
 
-        // Refetch customers
-        const users = await API.users.getAll({ role: 'customer' });
-        const transformedCustomers: Customer[] = users.map(user => ({
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          contact: user.phone || 'N/A',
-          totalVisits: 0,
-          lastBookingDate: 'N/A',
-          status: (user.isActive ?? true) ? 'active' : 'inactive',
-        }));
-        setCustomers(transformedCustomers);
+        // Refetch customers silently
+        fetchCustomersSilently();
       } catch (error) {
         console.error('Error suspending/unsuspending customer:', error);
         toast.error('Failed to update customer status');
+        fetchCustomersSilently(); // Revert on failure
       }
     }
   };
 
   const confirmDeleteCustomer = async () => {
     if (passwordConfirmation.customerId && passwordConfirmation.customerName) {
+      const targetId = passwordConfirmation.customerId;
+      
+      // Optimistic set state
+      setPasswordConfirmation({ isOpen: false, action: null, customerId: null, customerName: null });
+      setCustomers(prev => prev.filter(c => c.id !== targetId));
+
       try {
         // Permanently delete customer from database
-        await API.users.delete(passwordConfirmation.customerId);
-        toast.success(`Customer ${passwordConfirmation.customerName} permanently deleted from database!`);
+        await API.users.delete(targetId);
+        toast.success(`Customer permanently deleted from database!`);
 
-        // Refetch customers
-        const users = await API.users.getAll({ role: 'customer' });
-        const transformedCustomers: Customer[] = users.map(user => ({
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          contact: user.phone || 'N/A',
-          totalVisits: 0,
-          lastBookingDate: 'N/A',
-          status: (user.isActive ?? true) ? 'active' : 'inactive',
-        }));
-        setCustomers(transformedCustomers);
+        // Refetch customers silently
+        fetchCustomersSilently();
       } catch (error) {
         console.error('Error deleting customer:', error);
         toast.error('Failed to delete customer from database');
+        fetchCustomersSilently(); // Revert on failure
       }
     }
   };

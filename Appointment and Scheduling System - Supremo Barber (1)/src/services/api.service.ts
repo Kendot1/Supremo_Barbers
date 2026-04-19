@@ -315,10 +315,11 @@ const API = {
       return apiCall<User>(`/users/${id}`, undefined, false);
     },
 
-    create: async (data: { name: string; email: string; phone: string; password: string; role: string }) => {
+    create: async (data: { name: string; email: string; username?: string; phone: string; password: string; role: string }) => {
+      apiCache.invalidate('users:all');
       if (USE_LOCAL_BACKEND) {
         // Use the register endpoint which creates users
-        return LocalBackend.auth.register(data.email, data.password, data.name, data.phone);
+        return LocalBackend.auth.register(data.email, data.password, data.name, data.phone, data.username);
       }
       // Use the register endpoint to create users
       return apiCall<{ user: User; token: string }>(
@@ -332,6 +333,7 @@ const API = {
     },
 
     update: async (id: string, data: Partial<User>) => {
+      apiCache.invalidate('users:all');
       if (USE_LOCAL_BACKEND) return LocalBackend.users.update(id, data);
       return apiCall<User>(
         `/users/${id}`,
@@ -378,6 +380,7 @@ const API = {
     },
 
     suspend: async (id: string) => {
+      apiCache.invalidate('users:all');
       if (USE_LOCAL_BACKEND) {
         return LocalBackend.users.update(id, { isActive: false });
       }
@@ -409,6 +412,7 @@ const API = {
     },
 
     unsuspend: async (id: string) => {
+      apiCache.invalidate('users:all');
       if (USE_LOCAL_BACKEND) {
         return LocalBackend.users.update(id, { isActive: true });
       }
@@ -439,6 +443,7 @@ const API = {
     },
 
     delete: async (id: string) => {
+      apiCache.invalidate('users:all');
       if (USE_LOCAL_BACKEND) {
         LocalBackend.users.delete(id);
         return { message: 'User deleted successfully' };

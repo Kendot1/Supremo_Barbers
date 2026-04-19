@@ -29,18 +29,18 @@ export function Footer({ onNavigateToTerms, onNavigateToPrivacy }: FooterProps) 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
           {/* About Section */}
           <div className="space-y-4">
-            <div className="flex items-center gap-2">
+            <a href="/" className="flex items-center gap-2 group cursor-pointer outline-none inline-flex">
               <div className="w-12 h-8 sm:w-12 sm:h-10 rounded-full flex items-center justify-center">
                 <img
                   src="https://pub-86f4b5249e5c4021bb05d46908eeb094.r2.dev/supremo-barber/supremoWebLogo.png"
                   alt="Supremo Barber Logo"
-                  className="h-10 w-10 sm:h-12 sm:w-12"
+                  className="h-10 w-10 sm:h-12 sm:w-12 group-hover:scale-105 transition-transform"
                 />
               </div>
-              <h3 className="text-lg sm:text-xl text-[#FFC976]">
+              <h3 className="text-lg sm:text-xl text-[#FFC976] group-hover:text-white transition-colors">
                 Supremo Barber
               </h3>
-            </div>
+            </a>
             <p className="text-sm sm:text-base text-[#E8DCC8] leading-relaxed">
               Your premium destination for classic grooming and
               modern style. Experience the art of barbering at
@@ -55,7 +55,7 @@ export function Footer({ onNavigateToTerms, onNavigateToPrivacy }: FooterProps) 
             </h4>
             <div className="space-y-3">
               <a
-                href="https://maps.google.com"
+                href="https://maps.app.goo.gl/U1UiG8f3kZAzCYhP9"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-start gap-3 text-sm sm:text-base text-[#E8DCC8] hover:text-[#FFC976] transition-colors group"

@@ -607,9 +607,6 @@ export function AnalyticsOverview({
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, value }) =>
-                    `${name}: ${value}%`
-                  }
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="value"
@@ -618,7 +615,8 @@ export function AnalyticsOverview({
                     <Cell key={entry.id} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip />
+                <Tooltip formatter={(value) => `${value}%`} />
+                <Legend layout="horizontal" verticalAlign="bottom" align="center" wrapperStyle={{ fontSize: "12px", paddingTop: "20px" }} />
               </PieChart>
             </ResponsiveContainer>
           </CardContent>

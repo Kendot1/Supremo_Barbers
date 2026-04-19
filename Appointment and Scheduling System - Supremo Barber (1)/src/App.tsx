@@ -5,7 +5,7 @@ import { lazy, Suspense, useState, useEffect, useCallback, useMemo, startTransit
 import { Toaster } from "sonner";
 import { toast } from "sonner";
 import API from "./services/api.service";
-import { logUserLogin, logUserLogout } from "./services/audit-notification.service";
+import { logUserLogout } from "./services/audit-notification.service";
 import { logAppointmentCreated } from "./services/audit-notification.service";
 import { createNotification } from "./components/NotificationCenter";
 
@@ -117,6 +117,45 @@ function App() {
   const [authToken, setAuthToken] = useState<string | null>(null);
   const [preSelectedServiceId, setPreSelectedServiceId] = useState<string | null>(null);
   const [preSelectedServiceIds, setPreSelectedServiceIds] = useState<string[]>([]);
+
+  // Handle logout - Memoized to prevent recreation - Optimized for instant response
+  const handleLogout = useCallback(async () => {
+    // Prevent double execution
+    if ((window as any).__isLoggingOut) return;
+    (window as any).__isLoggingOut = true;
+    
+    // Store user info for background logging before clearing
+    const userToLog = currentUser;
+
+    // IMMEDIATELY clear UI state first (instant response < 0.1s)
+    setCurrentUser(null);
+    setCurrentView("landingpage");
+    setAppointments([]);
+    setNotifications([]);
+    setAuthToken(null);
+
+    // Clear localStorage immediately
+    localStorage.removeItem('currentUser');
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('loginTime');
+
+    // Background operations (don't await - fire and forget)
+    Promise.all([
+      // Log user logout in background
+      userToLog ? logUserLogout(userToLog.id, userToLog.role, userToLog.name, userToLog.email).catch(err => {
+        console.error('Failed to log logout:', err);
+      }) : Promise.resolve(),
+      // Logout API call in background
+      authToken ? API.auth.logout().catch(err => {
+        console.error('Logout API error:', err);
+      }) : Promise.resolve()
+    ]).finally(() => {
+      // Clear flag after a short delay
+      setTimeout(() => {
+        (window as any).__isLoggingOut = false;
+      }, 500);
+    });
+  }, [currentUser, authToken]);
 
   // Load user from localStorage on mount
   useEffect(() => {
@@ -429,8 +468,36 @@ function App() {
     // Set up polling interval (every 15 seconds for customers to catch payment verification updates)
     const pollInterval = currentUser.role === 'customer' ? 15000 : 30000; // 15s for customers, 30s for others
 
-    const intervalId = setInterval(() => {
+    const intervalId = setInterval(async () => {
+      // Check device revocation and account deactivation first
+      try {
+        const freshUser: any = await API.users.getById(currentUser.id);
+        if (freshUser) {
+          // Check for account deactivation
+          const isActive = freshUser.isActive !== false && freshUser.is_active !== false;
+          if (!isActive) {
+            console.warn('Session revoked by account deactivation');
+            handleLogout();
+            toast.error("Account Deactivated", { description: "Your account has been deactivated by an administrator. You have been logged out." });
+            return; // Stop processing updates
+          }
 
+          // Check device revocation
+          if (freshUser.deviceRevocationTs) {
+            const revocationTs = new Date(freshUser.deviceRevocationTs).getTime();
+            const loginTime = parseInt(localStorage.getItem('loginTime') || '0', 10);
+            
+            if (loginTime > 0 && revocationTs > loginTime) {
+              console.warn('Session revoked by sign out from all devices');
+              handleLogout();
+              toast.error("Session Expired", { description: "You have been signed out because 'Sign out from all devices' was used." });
+              return; // Stop processing updates since we're logging out
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Auto-refresh revocation check error:', err);
+      }
 
       // Refresh appointments to catch payment status changes
       fetchAppointments(currentUser.id, currentUser.role).catch(err =>
@@ -444,7 +511,7 @@ function App() {
     }, pollInterval);
 
     return () => clearInterval(intervalId);
-  }, [currentUser, fetchAppointments, fetchNotifications]);
+  }, [currentUser, fetchAppointments, fetchNotifications, handleLogout]);
 
   // Handle login - Memoized to prevent recreation
   const handleLogin = useCallback(async (user: User) => {
@@ -457,39 +524,8 @@ function App() {
     // This makes login instant while data loads in the background
     fetchUserData(user.id, user.role);
 
-    // Log user login in background (don't block UI)
-    logUserLogin(user.id, user.role, user.name, user.email);
+    // Removed frontend audit log since backend generates it
   }, [fetchUserData]);
-
-  // Handle logout - Memoized to prevent recreation - Optimized for instant response
-  const handleLogout = useCallback(async () => {
-    // Store user info for background logging before clearing
-    const userToLog = currentUser;
-
-    // IMMEDIATELY clear UI state first (instant response < 0.1s)
-    setCurrentUser(null);
-    setCurrentView("landingpage");
-    setAppointments([]);
-    setNotifications([]);
-    setAuthToken(null);
-
-    // Clear localStorage immediately
-    localStorage.removeItem('currentUser');
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('loginTime');
-
-    // Background operations (don't await - fire and forget)
-    Promise.all([
-      // Log user logout in background
-      userToLog ? logUserLogout(userToLog.id, userToLog.role, userToLog.name, userToLog.email).catch(err => {
-        console.error('Failed to log logout:', err);
-      }) : Promise.resolve(),
-      // Logout API call in background
-      authToken ? API.auth.logout().catch(err => {
-        console.error('Logout API error:', err);
-      }) : Promise.resolve()
-    ]);
-  }, [currentUser, authToken]);
 
   // Handle user updates - Memoized to prevent recreation
   const handleUserUpdate = useCallback((updatedUser: User) => {
@@ -531,42 +567,6 @@ function App() {
 
         return updated;
       });
-
-      // Create notifications in parallel (don't wait for them)
-      if (currentUser?.role === 'customer') {
-
-        Promise.all([
-          API.notifications.create(createNotification(
-            'super-admin',
-            'New Booking Received',
-            `${currentUser.name} booked ${appointment.service} with ${appointment.barber} for ${new Date(appointment.date).toLocaleDateString()}.`,
-            'normal',
-            {
-              appointmentId: createdAppointment.id,
-              customerId: currentUser.id,
-              actionUrl: `/appointments?highlight=${createdAppointment.id}`, // Highlight new appointment
-              actionLabel: 'View Appointment'
-            }
-          )),
-          API.notifications.create(createNotification(
-            appointment.barber,
-            'New Appointment Assigned',
-            `${currentUser.name} booked ${appointment.service} on ${new Date(appointment.date).toLocaleDateString()} at ${appointment.time}.`,
-            'normal',
-            {
-              appointmentId: createdAppointment.id,
-              customerId: currentUser.id,
-              actionUrl: `/appointments?highlight=${createdAppointment.id}`, // Highlight new appointment
-              actionLabel: 'View Appointment'
-            }
-          ))
-        ]).then(() => {
-
-        }).catch(error => {
-          console.error('❌ Failed to create notifications:', error);
-          // Don't fail the booking if notifications fail
-        });
-      }
 
       // Log appointment creation in background (don't block UI)
       if (currentUser) {
@@ -725,7 +725,7 @@ function App() {
 
     return notifications.filter(n => {
       if (currentUser.role === 'admin') {
-        return n.userId === 'admin' || n.userId === currentUser.id;
+        return n.userId === 'admin' || n.userId === 'super-admin' || n.userId === currentUser.id;
       }
       if (currentUser.role === 'barber') {
         return n.userId === currentUser.name || n.userId === currentUser.id;

@@ -306,6 +306,9 @@ export function BookingHistory({ userId, appointments, onUpdateAppointments }: B
                         ? booking.notes.replace('Customer cancelled: ', '')
                         : null);
 
+                    const priceNoteMatch = booking.notes && booking.notes.match(/Price adjustment: (.*)/);
+                    const priceNote = priceNoteMatch ? priceNoteMatch[1] : null;
+
                     return (
                       <TableRow key={booking.id}>
                         <TableCell>
@@ -318,6 +321,13 @@ export function BookingHistory({ userId, appointments, onUpdateAppointments }: B
                                 <div className="mt-1 text-xs text-red-500 flex items-start gap-1">
                                   <AlertCircle className="w-3 h-3 mt-0.5 flex-shrink-0" />
                                   <span>Reason: {cancelReason}</span>
+                                </div>
+                              )}
+                              {/* Price Note Display */}
+                              {priceNote && (
+                                <div className="mt-1 text-xs text-amber-600 flex items-start gap-1">
+                                  <AlertCircle className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                                  <span>{priceNote}</span>
                                 </div>
                               )}
                             </div>
@@ -386,7 +396,18 @@ export function BookingHistory({ userId, appointments, onUpdateAppointments }: B
                   {selectedBooking.date} at {selectedBooking.time}
                 </p>
                 <p className="text-xs text-slate-500">with {selectedBooking.barber}</p>
-                <p className="text-xs text-slate-500 mt-1">Down Payment: ₱{(selectedBooking.price * 0.5).toFixed(2)}</p>
+                <p className="text-xs text-slate-500 mt-1">Down Payment: ₱{(() => {
+                  let dp = null;
+                  if (selectedBooking.notes) {
+                    const dpMatches = [...selectedBooking.notes.matchAll(/fixed down payment of ₱(\d+)/g)];
+                    if (dpMatches.length > 0) dp = parseInt(dpMatches[dpMatches.length - 1][1], 10);
+                    else {
+                      const prevMatches = [...selectedBooking.notes.matchAll(/Previous amount was ₱([\d,]+)/g)];
+                      if (prevMatches.length > 0) dp = parseInt(prevMatches[0][1].replace(/,/g, ''), 10) * 0.5;
+                    }
+                  }
+                  return ((selectedBooking as any).down_payment || dp || Math.round(selectedBooking.price * 0.5)).toFixed(2);
+                })()}</p>
               </div>
             )}
 

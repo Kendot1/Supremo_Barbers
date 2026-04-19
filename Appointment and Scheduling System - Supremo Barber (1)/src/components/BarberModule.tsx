@@ -57,6 +57,7 @@ export function BarberModule({ appointments }: BarberModuleProps) {
   const [isResetPasswordDialogOpen, setIsResetPasswordDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [newBarber, setNewBarber] = useState({ name: "", specialty: "", schedule: "" });
+  const [expandedBarberId, setExpandedBarberId] = useState<string | null>(null);
   const [editingBarber, setEditingBarber] = useState<Barber | null>(null);
   const [resetPasswordBarber, setResetPasswordBarber] = useState<Barber | null>(null);
   const [newPassword, setNewPassword] = useState("SupremoBarber2024");
@@ -778,38 +779,93 @@ export function BarberModule({ appointments }: BarberModuleProps) {
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <div className="space-y-4">
+                      <div className="space-y-4 overflow-y-auto max-h-[600px] pr-2 styled-scrollbar">
                         {barbers
                           .filter((b) => b.status === "active")
-                          .map((barber) => (
+                          .map((barber) => {
+                            const barberBookings = appointments.filter(a =>
+                              (a.barber === barber.name || a.barberId === barber.id) &&
+                              a.date === (selectedDate ? `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}` : '') &&
+                              (a.status === 'pending' || a.status === 'confirmed')
+                            ).sort((a, b) => {
+                               const matchA = (a.time || '').match(/(\d+):(\d+)\s*(AM|PM)/i);
+                               const matchB = (b.time || '').match(/(\d+):(\d+)\s*(AM|PM)/i);
+                               const timeA = matchA ? (parseInt(matchA[1]) % 12 + (matchA[3].toUpperCase() === 'PM' ? 12 : 0)) * 60 + parseInt(matchA[2]) : 0;
+                               const timeB = matchB ? (parseInt(matchB[1]) % 12 + (matchB[3].toUpperCase() === 'PM' ? 12 : 0)) * 60 + parseInt(matchB[2]) : 0;
+                               return timeA - timeB;
+                            });
+
+                            const isExpanded = expandedBarberId === barber.id;
+
+                            return (
                             <div
                               key={barber.id}
-                              className="flex items-center justify-between p-4 rounded-lg bg-[#FBF7EF] border border-[#E8DCC8]"
+                              onClick={() => setExpandedBarberId(isExpanded ? null : barber.id)}
+                              className={`flex flex-col p-4 rounded-lg bg-[#FBF7EF] border cursor-pointer transition-all duration-200 hover:shadow-md ${isExpanded ? 'border-[#DB9D47] shadow-sm' : 'border-[#E8DCC8]'}`}
                             >
-                              <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#DB9D47] to-[#D98555] flex items-center justify-center text-white">
-                                  {barber.name
-                                    .split(" ")
-                                    .map((n) => n[0])
-                                    .join("")}
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#DB9D47] to-[#D98555] flex items-center justify-center text-white shadow-inner">
+                                    {barber.name
+                                      .split(" ")
+                                      .map((n) => n[0])
+                                      .join("")}
+                                  </div>
+                                  <div>
+                                    <p className="text-[#5C4A3A] font-medium group-hover:text-[#DB9D47] transition-colors">{barber.name}</p>
+                                    <p className="text-sm text-[#87765E]">{barber.specialty}</p>
+                                  </div>
                                 </div>
-                                <div>
-                                  <p className="text-[#5C4A3A]">{barber.name}</p>
-                                  <p className="text-sm text-[#87765E]">{barber.specialty}</p>
+                                <div className="text-right flex flex-col items-end">
+                                  <p className="text-[#5C4A3A] text-sm hidden sm:block">{barber.schedule}</p>
+                                  <Badge variant="outline" className={`mt-1 font-medium ${barberBookings.length > 0 ? 'bg-orange-50 text-[#DB9D47] border-[#DB9D47]/30' : 'bg-gray-50 text-gray-400 border-gray-200'}`}>
+                                    {barberBookings.length} {barberBookings.length === 1 ? 'booking' : 'bookings'}
+                                  </Badge>
                                 </div>
                               </div>
-                              <div className="text-right">
-                                <p className="text-[#5C4A3A]">{barber.schedule}</p>
-                                <p className="text-sm text-[#87765E]">
-                                  {appointments.filter(a =>
-                                    a.barber === barber.name &&
-                                    a.date === (selectedDate ? `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}` : '') &&
-                                    a.status === 'upcoming'
-                                  ).length} bookings
-                                </p>
-                              </div>
+
+                              {isExpanded && (
+                                <div className="mt-4 pt-4 border-t border-[#E8DCC8]/60 animate-in slide-in-from-top-2 fade-in duration-200">
+                                  {/* Barber Contact/Info Details */}
+                                  <div className="grid grid-cols-2 gap-4 mb-4">
+                                    <div className="bg-white p-3 border border-[#E8DCC8] rounded-md">
+                                        <p className="text-xs text-[#87765E] uppercase tracking-wide mb-1">Email Contact</p>
+                                        <p className="text-sm text-[#5C4A3A] font-medium truncate">{barber.email || 'No email provided'}</p>
+                                    </div>
+                                    <div className="bg-white p-3 border border-[#E8DCC8] rounded-md">
+                                        <p className="text-xs text-[#87765E] uppercase tracking-wide mb-1">Current Rating</p>
+                                        <div className="flex items-center gap-1">
+                                          <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                                          <span className="text-sm text-[#5C4A3A] font-medium">{barber.rating.toFixed(1)}</span>
+                                        </div>
+                                    </div>
+                                  </div>
+
+                                  {/* Bookings Timeline */}
+                                  {barberBookings.length > 0 ? (
+                                    <>
+                                      <p className="text-xs font-semibold text-[#87765E] uppercase tracking-wider mb-3">Today's Booked Slots</p>
+                                      <div className="flex flex-wrap gap-2">
+                                        {barberBookings.map((booking, idx) => (
+                                          <div key={idx} className="flex items-center bg-white border border-[#E8DCC8] rounded-md px-3 py-1.5 space-x-2 shadow-sm transition-transform hover:scale-105">
+                                            <div className="w-2 h-2 rounded-full bg-[#DB9D47] animate-pulse"></div>
+                                            <span className="text-sm text-[#5C4A3A] font-medium">{booking.time}</span>
+                                            <span className="text-xs text-[#87765E] bg-gray-50 px-1.5 py-0.5 rounded">({booking.duration}m)</span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </>
+                                  ) : (
+                                    <div className="flex flex-col items-center justify-center py-6 bg-white border border-[#E8DCC8] border-dashed rounded-md">
+                                      <CalendarIcon className="w-8 h-8 text-gray-300 mb-2" />
+                                      <p className="text-sm font-medium text-[#87765E]">No bookings for this date.</p>
+                                      <p className="text-xs text-gray-400">This barber is completely free today.</p>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
                             </div>
-                          ))}
+                          )})}
                       </div>
                     </CardContent>
                   </Card>

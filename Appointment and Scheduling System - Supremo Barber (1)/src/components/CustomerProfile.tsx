@@ -137,10 +137,14 @@ export function CustomerProfile({
     setSignOutAllLoading(true);
     try {
       // 1. Persist the revocation timestamp on the server so other devices
-      //    are blocked on their next login (checked against response.user.deviceRevocationTs).
+      //    are blocked on their next login or next poll (checked against response.user.deviceRevocationTs).
+      const newTs = new Date().toISOString();
       await API.users.update(user.id, {
-        deviceRevocationTs: new Date().toISOString(),
+        deviceRevocationTs: newTs,
       } as any);
+
+      // Keep this session alive by updating loginTime
+      localStorage.setItem('loginTime', (new Date(newTs).getTime() + 1000).toString());
 
       // 2. Clear the trusted-device entry for the current device
       localStorage.removeItem(trustedKey);
@@ -305,9 +309,8 @@ export function CustomerProfile({
 
           // Clear password
           setProfilePassword("");
-
         } catch (emailChangeError: any) {
-          console.error("Change email API failed, trying regular update:", emailChangeError);
+          console.error("Change email API failed:", emailChangeError);
 
           // Check for duplicate email error
           if (emailChangeError.message?.includes('duplicate key') ||
@@ -317,67 +320,29 @@ export function CustomerProfile({
             toast.error("Email already in use", {
               description: "This email address is already registered to another account. Please use a different email."
             });
-            setLoading(false);
-            setProfilePassword("");
-            return;
-          }
-
-
-
-          await API.users.update(user.id, {
-            name: profile.name,
-            email: profile.email,
-            phone: profile.phone,
-          });
-
-          const changes = [];
-          if (emailChanged) changes.push("email");
-          if (profile.name !== user.name) changes.push("name");
-          if (profile.phone !== user.phone) changes.push("phone");
-
-          if (changes.length > 0) {
-            try {
-              await logProfileUpdate(
-                user.id,
-                user.role as "customer",
-                user.name,
-                user.email,
-                changes
-              );
-            } catch (logError) {
-              console.error("Error logging profile update:", logError);
-            }
-          }
-
-          toast.success("Profile updated successfully!", {
-            description: "Your personal information has been saved."
-          });
-
-          if (onUserUpdate) {
-            onUserUpdate({
-              ...user,
-              name: profile.name,
-              email: profile.email,
-              phone: profile.phone,
+          } else {
+            toast.error("Email update failed", {
+              description: emailChangeError.message || "Failed to update email. Please check your password and try again."
             });
           }
-
+          
+          setLoading(false);
           setProfilePassword("");
+          return;
         }
-
       } else {
-        // No email change, use regular update
-        await API.users.update(user.id, {
-          name: profile.name,
-          email: profile.email,
-          phone: profile.phone,
-        });
-
+        // Just updating name, phone, etc.
         const changes = [];
         if (profile.name !== user.name) changes.push("name");
         if (profile.phone !== user.phone) changes.push("phone");
 
         if (changes.length > 0) {
+          await API.users.update(user.id, {
+            name: profile.name,
+            phone: profile.phone,
+          });
+
+          // Log the changes
           try {
             await logProfileUpdate(
               user.id,
@@ -388,21 +353,17 @@ export function CustomerProfile({
             );
           } catch (logError) {
             console.error("Error logging profile update:", logError);
-            // Don't fail the whole operation if logging fails
           }
-        }
 
-        toast.success("Profile updated successfully!", {
-          description: "Your personal information has been saved."
-        });
-
-        if (onUserUpdate) {
-          onUserUpdate({
-            ...user,
-            name: profile.name,
-            email: profile.email,
-            phone: profile.phone,
-          });
+          toast.success("Profile updated successfully!");
+          
+          if (onUserUpdate) {
+            onUserUpdate({
+              ...user,
+              name: profile.name,
+              phone: profile.phone,
+            });
+          }
         }
       }
     } catch (error: any) {
@@ -1089,7 +1050,7 @@ export function CustomerProfile({
                 </li>
                 <li>
                   Any active sessions on other devices will be
-                  invalidated on their next login
+                  logged out immediately
                 </li>
                 <li>
                   You will remain logged in on this device for

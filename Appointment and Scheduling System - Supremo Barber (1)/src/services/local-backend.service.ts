@@ -290,7 +290,7 @@ export const LocalBackend = {
       return { user, token };
     },
 
-    async register(email: string, password: string, name: string, phone?: string) {
+    async register(email: string, password: string, name: string, phone?: string, username?: string) {
       const users = getFromStorage<any>(STORAGE_KEYS.USERS);
       
       if (users.some(u => u.email === email)) {
@@ -301,6 +301,7 @@ export const LocalBackend = {
       const newUser = {
         id: generateId(),
         email,
+        username: username || email.split('@')[0],
         password: hashedPassword,
         name,
         phone: phone || null,

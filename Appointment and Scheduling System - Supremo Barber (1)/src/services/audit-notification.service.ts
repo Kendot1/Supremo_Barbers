@@ -30,6 +30,7 @@ export interface NotificationData {
   relatedType?: string;
   actionUrl?: string;
   actionLabel?: string;
+  actorId?: string; // ID of the user performing the action
 }
 
 /**
@@ -81,6 +82,7 @@ export async function createNotification(data: NotificationData): Promise<void> 
         related_type: data.relatedType,
         action_url: data.actionUrl,
         action_label: data.actionLabel,
+        actor_id: data.actorId,
       });
       console.log('✅ Notification sent via direct Supabase');
     } catch (directError) {
@@ -143,6 +145,7 @@ export async function logAppointmentCreated(
   await createNotification({
     userId: 'admin', // Will be sent to all admins
     userRole: 'admin',
+    actorId: userId,
     type: 'appointment_created',
     title: 'New Appointment Created',
     message: `${userName} booked ${appointmentDetails.service} with ${appointmentDetails.barber} on ${new Date(appointmentDetails.date).toLocaleDateString()} at ${appointmentDetails.time}`,
@@ -165,18 +168,6 @@ export async function logAppointmentCreated(
     actionLabel: 'View Appointments',
   });
 
-  // Create confirmation notification for customer
-  await createNotification({
-    userId,
-    userRole: 'customer',
-    type: 'appointment_booked',
-    title: '✅ Booking Confirmed',
-    message: `Your appointment for ${appointmentDetails.service} with ${appointmentDetails.barber} on ${new Date(appointmentDetails.date).toLocaleDateString()} at ${appointmentDetails.time} has been submitted. Please complete payment to confirm.`,
-    relatedId: appointmentId,
-    relatedType: 'appointment',
-    actionUrl: `/appointments?highlight=${appointmentId}`,
-    actionLabel: 'View Booking',
-  });
 }
 
 /**
@@ -219,38 +210,43 @@ export async function logAppointmentStatusUpdate(
 
   // Create notification for customer
   const customerMessages: Record<string, string> = {
+    pending: `Your appointment request for ${appointmentDetails.service} on ${new Date(appointmentDetails.date).toLocaleDateString()} has been received and is pending review.`,
+    verified: `Your appointment request for ${appointmentDetails.service} on ${new Date(appointmentDetails.date).toLocaleDateString()} has been verified by the admin!`,
     confirmed: `Your appointment for ${appointmentDetails.service} on ${new Date(appointmentDetails.date).toLocaleDateString()} has been confirmed!`,
     completed: `Your appointment for ${appointmentDetails.service} has been completed. Please leave a review!`,
     cancelled: `Your appointment for ${appointmentDetails.service} on ${new Date(appointmentDetails.date).toLocaleDateString()} has been cancelled.`,
     rejected: `Your appointment request for ${appointmentDetails.service} was not accepted. Please book another slot.`,
   };
 
-  if (customerMessages[newStatus]) {
-    await createNotification({
-      userId: appointmentDetails.customerId,
-      userRole: 'customer',
-      type: `appointment_${newStatus}`,
-      title: `Appointment ${newStatus.charAt(0).toUpperCase() + newStatus.slice(1)}`,
-      message: customerMessages[newStatus],
-      relatedId: appointmentId,
-      relatedType: 'appointment',
-      actionUrl: `/appointments?highlight=${appointmentId}`, // Include appointment ID for highlighting
-      actionLabel: 'View Appointment',
-    });
-  }
+  const message = customerMessages[newStatus] || `Your appointment status for ${appointmentDetails.service} has been updated to ${newStatus}.`;
 
-  // Notify admin
   await createNotification({
-    userId: 'admin',
-    userRole: 'admin',
+    userId: appointmentDetails.customerId,
+    userRole: 'customer',
     type: `appointment_${newStatus}`,
     title: `Appointment ${newStatus.charAt(0).toUpperCase() + newStatus.slice(1)}`,
-    message: `${userName} ${newStatus} appointment for ${appointmentDetails.customerName} - ${appointmentDetails.service} on ${new Date(appointmentDetails.date).toLocaleDateString()}`,
+    message: message,
     relatedId: appointmentId,
     relatedType: 'appointment',
-    actionUrl: '/appointments',
-    actionLabel: 'View Appointments',
+    actionUrl: `/appointments?highlight=${appointmentId}`,
+    actionLabel: 'View Appointment',
   });
+
+  // Notify admin only if the action was not performed by an admin
+  if (userRole !== 'admin') {
+    await createNotification({
+      userId: 'admin',
+      userRole: 'admin',
+    actorId: userId,
+      type: `appointment_${newStatus}`,
+      title: `Appointment ${newStatus.charAt(0).toUpperCase() + newStatus.slice(1)}`,
+      message: `${userName} ${newStatus} appointment for ${appointmentDetails.customerName} - ${appointmentDetails.service} on ${new Date(appointmentDetails.date).toLocaleDateString()}`,
+      relatedId: appointmentId,
+      relatedType: 'appointment',
+      actionUrl: '/appointments',
+      actionLabel: 'View Appointments',
+    });
+  }
 }
 
 /**
@@ -275,6 +271,7 @@ export async function logPaymentVerification(
   await createAuditLog({
     userId,
     userRole: 'admin',
+    actorId: userId,
     userName,
     userEmail,
     action: `payment_${status}`,
@@ -399,6 +396,7 @@ export async function logUserRegistration(
   await createNotification({
     userId: 'admin',
     userRole: 'admin',
+    actorId: userId,
     type: 'user_registered',
     title: 'New User Registered',
     message: `${userName} (${userEmail}) has registered as a ${userRole}`,
@@ -424,6 +422,7 @@ export async function logServiceAction(
   await createAuditLog({
     userId,
     userRole: 'admin',
+    actorId: userId,
     userName,
     userEmail,
     action: `service_${action}`,
@@ -483,6 +482,7 @@ export async function logReviewSubmission(
   await createNotification({
     userId: 'admin',
     userRole: 'admin',
+    actorId: userId,
     type: 'review_submitted',
     title: 'New Review Submitted',
     message: `${userName} left a ${rating}-star review for ${barberName}`,
@@ -507,6 +507,7 @@ export async function logSettingsChange(
   await createAuditLog({
     userId,
     userRole: 'admin',
+    actorId: userId,
     userName,
     userEmail,
     action: 'settings_changed',
@@ -537,6 +538,7 @@ export async function logUserCreated(
   await createAuditLog({
     userId: adminId,
     userRole: 'admin',
+    actorId: userId,
     userName: adminName,
     userEmail: adminEmail,
     action: 'user_created',
@@ -606,6 +608,7 @@ export async function logUserDeleted(
   await createAuditLog({
     userId: adminId,
     userRole: 'admin',
+    actorId: userId,
     userName: adminName,
     userEmail: adminEmail,
     action: 'user_deleted',
@@ -634,6 +637,7 @@ export async function logUserSuspended(
   await createAuditLog({
     userId: adminId,
     userRole: 'admin',
+    actorId: userId,
     userName: adminName,
     userEmail: adminEmail,
     action: 'user_suspended',
@@ -672,6 +676,7 @@ export async function logUserUnsuspended(
   await createAuditLog({
     userId: adminId,
     userRole: 'admin',
+    actorId: userId,
     userName: adminName,
     userEmail: adminEmail,
     action: 'user_unsuspended',
@@ -825,6 +830,7 @@ export async function logPaymentProofUpload(
   await createNotification({
     userId: 'admin',
     userRole: 'admin',
+    actorId: userId,
     type: 'payment_proof_uploaded',
     title: 'Payment Proof Uploaded',
     message: `${userName} uploaded payment proof for ₱${amount}. Please verify.`,
@@ -913,6 +919,7 @@ export async function logBarberCreated(
   await createAuditLog({
     userId: adminId,
     userRole: 'admin',
+    actorId: userId,
     userName: adminName,
     userEmail: adminEmail,
     action: 'barber_created',
@@ -930,6 +937,7 @@ export async function logBarberCreated(
   await createNotification({
     userId: 'admin',
     userRole: 'admin',
+    actorId: userId,
     type: 'barber_created',
     title: 'New Barber Added',
     message: `${adminName} added ${barberName} to the team`,
@@ -954,6 +962,7 @@ export async function logBarberUpdated(
   await createAuditLog({
     userId: adminId,
     userRole: 'admin',
+    actorId: userId,
     userName: adminName,
     userEmail: adminEmail,
     action: 'barber_updated',
@@ -981,6 +990,7 @@ export async function logBarberDeleted(
   await createAuditLog({
     userId: adminId,
     userRole: 'admin',
+    actorId: userId,
     userName: adminName,
     userEmail: adminEmail,
     action: 'barber_deleted',
@@ -997,6 +1007,7 @@ export async function logBarberDeleted(
   await createNotification({
     userId: 'admin',
     userRole: 'admin',
+    actorId: userId,
     type: 'barber_deleted',
     title: 'Barber Removed',
     message: `${adminName} removed ${barberName} from the team`,
@@ -1196,6 +1207,7 @@ export async function logAppointmentCancelledByCustomer(
   await createNotification({
     userId: 'admin',
     userRole: 'admin',
+    actorId: userId,
     type: 'appointment_cancelled',
     title: '❌ Appointment Cancelled by Customer',
     message: `${userName} cancelled their ${appointmentDetails.service} appointment with ${appointmentDetails.barber} on ${new Date(appointmentDetails.date).toLocaleDateString()} at ${appointmentDetails.time}. Reason: ${appointmentDetails.reason}`,
@@ -1268,6 +1280,7 @@ export async function logAppointmentCancelledByBarber(
   await createNotification({
     userId: 'admin',
     userRole: 'admin',
+    actorId: userId,
     type: 'appointment_cancelled',
     title: '❌ Appointment Cancelled by Barber',
     message: `${userName} cancelled ${appointmentDetails.customerName}'s ${appointmentDetails.service} appointment on ${new Date(appointmentDetails.date).toLocaleDateString()} at ${appointmentDetails.time}. Reason: ${appointmentDetails.reason}`,
@@ -1315,6 +1328,7 @@ export async function logAppointmentCancelledByAdmin(
   await createAuditLog({
     userId,
     userRole: 'admin',
+    actorId: userId,
     userName,
     userEmail,
     action: 'appointment_cancelled_by_admin',
@@ -1403,6 +1417,7 @@ export async function logAppointmentCompleted(
   await createNotification({
     userId: 'admin',
     userRole: 'admin',
+    actorId: userId,
     type: 'appointment_completed',
     title: 'Appointment Completed',
     message: `${userName} completed ${appointmentDetails.customerName}'s ${appointmentDetails.service} appointment (₱${appointmentDetails.price})`,
@@ -1450,6 +1465,7 @@ export async function logAppointmentRescheduledByCustomer(
   await createNotification({
     userId: 'admin',
     userRole: 'admin',
+    actorId: userId,
     type: 'appointment_rescheduled',
     title: '📅 Appointment Rescheduled',
     message: `${userName} rescheduled their ${appointmentDetails.service} appointment with ${appointmentDetails.barber} from ${new Date(appointmentDetails.oldDate).toLocaleDateString()} to ${new Date(appointmentDetails.newDate).toLocaleDateString()} at ${appointmentDetails.newTime}`,
@@ -1528,6 +1544,7 @@ export async function logNewDeviceLoginWithAdminAlert(
     await createNotification({
       userId: 'admin',
       userRole: 'admin',
+    actorId: userId,
       type: 'security_alert',
       title: '🔐 New Device Login Detected',
       message: `${userName} (${userRole}) logged in from a new device on ${deviceInfo.time}. Email: ${userEmail}`,

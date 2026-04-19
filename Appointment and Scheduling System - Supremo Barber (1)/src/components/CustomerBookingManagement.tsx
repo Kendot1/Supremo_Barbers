@@ -1363,37 +1363,66 @@ export function CustomerBookingManagement({
                       <span className="text-[#87765E]">Total Amount</span>
                       <span className="text-[#5C4A3A] font-medium">₱{viewBooking.price.toLocaleString()}</span>
                     </div>
-                    {(viewBooking.down_payment || viewBooking.downPaymentPaid) && (
-                      <div className="flex justify-between">
-                        <span className="text-[#87765E]">Down Payment</span>
-                        <span className="text-[#5C4A3A] font-medium">₱{(viewBooking.down_payment || viewBooking.price * 0.5).toLocaleString()}</span>
-                      </div>
-                    )}
-                    {viewBooking.status === 'completed' ? (
-                      <div className="flex justify-between items-center pt-1.5 border-t border-[#E8DCC8]">
-                        <span className="text-[#87765E]">Status</span>
-                        <Badge className="bg-green-500 text-white text-xs">Fully Paid</Badge>
-                      </div>
-                    ) : (
-                      <>
-                        {(viewBooking.remainingBalance > 0 || viewBooking.remaining_amount > 0) && (
-                          <div className="flex justify-between">
-                            <span className="text-[#87765E]">Remaining</span>
-                            <span className="text-orange-600 font-medium">₱{Number(viewBooking.remainingBalance || viewBooking.remaining_amount || 0).toFixed(2)}</span>
-                          </div>
-                        )}
-                        {(viewBooking.paymentStatus) && (
-                          <div className="flex justify-between items-center pt-1.5 border-t border-[#E8DCC8]">
-                            <span className="text-[#87765E]">Payment Status</span>
-                            <Badge className={`text-xs text-white ${viewBooking.paymentStatus === 'verified' ? 'bg-green-500' :
-                                viewBooking.paymentStatus === 'rejected' ? 'bg-red-500' : 'bg-orange-500'
-                              }`}>
-                              {viewBooking.paymentStatus}
-                            </Badge>
-                          </div>
-                        )}
-                      </>
-                    )}
+                    {(() => {
+                      let dp = null;
+                      if (viewBooking.notes) {
+                        const dpMatches = [...viewBooking.notes.matchAll(/fixed down payment of ₱(\d+)/g)];
+                        if (dpMatches.length > 0) dp = parseInt(dpMatches[dpMatches.length - 1][1], 10);
+                        else {
+                          const prevMatches = [...viewBooking.notes.matchAll(/Previous amount was ₱([\d,]+)/g)];
+                          if (prevMatches.length > 0) dp = parseInt(prevMatches[0][1].replace(/,/g, ''), 10) * 0.5;
+                        }
+                      }
+                      const actualDp = viewBooking.down_payment || dp || Math.round(viewBooking.price * 0.5);
+                      
+                      let rem = null;
+                      if (viewBooking.notes) {
+                         const remMatches = [...viewBooking.notes.matchAll(/remaining balance is: ₱([\d,]+)/g)];
+                         if (remMatches.length > 0) rem = parseInt(remMatches[remMatches.length - 1][1].replace(/,/g, ''), 10);
+                         else {
+                            const excessMatches = [...viewBooking.notes.matchAll(/excess\/refund Amount of ₱([\d,]+)/gi)].concat([...viewBooking.notes.matchAll(/excess\/refund of ₱([\d,]+)/gi)]);
+                            if (excessMatches.length > 0) rem = -parseInt(excessMatches[excessMatches.length - 1][1].replace(/,/g, ''), 10);
+                         }
+                      }
+                      const actualRem = viewBooking.remainingBalance || viewBooking.remaining_amount || rem !== null ? rem : (viewBooking.price - actualDp);
+
+                      return (
+                        <>
+                          {(viewBooking.down_payment !== null || viewBooking.downPaymentPaid !== undefined || actualDp > 0) && (
+                            <div className="flex justify-between">
+                              <span className="text-[#87765E]">Down Payment</span>
+                              <span className="text-[#5C4A3A] font-medium">₱{actualDp.toLocaleString()}</span>
+                            </div>
+                          )}
+                          {viewBooking.status === 'completed' ? (
+                            <div className="flex justify-between items-center pt-1.5 border-t border-[#E8DCC8]">
+                              <span className="text-[#87765E]">Status</span>
+                              <Badge className="bg-green-500 text-white text-xs">Fully Paid</Badge>
+                            </div>
+                          ) : (
+                            <>
+                              {actualRem !== null && actualRem !== 0 && (
+                                <div className="flex justify-between">
+                                  <span className="text-[#87765E]">{actualRem < 0 ? 'Refund / Excess' : 'Remaining'}</span>
+                                  <span className="text-orange-600 font-medium">₱{Math.abs(actualRem).toFixed(2)}</span>
+                                </div>
+                              )}
+
+                            </>
+                          )}
+                          {viewBooking.paymentStatus && (
+                            <div className="flex justify-between items-center pt-1.5 border-t border-[#E8DCC8]">
+                              <span className="text-[#87765E]">Payment Status</span>
+                              <Badge className={`text-xs text-white ${viewBooking.paymentStatus === 'verified' ? 'bg-green-500' :
+                                  viewBooking.paymentStatus === 'rejected' ? 'bg-red-500' : 'bg-orange-500'
+                                }`}>
+                                {viewBooking.paymentStatus}
+                              </Badge>
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
 

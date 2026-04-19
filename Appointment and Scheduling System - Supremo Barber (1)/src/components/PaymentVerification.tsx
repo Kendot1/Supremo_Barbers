@@ -445,7 +445,7 @@ export function PaymentVerification({
           const notificationPayload = {
             userId: customerId,
             userRole: 'customer', // Required field for database
-            title: '✅ Payment Verified!',
+            title: '✅ Booking Confirmed',
             message: `Great news! Your payment of ₱${(selectedAppointment.paymentAmount || selectedAppointment.price / 2).toFixed(2)} for ${selectedAppointment.service} on ${parseLocalDate(selectedAppointment.date).toLocaleDateString()} has been verified and approved. Your booking is confirmed!`,
             type: 'booking',
             appointmentId: selectedAppointment.id,
@@ -456,6 +456,20 @@ export function PaymentVerification({
 
           const createdNotification = await API.notifications.create(notificationPayload);
 
+          // Create audit log for payment verification
+          const { createAuditLog } = await import('../services/audit-notification.service');
+          await createAuditLog({
+            userId: currentUser.id,
+            userRole: userRole,
+            userName: currentUser.name,
+            userEmail: currentUser.email,
+            action: 'payment_verified',
+            entityType: 'appointment',
+            entityId: selectedAppointment.id,
+            description: `${currentUser.name} verified payment for ${selectedAppointment.customerName || 'customer'}`,
+            status: 'success',
+            metadata: { appointmentId: selectedAppointment.id }
+          });
         } catch (error) {
           console.error('❌ Failed to send direct approval notification:', error);
           console.error('❌ Error type:', typeof error);

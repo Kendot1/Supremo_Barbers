@@ -9,13 +9,13 @@ import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Alert, AlertDescription } from "./ui/alert";
-import { Calendar, Search, Edit, X, CheckCircle2, Clock, AlertCircle, Info, Download, Eye, User, Scissors, CreditCard, MessageSquare } from "lucide-react";
+import { Calendar, Search, Edit, X, CheckCircle2, Clock, AlertCircle, Info, Download, Eye, User, Scissors, CreditCard, MessageSquare, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { toast } from "sonner";
 import type { Appointment, User as UserType } from "../App";
 import { exportToCSV, formatDateForExport, formatCurrencyForExport } from "./utils/exportUtils";
 import { PasswordConfirmationDialog } from "./PasswordConfirmationDialog";
 import API from "../services/api.service";
-import { logAppointmentCancelledByAdmin } from "../services/audit-notification.service";
+import { createNotification, logAppointmentCancelledByAdmin, logAppointmentStatusUpdate } from "../services/audit-notification.service";
 
 // Utility function to parse date string without timezone issues
 const parseLocalDate = (dateString: string): Date => {
@@ -86,6 +86,14 @@ export function BookingReservationModule({ appointments, onUpdateAppointments, o
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [viewBooking, setViewBooking] = useState<Appointment | null>(null);
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filterStatus, filterBarber]);
+
   // Data from API for dropdowns
   const [availableServices, setAvailableServices] = useState<any[]>([]);
   const [availableBarbers, setAvailableBarbers] = useState<any[]>([]);
@@ -144,6 +152,12 @@ export function BookingReservationModule({ appointments, onUpdateAppointments, o
 
     return matchesSearch && matchesStatus && matchesBarber;
   });
+
+  const totalPages = Math.ceil(filteredBookings.length / itemsPerPage);
+  const paginatedBookings = filteredBookings.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   const getStatusConfig = (status: string) => {
     switch (status) {
@@ -259,11 +273,93 @@ export function BookingReservationModule({ appointments, onUpdateAppointments, o
         dbUpdate.total_amount = formData.price;
       }
 
-
+      let priceChangeMessage = "";
+      if (formData.price !== selectedBooking.price) {
+        // Down payment is fixed at 50% of the ORIGINAL price
+        const downPaymentPaid = selectedBooking.price * 0.5;
+        const newRemainingBalance = formData.price - downPaymentPaid;
+        
+        let noteMsg = "";
+        if (newRemainingBalance < 0) {
+           noteMsg = `Previous amount was ₱${selectedBooking.price}, new service is ₱${formData.price}. With your fixed down payment of ₱${downPaymentPaid}, there's an excess/refund of ₱${Math.abs(newRemainingBalance)}.`;
+        } else {
+           noteMsg = `Previous amount was ₱${selectedBooking.price}, new service is ₱${formData.price}. With your fixed down payment of ₱${downPaymentPaid}, your new remaining balance is: ₱${newRemainingBalance}.`;
+        }
+        
+        priceChangeMessage = `Price adjustment: ${noteMsg}`;
+        
+        dbUpdate.notes = (selectedBooking as any).notes 
+          ? `${(selectedBooking as any).notes} | ${priceChangeMessage}`
+          : priceChangeMessage;
+      }
 
       // Persist to database FIRST
       await API.appointments.update(selectedBooking.id, dbUpdate);
 
+      if (priceChangeMessage) {
+        const customerId = selectedBooking.userId || (selectedBooking as any).customer_id || (selectedBooking as any).customerId;
+        if (customerId) {
+          createNotification({
+            userId: customerId,
+            userRole: 'customer',
+            type: 'appointment_price_updated',
+            title: 'Booking Price Updated',
+            message: `Your booking for ${formData.service} was updated by the admin. ${priceChangeMessage.replace('Price adjustment: ', '')}`,
+            relatedId: selectedBooking.id,
+            relatedType: 'appointment',
+            actionUrl: `/appointments`,
+            actionLabel: 'View Booking',
+          }).catch(console.error);
+        }
+      }
+
+      // Notify customer if status or other details changed
+      if (formData.status !== selectedBooking.status) {
+        try {
+          const customerId = selectedBooking.userId || (selectedBooking as any).customer_id || (selectedBooking as any).customerId;
+          if (customerId) {
+             await logAppointmentStatusUpdate(
+               adminUser?.id || 'admin',
+               'admin',
+               adminUser?.name || 'Administrator',
+               adminUser?.email || 'admin@admin.com',
+               selectedBooking.id,
+               selectedBooking.status,
+               formData.status,
+               {
+                 customerId: customerId,
+                 customerName: selectedBooking.customerName || 'Customer',
+                 barberId: selectedBooking.barber_id || formData.barber_id || 'unknown',
+                 service: formData.service,
+                 date: formData.date,
+                 time: formData.time
+               }
+             );
+          }
+        } catch (e) { console.error("Error logging status update:", e); }
+      } else if (
+        formData.date !== selectedBooking.date || 
+        formData.time !== selectedBooking.time || 
+        formData.barber !== selectedBooking.barber || 
+        formData.service !== selectedBooking.service
+      ) {
+         try {
+            const customerId = selectedBooking.userId || (selectedBooking as any).customer_id || (selectedBooking as any).customerId;
+            if (customerId) {
+              await createNotification({
+                userId: customerId,
+                userRole: 'customer',
+                type: 'appointment_updated',
+                title: 'Appointment Updated',
+                message: `Your appointment details have been updated by the admin to ${formData.service} with ${formData.barber} on ${new Date(formData.date).toLocaleDateString()} at ${formData.time}.`,
+                relatedId: selectedBooking.id,
+                relatedType: 'appointment',
+                actionUrl: `/appointments`,
+                actionLabel: 'View Appointment'
+              });
+            }
+         } catch (e) { console.error("Error sending update notif:", e); }
+      }
 
       // Then update local state for immediate UI reflection
       const updatedAppointments = appointments.map(b =>
@@ -283,6 +379,7 @@ export function BookingReservationModule({ appointments, onUpdateAppointments, o
             status: formData.status,
             price: formData.price,
             total_amount: formData.price,
+            notes: dbUpdate.notes || (b as any).notes,
           }
           : b
       );
@@ -571,7 +668,7 @@ export function BookingReservationModule({ appointments, onUpdateAppointments, o
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredBookings.map((booking) => {
+                {paginatedBookings.map((booking) => {
                   const statusConfig = getStatusConfig(booking.status);
                   const StatusIcon = statusConfig.icon;
                   return (
@@ -633,6 +730,92 @@ export function BookingReservationModule({ appointments, onUpdateAppointments, o
               </TableBody>
             </Table>
           </div>
+
+          {filteredBookings.length > 0 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between mt-4 md:mt-6 gap-4 py-2 border-t border-[#E8DCC8] pt-4">
+              <div className="flex items-center gap-2">
+                <span className="text-xs md:text-sm text-[#87765E]">Rows per page:</span>
+                <Select
+                  value={itemsPerPage.toString()}
+                  onValueChange={(val) => {
+                    setItemsPerPage(Number(val));
+                    setCurrentPage(1);
+                  }}
+                >
+                  <SelectTrigger className="w-[60px] h-8 border-none bg-transparent shadow-none focus:ring-0 text-[#5C4A3A] px-1">
+                    <SelectValue placeholder={itemsPerPage.toString()} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="5">5</SelectItem>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="20">20</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-center gap-4 sm:ml-auto">
+                <div className="text-xs md:text-sm text-[#87765E] whitespace-nowrap">
+                  {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, filteredBookings.length)} of {filteredBookings.length}
+                </div>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setCurrentPage(1)}
+                    disabled={currentPage === 1}
+                    className="w-8 h-8 rounded-md border-[#E8DCC8] text-[#87765E] hover:bg-[#FBF7EF] hover:text-[#5C4A3A] disabled:opacity-50"
+                  >
+                    <ChevronsLeft className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                    className="w-8 h-8 rounded-md border-[#E8DCC8] text-[#87765E] hover:bg-[#FBF7EF] hover:text-[#5C4A3A] disabled:opacity-50"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                    <Button
+                      key={page}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(page)}
+                      className={`w-8 h-8 rounded-md p-0 hidden sm:inline-flex ${
+                        currentPage === page
+                          ? "bg-[#DB9D47] text-white hover:bg-[#DB9D47] border-none"
+                          : "border-[#E8DCC8] text-[#87765E] hover:bg-[#FBF7EF] hover:text-[#5C4A3A]"
+                      }`}
+                    >
+                      {page}
+                    </Button>
+                  ))}
+
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages}
+                    className="w-8 h-8 rounded-md border-[#E8DCC8] text-[#87765E] hover:bg-[#FBF7EF] hover:text-[#5C4A3A] disabled:opacity-50"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setCurrentPage(totalPages)}
+                    disabled={currentPage === totalPages || totalPages === 0}
+                    className="w-8 h-8 rounded-md border-[#E8DCC8] text-[#87765E] hover:bg-[#FBF7EF] hover:text-[#5C4A3A] disabled:opacity-50"
+                  >
+                    <ChevronsRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -805,12 +988,38 @@ export function BookingReservationModule({ appointments, onUpdateAppointments, o
                 </Select>
               </div>
 
-              {/* Price (read-only, auto-updated by service) */}
-              <div className="p-3 rounded-lg bg-[#FBF7EF] border border-[#E8DCC8]">
+              {/* Price (read-only, auto-updated by service) - Shows fixed down payment logic */}
+              <div className="p-3 rounded-lg bg-[#FBF7EF] border border-[#E8DCC8] space-y-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm text-[#87765E]">Total Amount</span>
-                  <span className="text-lg font-semibold text-[#DB9D47]">₱{editFormData.price.toLocaleString()}</span>
+                  <span className="text-sm text-[#87765E]">Original Amount</span>
+                  <span className="text-sm font-medium text-[#5C4A3A]">₱{selectedBooking.price.toLocaleString()}</span>
                 </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-[#87765E]">Fixed Down Payment (Paid)</span>
+                  <span className="text-sm font-medium text-green-600">₱{(selectedBooking.price * 0.5).toLocaleString()}</span>
+                </div>
+                {editFormData.price !== selectedBooking.price && (
+                  <>
+                    <div className="border-t border-[#E8DCC8] pt-2 flex items-center justify-between">
+                      <span className="text-sm text-[#5C4A3A] font-semibold">New Total Amount</span>
+                      <span className="text-lg font-bold text-[#DB9D47]">₱{editFormData.price.toLocaleString()}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-bold text-[#D98555]">
+                        {editFormData.price - (selectedBooking.price * 0.5) < 0 ? 'Excess / Refund Amount' : 'New Remaining Balance'}
+                      </span>
+                      <span className="text-lg font-bold text-[#D98555]">
+                         ₱{Math.abs(editFormData.price - (selectedBooking.price * 0.5)).toLocaleString()}
+                      </span>
+                    </div>
+                  </>
+                )}
+                {editFormData.price === selectedBooking.price && (
+                  <div className="border-t border-[#E8DCC8] pt-2 flex items-center justify-between">
+                    <span className="text-sm font-bold text-[#D98555]">Remaining Balance</span>
+                    <span className="text-lg font-bold text-[#D98555]">₱{(selectedBooking.price * 0.5).toLocaleString()}</span>
+                  </div>
+                )}
               </div>
 
             </div>
@@ -999,11 +1208,44 @@ export function BookingReservationModule({ appointments, onUpdateAppointments, o
                   </div>
                   <div>
                     <p className="text-xs text-[#87765E]">Down Payment</p>
-                    <p className="text-[#5C4A3A] font-medium">₱{viewBooking.down_payment || Math.round(viewBooking.price * 0.5)}</p>
+                    <p className="text-[#5C4A3A] font-medium">₱{(() => {
+                      let dp = null;
+                      if (viewBooking.notes) {
+                        const dpMatches = [...viewBooking.notes.matchAll(/fixed down payment of ₱(\d+)/g)];
+                        if (dpMatches.length > 0) dp = parseInt(dpMatches[dpMatches.length - 1][1], 10);
+                        else {
+                          const prevMatches = [...viewBooking.notes.matchAll(/Previous amount was ₱([\d,]+)/g)];
+                          if (prevMatches.length > 0) dp = parseInt(prevMatches[0][1].replace(/,/g, ''), 10) * 0.5; // For old logic, DP was always 50% of very FIRST amount
+                        }
+                      }
+                      return viewBooking.down_payment || dp || Math.round(viewBooking.price * 0.5);
+                    })()}</p>
                   </div>
                   <div>
                     <p className="text-xs text-[#87765E]">Remaining</p>
-                    <p className="text-[#5C4A3A] font-medium">₱{viewBooking.remainingBalance || viewBooking.remaining_amount || Math.round(viewBooking.price * 0.5)}</p>
+                    <p className="text-[#5C4A3A] font-medium">₱{(() => {
+                      let rem = null;
+                      if (viewBooking.notes) {
+                         const remMatches = [...viewBooking.notes.matchAll(/remaining balance is: ₱([\d,]+)/g)];
+                         if (remMatches.length > 0) rem = parseInt(remMatches[remMatches.length - 1][1].replace(/,/g, ''), 10);
+                         else {
+                            const excessMatches = [...viewBooking.notes.matchAll(/excess\/refund Amount of ₱([\d,]+)/gi)].concat([...viewBooking.notes.matchAll(/excess\/refund of ₱([\d,]+)/gi)]);
+                            if (excessMatches.length > 0) rem = `-${parseInt(excessMatches[excessMatches.length - 1][1].replace(/,/g, ''), 10)}`;
+                         }
+                      }
+                      return viewBooking.remainingBalance || viewBooking.remaining_amount || rem !== null ? rem : (() => {
+                         let dp = null;
+                         if (viewBooking.notes) {
+                           const dpMatches = [...viewBooking.notes.matchAll(/fixed down payment of ₱(\d+)/g)];
+                           if (dpMatches.length > 0) dp = parseInt(dpMatches[dpMatches.length - 1][1], 10);
+                           else {
+                             const prevMatches = [...viewBooking.notes.matchAll(/Previous amount was ₱([\d,]+)/g)];
+                             if (prevMatches.length > 0) dp = parseInt(prevMatches[0][1].replace(/,/g, ''), 10) * 0.5;
+                           }
+                         }
+                         return viewBooking.price - (dp || Math.round(viewBooking.price * 0.5));
+                      })();
+                    })()}</p>
                   </div>
                 </div>
                 {viewBooking.paymentStatus && (

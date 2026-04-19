@@ -32,7 +32,7 @@ import {
   NotificationCenter,
   type Notification,
 } from "./NotificationCenter";
-import { NotificationToast } from "./NotificationToast";
+
 import type { User, Appointment } from "../App";
 import API from "../services/api.service";
 import { AnalyticsOverview } from "./AnalyticsOverview";
@@ -224,11 +224,7 @@ export function ImprovedSuperAdminDashboard({
 
   return (
     <div className="min-h-screen bg-[#FFFDF8] flex flex-col">
-      {/* Notification Toast System */}
-      <NotificationToast
-        notifications={notifications}
-        userId={user.id}
-      />
+
 
       <div className="flex flex-1">
         {/* Sidebar - Hidden on mobile, visible on desktop */}
@@ -449,6 +445,7 @@ export function ImprovedSuperAdminDashboard({
                 userRole="admin"
                 onAddNotification={onAddNotification}
                 onRefreshAppointments={onRefreshAppointments}
+                currentUser={user}
               />
             )}
             {activeTab === "revenue" && (

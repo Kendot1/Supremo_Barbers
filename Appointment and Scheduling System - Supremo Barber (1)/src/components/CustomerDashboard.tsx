@@ -40,7 +40,7 @@ import { ServicesShowcase } from './ServicesShowcase';
 import { CustomerProfile } from './CustomerProfile';
 import { FavoritesCart } from './FavoritesCart';
 import { NotificationCenter } from './NotificationCenter';
-import { NotificationToast } from './NotificationToast';
+
 import { Footer } from './Footer';
 import type { User as UserType, Appointment, Notification } from '../App';
 import API from '../services/api.service';
@@ -151,8 +151,6 @@ export function CustomerDashboard({
 
   return (
     <div className="min-h-screen bg-[#FFFDF8]">
-      {/* Notification Toast System */}
-      <NotificationToast notifications={notifications} userId={user.id} />
 
       {/* Navigation - Aligned with Landing Page */}
       <nav className="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-b border-[#E8DCC8] z-50">
@@ -533,7 +531,7 @@ export function CustomerDashboard({
                         favoriteEvents.removeFavorite(user.id, serviceId);
                       })
                     );
-                    toast.success(`${bookedServiceIds.length} service(s) removed from favorites`);
+
                   } catch (error) {
                     console.error('Error removing services from favorites:', error);
                     // Don't show error to user as booking already succeeded

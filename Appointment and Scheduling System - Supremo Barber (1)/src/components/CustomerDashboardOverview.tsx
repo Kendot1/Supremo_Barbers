@@ -39,6 +39,7 @@ import type { User, Appointment } from "../App";
 import API from "../services/api.service";
 import { toast } from "sonner@2.0.3";
 import { favoriteEvents } from "../utils/favoriteEvents";
+import { createNotification } from "../services/audit-notification.service";
 
 interface CustomerDashboardOverviewProps {
   user: User;
@@ -119,6 +120,50 @@ export function CustomerDashboardOverview({
     return () => unsubscribe();
   }, [user.id]);
 
+  // Check for tomorrow's appointments and notify the customer
+  useEffect(() => {
+    if (!user.id || appointments.length === 0) return;
+
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const year = tomorrow.getFullYear();
+    const month = String(tomorrow.getMonth() + 1).padStart(2, '0');
+    const day = String(tomorrow.getDate()).padStart(2, '0');
+    const tomorrowStr = `${year}-${month}-${day}`;
+
+    // Find all uncompleted appointments scheduled for tomorrow
+    const upcomingForTomorrow = appointments.filter(
+      (apt) =>
+        (apt.userId === user.id || apt.customer_id === user.id) &&
+        (apt.status === "pending" || apt.status === "verified" || apt.status === "confirmed" || apt.status === "upcoming") &&
+        (apt.date === tomorrowStr || apt.appointment_date === tomorrowStr)
+    );
+
+    upcomingForTomorrow.forEach(async (apt) => {
+      const aptId = apt.id || apt._id;
+      // Use local storage to prevent duplicate notifications across page reloads
+      const reminderKey = `reminder_sent_${aptId}`;
+      if (!localStorage.getItem(reminderKey)) {
+        try {
+          await createNotification({
+            userId: user.id,
+            userRole: 'customer',
+            type: 'appointment_reminder',
+            title: '⏰ Appointment Reminder',
+            message: `Friendly reminder! You have an appointment for ${apt.service} tomorrow at ${apt.time}.`,
+            relatedId: aptId,
+            relatedType: 'appointment',
+            actionUrl: `/appointments?highlight=${aptId}`,
+            actionLabel: 'View Details'
+          });
+          localStorage.setItem(reminderKey, 'true');
+        } catch (error) {
+          console.error("Failed to send reminder notif", error);
+        }
+      }
+    });
+  }, [appointments, user.id]);
+
   // Toggle favorite with API integration
   const toggleFavorite = async (serviceId: string, e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent card click
@@ -135,7 +180,7 @@ export function CustomerDashboardOverview({
       setFavoriteServices(prev => prev.filter(id => id !== serviceId));
       // Emit event IMMEDIATELY for other components to update in real-time
       favoriteEvents.removeFavorite(user.id, serviceId);
-      toast.success("Removed from favorites");
+
     } else {
       setFavoriteServices(prev => [...prev, serviceId]);
       // Emit event IMMEDIATELY for other components to update in real-time

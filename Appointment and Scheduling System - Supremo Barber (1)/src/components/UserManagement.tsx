@@ -41,7 +41,9 @@ export function UserManagement() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [newUser, setNewUser] = useState({
     name: '',
+    username: '',
     email: '',
+    password: '',
     role: 'customer',
   });
   const [passwordConfirmation, setPasswordConfirmation] = useState<{
@@ -120,28 +122,49 @@ export function UserManagement() {
   });
 
   const handleAddUser = async () => {
-    if (!newUser.name || !newUser.email) {
-      toast.error('Please fill in all fields');
+    if (!newUser.name || !newUser.username || !newUser.email || !newUser.password) {
+      toast.error('Please fill in all fields (Name, Username, Email, and Password)');
       return;
     }
 
     try {
-      // Create user in database
-      const createdUser = await API.users.create({
-        ...newUser,
-        password: 'default123', // Default password (should be changed by user)
-        status: 'active',
+      // Optimistic UI Update for maximum perceived performance
+      setIsAddDialogOpen(false);
+
+      const tempUser: UserData = {
+        id: 'optimistic_' + Date.now(),
+        name: newUser.name,
+        email: newUser.email,
+        role: newUser.role,
+        isActive: true,
+        joinDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
+        createdAt: new Date().toISOString()
+      };
+
+      setUsers(prev => [tempUser, ...prev]);
+
+      const userPayload = { ...newUser };
+      setNewUser({ name: '', username: '', email: '', password: '', role: 'customer' });
+
+      // Execute network transaction in background
+      await API.users.create({
+        name: userPayload.name,
+        username: userPayload.username,
+        email: userPayload.email,
+        password: userPayload.password,
+        role: userPayload.role,
+        phone: '', // Handled by Supabase later
       });
 
-      // Refresh users list
-      await fetchUsers();
+      toast.success('User added successfully');
 
-      setIsAddDialogOpen(false);
-      setNewUser({ name: '', email: '', role: 'customer' });
-      toast.success('User added successfully to database');
+      // Refresh list to sync real database IDs behind the scenes
+      fetchUsers();
     } catch (error) {
       console.error('Error creating user:', error);
-      toast.error('Failed to create user in database');
+      toast.error('Failed to create user');
+      // Revert optimistic update on failure by re-fetching old state
+      fetchUsers();
     }
   };
 
@@ -163,41 +186,61 @@ export function UserManagement() {
 
   const confirmToggleStatus = async () => {
     if (passwordConfirmation.userId) {
+      const targetId = passwordConfirmation.userId;
+
+      // Close modal instantly
+      setPasswordConfirmation({ isOpen: false, action: null, userId: null });
+
       try {
-        const user = users.find(u => u.id === passwordConfirmation.userId);
+        const user = users.find(u => u.id === targetId);
         if (!user) return;
+
+        // Optimistic UI Update
+        setUsers(prev => prev.map(u =>
+          u.id === targetId ? { ...u, isActive: !u.isActive } : u
+        ));
 
         // Use the proper suspend/unsuspend API endpoints
         if (user.isActive) {
-          await API.users.suspend(passwordConfirmation.userId);
+          await API.users.suspend(targetId);
           toast.success(`${user.name}'s account has been deactivated`);
         } else {
-          await API.users.unsuspend(passwordConfirmation.userId);
+          await API.users.unsuspend(targetId);
           toast.success(`${user.name}'s account has been reactivated`);
         }
 
-        // Refresh users list from database
-        await fetchUsers();
+        // Refresh users list from database in background
+        fetchUsers();
       } catch (error) {
         console.error('Error updating user status:', error);
         toast.error('Failed to update user status');
+        fetchUsers(); // Revert on failure
       }
     }
   };
 
   const confirmDeleteUser = async () => {
     if (passwordConfirmation.userId) {
+      const targetId = passwordConfirmation.userId;
+
+      // Close modal instantly
+      setPasswordConfirmation({ isOpen: false, action: null, userId: null });
+
       try {
+        // Optimistic UI Update
+        setUsers(prev => prev.filter(u => u.id !== targetId));
+
         // Delete user from database
-        await API.users.delete(passwordConfirmation.userId);
+        await API.users.delete(targetId);
 
-        // Refresh users list
-        await fetchUsers();
+        toast.success('User deleted successfully');
 
-        toast.success('User deleted from database');
+        // Refresh silently
+        fetchUsers();
       } catch (error) {
         console.error('Error deleting user:', error);
         toast.error('Failed to delete user');
+        fetchUsers(); // Revert on failure
       }
     }
   };
@@ -281,8 +324,8 @@ export function UserManagement() {
             </div>
             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
               <DialogTrigger asChild>
-                <Button>
-                  <UserPlus className="w-4 h-4 mr-2" />
+                <Button className="cursor-pointer transition-transform duration-200 hover:scale-105 active:scale-95 shadow-md">
+                  <UserPlus className="w-4 h-4 mr-2 group-hover:animate-bounce" />
                   Add User
                 </Button>
               </DialogTrigger>
@@ -302,6 +345,15 @@ export function UserManagement() {
                     />
                   </div>
                   <div className="space-y-2">
+                    <Label htmlFor="username">Username</Label>
+                    <Input
+                      id="username"
+                      value={newUser.username}
+                      onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
+                      placeholder="johndoe123"
+                    />
+                  </div>
+                  <div className="space-y-2">
                     <Label htmlFor="email">Email</Label>
                     <Input
                       id="email"
@@ -311,10 +363,32 @@ export function UserManagement() {
                       placeholder="john@example.com"
                     />
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="password">Password</Label>
+                    <Input
+                      id="password"
+                      type="password"
+                      value={newUser.password}
+                      onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                      placeholder="••••••••"
+                      autoComplete="new-password"
+                    />
+                  </div>
                 </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>Cancel</Button>
-                  <Button onClick={handleAddUser}>Add Customer</Button>
+                <DialogFooter className="mt-6 gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsAddDialogOpen(false)}
+                    className="cursor-pointer transition-transform duration-200 hover:scale-105 active:scale-95"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleAddUser}
+                    className="cursor-pointer transition-transform duration-200 hover:scale-105 active:scale-95 shadow-md bg-[#DB9D47] hover:bg-[#C88D3F] text-white"
+                  >
+                    Add Customer
+                  </Button>
                 </DialogFooter>
               </DialogContent>
             </Dialog>
@@ -343,8 +417,8 @@ export function UserManagement() {
           </div>
 
           {/* Users Table */}
-          <div className="border rounded-lg">
-            <Table>
+          <div className="border rounded-lg overflow-x-auto">
+            <Table className="min-w-[600px]">
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>

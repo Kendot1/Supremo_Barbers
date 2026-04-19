@@ -370,6 +370,11 @@ export function RealTimeSlotAvailability() {
 
 
 
+  // Update time slots whenever the dependencies change
+  useEffect(() => {
+    setTimeSlots(calculateSlotAvailability());
+  }, [appointments, barbers, selectedDate, selectedBarber]);
+
   // Manual refresh function
   const handleRefresh = async () => {
     setIsRefreshing(true);

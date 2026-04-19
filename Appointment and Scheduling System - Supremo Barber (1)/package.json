@@ -38,6 +38,7 @@
             "@supabase/supabase-js": "*",
             "@tailwindcss/vite": "^4.2.2",
             "@vitejs/plugin-react": "*",
+            "@zip.js/zip.js": "^2.8.26",
             "bcryptjs": "*",
             "class-variance-authority": "^0.7.1",
             "clsx": "*",

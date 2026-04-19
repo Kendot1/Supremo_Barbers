@@ -101,7 +101,7 @@ export function NotificationCenter({ userId, userRole, onNavigate }: Notificatio
   // Aggressive caching - 5 minutes cache duration
   const pagesCache = useRef<Map<number, Notification[]>>(new Map());
   const cacheTimestamp = useRef<Map<number, number>>(new Map()); // Cache timestamp per page
-  const CACHE_DURATION = 300000; // 5 minutes cache (was 30 seconds)
+  const CACHE_DURATION = 5000; // 5 seconds cache (was 5 minutes)
   const hasInitialDataRef = useRef(false); // Track if we have any data
 
   // Track total count from cache

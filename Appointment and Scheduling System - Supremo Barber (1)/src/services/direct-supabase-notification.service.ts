@@ -17,6 +17,7 @@ export interface DirectNotificationData {
   action_url?: string;
   action_label?: string;
   is_read?: boolean;
+  actor_id?: string; // The ID of the user who performed the action, so they aren't notified of their own action
 }
 
 /**
@@ -57,7 +58,10 @@ export async function createDirectNotification(
     let targetUserIds: string[] = [];
     if (notificationData.user_id === 'admin') {
      
-      targetUserIds = await getAllAdminIds();
+      const adminIds = await getAllAdminIds();
+      // Ensure unique IDs to prevent duplicate notifications
+      targetUserIds = Array.from(new Set(adminIds));
+      
       if (targetUserIds.length === 0) {
         console.warn('⚠️ DIRECT SUPABASE: No admin users found!');
         return null;
@@ -65,6 +69,16 @@ export async function createDirectNotification(
     
     } else {
       targetUserIds = [notificationData.user_id];
+    }
+
+    // Filter out the actor who performed the action
+    if (notificationData.actor_id) {
+      targetUserIds = targetUserIds.filter(id => id !== notificationData.actor_id);
+      
+      if (targetUserIds.length === 0) {
+        console.log('ℹ️ DIRECT SUPABASE: Notification skipped as the only recipient is the actor.');
+        return null;
+      }
     }
 
     // Create notification for each target user
@@ -83,11 +97,10 @@ export async function createDirectNotification(
       updated_at: new Date().toISOString(),
     }));
 
-    // Insert all notifications in one batch
-    const { data, error } = await supabase
+    // Insert all notifications in one batch without .select() because RLS may block SELECT for anon users
+    const { error } = await supabase
       .from('notifications')
-      .insert(notifications)
-      .select();
+      .insert(notifications);
 
     if (error) {
       console.error('❌ DIRECT SUPABASE: Error creating notification:', error);
@@ -96,7 +109,7 @@ export async function createDirectNotification(
 
    
 
-    return data;
+    return true;
   } catch (error: any) {
     console.error('❌ DIRECT SUPABASE: Failed to create notification:', error);
     console.error('❌ DIRECT SUPABASE: Error details:', {
@@ -146,9 +159,7 @@ export async function createDirectAuditLog(auditData: {
         ip_address: auditData.ip_address || 'unknown',
         user_agent: auditData.user_agent || navigator.userAgent,
         created_at: new Date().toISOString(),
-      })
-      .select()
-      .single();
+      });
 
     if (error) {
       console.error('❌ DIRECT SUPABASE: Error creating audit log:', error);
@@ -156,7 +167,7 @@ export async function createDirectAuditLog(auditData: {
     }
 
  
-    return data;
+    return true;
   } catch (error: any) {
     console.error('❌ DIRECT SUPABASE: Failed to create audit log:', error);
     throw error;

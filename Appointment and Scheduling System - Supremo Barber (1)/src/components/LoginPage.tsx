@@ -262,14 +262,6 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
           localStorage.setItem('rememberedPassword', password);
         }
 
-        // Log barber login to audit logs
-        await logUserLogin(
-          response.user.id,
-          'barber',
-          response.user.name,
-          response.user.email,
-          'password'
-        );
 
         // Show success message and trigger login immediately
         toast.success(`Welcome back, ${response.user.name}!`);
@@ -309,14 +301,6 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
             localStorage.removeItem('rememberedUsername');
             localStorage.removeItem('rememberedPassword');
           }
-          // Log trusted device login to audit logs
-          await logUserLogin(
-            response.user.id,
-            response.user.role as 'customer' | 'admin',
-            response.user.name,
-            response.user.email,
-            'trusted_device'
-          );
 
           toast.success(`Welcome back, ${response.user.name}!`, {
             description: 'Trusted device recognised — 2FA skipped.'
@@ -440,10 +424,6 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
         errorMessage = "Network error. Please check your connection and try again.";
       }
 
-      // Log failed login attempt
-      logFailedLogin(email || username, errorMessage).catch(err =>
-        console.error('Failed to log failed login:', err)
-      );
 
       toast.error(errorMessage, {
         duration: errorDuration,
@@ -528,14 +508,6 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
         // Clear OTP token (synchronous)
         sessionStorage.removeItem('otp_token');
 
-        // Log OTP login to audit logs (non-blocking)
-        logUserLogin(
-          pendingLoginData.user.id,
-          pendingLoginData.user.role as 'customer' | 'admin',
-          pendingLoginData.user.name,
-          pendingLoginData.user.email,
-          'otp'
-        ).catch(err => console.error('Failed to log login:', err));
 
         // Show success message and trigger login IMMEDIATELY
         // toast.success(`Welcome back, ${pendingLoginData.user.name}!`); // Removed per user request

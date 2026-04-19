@@ -554,7 +554,7 @@ How can I assist you today?`;
     <>
       {/* Floating Chat Button */}
       {!isOpen && (
-        <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50">
+        <div className="fixed bottom-24 right-4 lg:bottom-6 lg:right-6 z-50 transition-all duration-300">
           <Button
             onClick={() => setIsOpen(true)}
             className="h-12 w-12 sm:h-14 sm:w-14 rounded-full bg-[#DB9D47] hover:bg-[#C88D3F] text-white shadow-lg hover:shadow-xl transition-all duration-300 group relative"
@@ -579,9 +579,9 @@ How can I assist you today?`;
 
           {/* Chat Container */}
           <div
-            className="fixed bottom-4 right-4
-                      w-[90%] max-w-[400px] sm:w-[400px] md:w-[420px] lg:w-[450px]
-                      h-[500px] sm:h-[600px] sm:max-h-[calc(100vh-2rem)]
+            className="fixed bottom-24 right-4 lg:bottom-6 lg:right-6
+                      w-[calc(100%-2rem)] sm:w-[400px] md:w-[420px] lg:w-[450px]
+                      h-[500px] sm:h-[600px] max-h-[calc(100vh-7rem)] lg:max-h-[calc(100vh-2rem)]
                       
                       animate-in slide-in-from-bottom-5 duration-300
                       z-50"

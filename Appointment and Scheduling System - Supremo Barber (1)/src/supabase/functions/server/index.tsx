@@ -85,7 +85,36 @@ function createAuditLogAsync(adminClient: any, logData: any): void {
       delete cleanedLogData.user_id; // Remove invalid UUID
     }
   }
+
+  // Normalize field names for DB schema
+  if (cleanedLogData.username && !cleanedLogData.user_name) {
+    cleanedLogData.user_name = cleanedLogData.username;
+    delete cleanedLogData.username;
+  }
+  if (cleanedLogData.email && !cleanedLogData.user_email) {
+    cleanedLogData.user_email = cleanedLogData.email;
+    delete cleanedLogData.email;
+  }
+
+  // Ensure details exists and has a description
+  if (!cleanedLogData.details) {
+    cleanedLogData.details = {};
+  }
   
+  // Set fallback description if missing
+  if (!cleanedLogData.details.description && !cleanedLogData.description) {
+    const actor = cleanedLogData.user_name || cleanedLogData.user_email || cleanedLogData.user_id || 'System';
+    const actionMap: Record<string, string> = {
+      'login_success': 'logged in successfully',
+      'login_failed': 'failed to log in',
+      'login_blocked': 'login was blocked',
+      'user_logout': 'logged out',
+      'user_created': 'was registered',
+    };
+    const actionDesc = actionMap[cleanedLogData.action] || `performed ${cleanedLogData.action}`;
+    cleanedLogData.details.description = `${actor} ${actionDesc}`;
+  }
+
   // Execute the query to get a promise (Supabase query builder is not a promise until executed)
   const insertPromise = (async () => {
     const { error } = await adminClient.from("audit_logs").insert(cleanedLogData);
@@ -1415,8 +1444,8 @@ app.post("/make-server-70e1fc66/api/auth/login", async (c) => {
         // Update failed attempts in users table
         const isNowLocked = currentAttempts >= maxAttempts;
         const lockedUntil = isNowLocked
-          ? new Date(Date.now() + 15 * 60 * 1000)
-          : null; // 15 minutes
+          ? new Date(Date.now() + 5 * 60 * 1000)
+          : null; // 5 minutes
 
         // PARALLEL OPERATIONS: Update both tables at once for speed
         await Promise.all([
@@ -1503,7 +1532,7 @@ app.post("/make-server-70e1fc66/api/auth/login", async (c) => {
                 details: {
                   username: userExists.username,
                   locked_until: lockedUntil?.toISOString(),
-                  lockout_duration: "15 minutes",
+                  lockout_duration: "5 minutes",
                   timestamp: new Date().toISOString(),
                 },
               }),
@@ -1517,7 +1546,7 @@ app.post("/make-server-70e1fc66/api/auth/login", async (c) => {
           return c.json(
             {
               success: false,
-              error: `Too many failed login attempts. Your account has been locked for 15 minutes for security reasons. An email has been sent to ${userExists.email}.`,
+              error: `Too many failed login attempts. Your account has been locked for 5 minutes for security reasons. An email has been sent to ${userExists.email}.`,
               code: "account_locked",
               locked_until: lockedUntil?.toISOString(),
             },
@@ -1666,7 +1695,7 @@ app.post("/make-server-70e1fc66/api/auth/login", async (c) => {
       createdAt: profile.created_at,
       emailVerified: profile.email_verified ?? true,
       pendingEmail: profile.pending_email || null,
-      deviceRevocationTs: profile.deviceRevocationTs || null,
+      deviceRevocationTs: profile.device_revocation_ts || profile.deviceRevocationTs || null,
     };
 
     return c.json({
@@ -1774,7 +1803,7 @@ app.post(
                 <ul>
                   <li><strong>If this was you:</strong> Please make sure you're using the correct password.</li>
                   <li><strong>If this wasn't you:</strong> Your account security may be at risk. Consider changing your password immediately.</li>
-                  <li><strong>After 3 failed attempts:</strong> Your account will be locked for 15 minutes as a security precaution.</li>
+                  <li><strong>After 3 failed attempts:</strong> Your account will be locked for 5 minutes as a security precaution.</li>
                 </ul>
 
                 <p style="margin-top: 30px;">
@@ -1793,7 +1822,7 @@ app.post(
           </body>
           </html>
         `;
-          textContent = `Security Alert: Failed Login Attempt\n\nHi ${name},\n\nSomeone tried to log into your Supremo Barber account with an incorrect password.\n\nUsername: ${details.username}\nTime: ${timestamp}\nAttempt: ${details.attempt_count} of 3\nRemaining Attempts: ${details.remaining_attempts}\n\nWhat to do:\n- If this was you: Please make sure you're using the correct password.\n- If this wasn't you: Your account security may be at risk. Consider changing your password immediately.\n- After 3 failed attempts: Your account will be locked for 15 minutes.\n\nIf you did not attempt to log in, please contact our support team immediately.`;
+          textContent = `Security Alert: Failed Login Attempt\n\nHi ${name},\n\nSomeone tried to log into your Supremo Barber account with an incorrect password.\n\nUsername: ${details.username}\nTime: ${timestamp}\nAttempt: ${details.attempt_count} of 3\nRemaining Attempts: ${details.remaining_attempts}\n\nWhat to do:\n- If this was you: Please make sure you're using the correct password.\n- If this wasn't you: Your account security may be at risk. Consider changing your password immediately.\n- After 3 failed attempts: Your account will be locked for 5 minutes.\n\nIf you did not attempt to log in, please contact our support team immediately.`;
           break;
 
         case "account_locked":
@@ -3085,7 +3114,7 @@ app.get("/make-server-70e1fc66/api/users", async (c) => {
             avatarUrl: u.avatarUrl || null,
             bio: u.bio || null,
             createdAt: u.created_at,
-            deviceRevocationTs: u.deviceRevocationTs || null,
+            deviceRevocationTs: u.device_revocation_ts || u.deviceRevocationTs || null,
           }));
 
           return {
@@ -3136,7 +3165,7 @@ app.get("/make-server-70e1fc66/api/users/:id", async (c) => {
       avatarUrl: data.avatarUrl || null,
       bio: data.bio || null,
       createdAt: data.created_at,
-      deviceRevocationTs: data.deviceRevocationTs || null,
+      deviceRevocationTs: data.device_revocation_ts || data.deviceRevocationTs || null,
     };
 
     return c.json({ success: true, data: user });
@@ -3169,9 +3198,9 @@ app.put("/make-server-70e1fc66/api/users/:id", async (c) => {
     if (updates.bio !== undefined) updateData.bio = updates.bio;
     if (updates.email !== undefined)
       updateData.email = updates.email;
-    if (updates.deviceRevocationTs !== undefined)
-      updateData.deviceRevocationTs =
-        updates.deviceRevocationTs;
+    if (updates.deviceRevocationTs !== undefined) {
+      updateData.device_revocation_ts = updates.deviceRevocationTs;
+    }
     // Remove loyaltyPoints mapping
 
     const { data, error } = await supabase
@@ -3192,8 +3221,11 @@ app.put("/make-server-70e1fc66/api/users/:id", async (c) => {
       isActive: data.is_active ?? true,
       avatarUrl: data.avatarUrl || null,
       bio: data.bio || null,
-      deviceRevocationTs: data.deviceRevocationTs || null,
+      deviceRevocationTs: data.device_revocation_ts || data.deviceRevocationTs || null,
     };
+
+    // Invalidate user cache because we just updated the user record
+    await invalidateUserCache(id);
 
     return c.json({ success: true, data: user });
   } catch (error: any) {
@@ -3437,7 +3469,36 @@ app.post(
         );
       }
 
-      // Update email in database
+      // 1. Update email in Supabase Auth FIRST (critical for login)
+      try {
+        const { error: authUpdateError } =
+          await supabase.auth.admin.updateUserById(id, {
+            email: newEmail.toLowerCase(),
+            email_confirm: true, // Must confirm immediately so login works
+          });
+
+        if (authUpdateError) {
+          console.error("❌ Auth email update failed:", authUpdateError);
+          return c.json(
+             {
+               success: false,
+               error: "Failed to update authentication email. Please try again.",
+             },
+             500
+          );
+        }
+      } catch (authError) {
+        console.error("❌ Auth update exception:", authError);
+        return c.json(
+          {
+            success: false,
+            error: "Failed to update authentication details.",
+          },
+          500
+        );
+      }
+
+      // 2. Update email in database
       const { error: updateError } = await supabase
         .from("users")
         .update({ email: newEmail.toLowerCase() })
@@ -3445,38 +3506,25 @@ app.post(
 
       if (updateError) {
         console.error("❌ Email update error:", updateError);
+        // We do not rollback auth.users here, but at least the login will work.
+        // It's safer to have auth.users succeed even if public.users fails, because public.users can be fixed.
         return c.json(
           {
             success: false,
             error:
-              "Failed to update email: " + updateError.message,
+              "Failed to update profile email: " + updateError.message,
           },
           500,
         );
-      }
-
-      // Update email in Supabase Auth
-      try {
-        const { error: authUpdateError } =
-          await supabase.auth.admin.updateUserById(id, {
-            email: newEmail.toLowerCase(),
-          });
-
-        if (authUpdateError) {
-          console.warn(
-            "⚠️ Auth email update warning:",
-            authUpdateError,
-          );
-          // Don't fail if auth update fails, database is the source of truth
-        }
-      } catch (authError) {
-        console.warn("⚠️ Auth update error:", authError);
       }
 
       console.log(
         "✅ Email changed successfully for user:",
         id,
       );
+
+      // Invalidate user cache entirely so any cached email/username lookups are cleared
+      invalidateUserCache();
 
       return c.json({
         success: true,
@@ -6786,41 +6834,16 @@ app.get(
 
       const supabase = getAdminClient();
 
-      // For admin users, fetch ALL notifications in the system
-      if (role === "admin") {
-        console.log(
-          "👑 [NOTIFICATIONS] Admin user - fetching ALL notifications",
-        );
-
-        const { data, error } = await supabase
-          .from("notifications")
-          .select("*")
-          .order("created_at", { ascending: false });
-
-        if (error) {
-          console.error(
-            "❌ [NOTIFICATIONS] Admin fetch error:",
-            error,
-          );
-          throw error;
-        }
-
-        console.log(
-          "✅ [NOTIFICATIONS] Fetched",
-          data?.length || 0,
-          "notifications for admin (ALL notifications in system)",
-        );
-        return c.json({
-          success: true,
-          data: data || [],
-        });
-      }
-
-      // For non-admin users
+      // Build query to fetch user's notifications plus broadcast admin notifications
       let query = supabase
         .from("notifications")
-        .select("*")
-        .eq("user_id", userId);
+        .select("*");
+
+      if (role === "admin" || role === "super_admin" || role === "super-admin") {
+        query = query.or(`user_id.eq.${userId},user_id.eq.admin,user_id.eq.super-admin,user_id.eq.super_admin`);
+      } else {
+        query = query.eq("user_id", userId);
+      }
 
       if (role) {
         query = query.eq("user_role", role);
@@ -8237,11 +8260,10 @@ app.get("/make-server-70e1fc66/api/settings", async (c) => {
     
     const adminClient = getAdminClient();
     
-    // Get all settings from kv_store with prefix "settings:"
+    // Get all settings from system_settings table
     const { data: settingsData, error } = await adminClient
-      .from("kv_store_70e1fc66")
-      .select("key, value")
-      .like("key", "settings:%");
+      .from("system_settings")
+      .select("key, value");
 
     if (error) {
       console.error("❌ [SETTINGS] Database error:", error);
@@ -8278,10 +8300,10 @@ app.get("/make-server-70e1fc66/api/settings", async (c) => {
       });
     }
 
-    // Parse settings from kv_store format
+    // Parse settings from database format
     const settings: any = {};
     settingsData.forEach((item: any) => {
-      const key = item.key.replace("settings:", "");
+      const key = item.key;
       const value = typeof item.value === 'string' ? JSON.parse(item.value) : item.value;
       
       // Map key to nested structure
@@ -8322,19 +8344,19 @@ app.put("/make-server-70e1fc66/api/settings", async (c) => {
     
     const adminClient = getAdminClient();
     
-    // Store each settings category in kv_store
+    // Store each settings category
     const settingsToStore = [
-      { key: "settings:businessHours", value: body.businessHours },
-      { key: "settings:bookingLimits", value: body.bookingLimits },
-      { key: "settings:loyaltySettings", value: body.loyaltySettings },
-      { key: "settings:bookingPolicies", value: body.bookingPolicies },
-      { key: "settings:notifications", value: body.notifications },
+      { key: "businessHours", value: body.businessHours },
+      { key: "bookingLimits", value: body.bookingLimits },
+      { key: "loyaltySettings", value: body.loyaltySettings },
+      { key: "bookingPolicies", value: body.bookingPolicies },
+      { key: "notifications", value: body.notifications },
     ];
 
     // Use upsert to insert or update settings
-    for (const setting of settingsToStore) {
+    for (const setting of settingsToStore.filter(s => s.value !== undefined)) {
       const { error } = await adminClient
-        .from("kv_store_70e1fc66")
+        .from("system_settings")
         .upsert(
           {
             key: setting.key,

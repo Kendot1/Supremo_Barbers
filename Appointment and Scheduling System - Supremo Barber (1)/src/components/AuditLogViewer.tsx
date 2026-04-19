@@ -433,7 +433,11 @@ export function AuditLogViewer() {
                           </div>
                         </TableCell>
                         <TableCell className="text-sm text-[#5C4A3A]">
-                          {log.description}
+                          {log.description || 
+                           (log.metadata?.reason ? `Reason: ${log.metadata.reason}` : 
+                            log.metadata ? JSON.stringify(log.metadata) : 
+                            (log as any).details?.reason ? `Reason: ${(log as any).details.reason}` :
+                            (log as any).details ? JSON.stringify((log as any).details) : '-')}
                         </TableCell>
                         <TableCell>
                           <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(log.status)}`}>
