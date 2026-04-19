@@ -90,6 +90,11 @@ interface Barber {
   available?: boolean;
   image?: string;
   bookingsToday?: number;
+  avatarUrl?: string;
+  specialties?: string[];
+  rating?: number;
+  available_hours?: any;
+  availableHours?: any;
 }
 
 // Fallback data for demo mode (when backend is unavailable)
@@ -1137,16 +1142,34 @@ export function BookingFlow({
 
                         {/* Barber Info */}
                         <div className="p-4">
-                          <h3 className="text-[#5C4A3A] mb-2">
+                          <h3 className="text-[#5C4A3A] font-semibold mb-1">
                             {barber.name}
                           </h3>
-                          <div className="flex items-center gap-2 text-sm text-[#87765E]">
-                            <User className="w-4 h-4" />
-                            <span>
-                              {barber.bookingsToday}/5 bookings
-                              today
-                            </span>
-                          </div>
+                          {/* Rating */}
+                          {(barber.rating !== undefined && barber.rating > 0) && (
+                            <div className="flex items-center gap-1 mb-2">
+                              {Array.from({ length: 5 }, (_, i) => (
+                                <svg key={i} className={`w-3.5 h-3.5 ${i < Math.round(barber.rating || 0) ? 'text-[#DB9D47]' : 'text-[#E8DCC8]'}`} fill="currentColor" viewBox="0 0 20 20">
+                                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                </svg>
+                              ))}
+                              <span className="text-xs text-[#87765E] ml-1">{barber.rating?.toFixed(1)}</span>
+                            </div>
+                          )}
+                          {/* Specialties */}
+                          {barber.specialties && barber.specialties.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mb-2">
+                              {barber.specialties.slice(0, 3).map((s, i) => (
+                                <span key={i} className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#FBF7EF] text-[#87765E] border border-[#E8DCC8]">
+                                  {s}
+                                </span>
+                              ))}
+                              {barber.specialties.length > 3 && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#FBF7EF] text-[#87765E]">+{barber.specialties.length - 3}</span>
+                              )}
+                            </div>
+                          )}
+
                         </div>
                       </div>
                     ))}
@@ -1158,7 +1181,8 @@ export function BookingFlow({
                 </div>
 
                 {/* Tablet & Desktop: Grid */}
-                <div className="hidden md:grid md:grid-cols-3 gap-4">
+                <div className="hidden md:block max-h-[480px] overflow-y-auto scrollbar-thin pr-1">
+                  <div className="grid md:grid-cols-3 gap-4">
                   {barbers.map((barber) => (
                     <div
                       key={barber.id}
@@ -1219,14 +1243,38 @@ export function BookingFlow({
 
                       {/* Barber Info */}
                       <div className="p-4">
-                        {/* Barber Avatar */}
-
-                        <h3 className="text-[#5C4A3A] mb-2">
+                        <h3 className="text-[#5C4A3A] font-semibold mb-1">
                           {barber.name}
                         </h3>
+                        {/* Rating */}
+                        {(barber.rating !== undefined && barber.rating > 0) && (
+                          <div className="flex items-center gap-1 mb-2">
+                            {Array.from({ length: 5 }, (_, i) => (
+                              <svg key={i} className={`w-3.5 h-3.5 ${i < Math.round(barber.rating || 0) ? 'text-[#DB9D47]' : 'text-[#E8DCC8]'}`} fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                              </svg>
+                            ))}
+                            <span className="text-xs text-[#87765E] ml-1">{barber.rating?.toFixed(1)}</span>
+                          </div>
+                        )}
+                        {/* Specialties */}
+                        {barber.specialties && barber.specialties.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mb-2">
+                            {barber.specialties.slice(0, 3).map((s, i) => (
+                              <span key={i} className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#FBF7EF] text-[#87765E] border border-[#E8DCC8]">
+                                {s}
+                              </span>
+                            ))}
+                            {barber.specialties.length > 3 && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#FBF7EF] text-[#87765E]">+{barber.specialties.length - 3}</span>
+                            )}
+                          </div>
+                        )}
+
                       </div>
                     </div>
                   ))}
+                  </div>
                 </div>
               </>
             )}

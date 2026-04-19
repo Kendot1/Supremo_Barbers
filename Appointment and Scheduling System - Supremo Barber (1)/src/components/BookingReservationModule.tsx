@@ -6,14 +6,16 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from ".
 import { Badge } from "./ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog";
 import { Label } from "./ui/label";
+import { Textarea } from "./ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Alert, AlertDescription } from "./ui/alert";
 import { Calendar, Search, Edit, X, CheckCircle2, Clock, AlertCircle, Info, Download, Eye, User, Scissors, CreditCard, MessageSquare } from "lucide-react";
 import { toast } from "sonner";
-import type { Appointment } from "../App";
+import type { Appointment, User as UserType } from "../App";
 import { exportToCSV, formatDateForExport, formatCurrencyForExport } from "./utils/exportUtils";
 import { PasswordConfirmationDialog } from "./PasswordConfirmationDialog";
 import API from "../services/api.service";
+import { logAppointmentCancelledByAdmin } from "../services/audit-notification.service";
 
 // Utility function to parse date string without timezone issues
 const parseLocalDate = (dateString: string): Date => {
@@ -34,9 +36,24 @@ const TIME_SLOTS = [
   "05:00 PM", "05:30 PM",
 ];
 
+// Admin cancellation reason options
+const ADMIN_CANCEL_REASONS = [
+  'Customer no-show',
+  'Barber unavailable',
+  'Schedule conflict',
+  'Payment issue',
+  'Customer misbehavior',
+  'Service unavailable',
+  'Shop maintenance / closure',
+  'Fraudulent booking',
+  'other',
+];
+
 interface BookingReservationModuleProps {
   appointments: Appointment[];
   onUpdateAppointments: (appointments: Appointment[]) => void;
+  onRefreshAppointments?: () => Promise<void>;
+  adminUser?: UserType;
 }
 
 interface EditFormData {
@@ -50,7 +67,7 @@ interface EditFormData {
   price: number;
 }
 
-export function BookingReservationModule({ appointments, onUpdateAppointments }: BookingReservationModuleProps) {
+export function BookingReservationModule({ appointments, onUpdateAppointments, onRefreshAppointments, adminUser }: BookingReservationModuleProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterBarber, setFilterBarber] = useState("all");
@@ -73,11 +90,18 @@ export function BookingReservationModule({ appointments, onUpdateAppointments }:
   const [availableServices, setAvailableServices] = useState<any[]>([]);
   const [availableBarbers, setAvailableBarbers] = useState<any[]>([]);
 
+  // Cancellation reason state
+  const [isCancelReasonDialogOpen, setIsCancelReasonDialogOpen] = useState(false);
+  const [cancelBookingId, setCancelBookingId] = useState<string | null>(null);
+  const [selectedCancelReason, setSelectedCancelReason] = useState('');
+  const [customCancelReason, setCustomCancelReason] = useState('');
+
   // Password confirmation state
   const [passwordAction, setPasswordAction] = useState<{
     type: 'save' | 'cancel';
     bookingId?: string;
     data?: EditFormData;
+    cancelReason?: string;
   } | null>(null);
 
   // Fetch services and barbers from database on mount
@@ -282,40 +306,115 @@ export function BookingReservationModule({ appointments, onUpdateAppointments }:
     const booking = appointments.find(b => b.id === bookingId);
 
     // Only allow cancelling upcoming bookings
-    if (booking && booking.status !== 'upcoming' && booking.paymentStatus !== 'verified' && booking.status !== 'pending') {
-      toast.error('Only upcoming bookings or verified payments can be cancelled');
+    if (booking && booking.status !== 'upcoming' && booking.paymentStatus !== 'verified' && booking.status !== 'pending' && booking.status !== 'verified' && booking.status !== 'confirmed') {
+      toast.error('This booking cannot be cancelled');
       return;
     }
 
-    // Trigger password confirmation
+    // Open cancellation reason dialog
+    setCancelBookingId(bookingId);
+    setSelectedCancelReason('');
+    setCustomCancelReason('');
+    setIsCancelReasonDialogOpen(true);
+  };
+
+  const handleConfirmCancelReason = () => {
+    if (!cancelBookingId) return;
+
+    if (!selectedCancelReason) {
+      toast.error('Please select a reason for cancellation.');
+      return;
+    }
+
+    if (selectedCancelReason === 'other' && !customCancelReason.trim()) {
+      toast.error('Please provide your reason for cancellation.');
+      return;
+    }
+
+    const finalReason = selectedCancelReason === 'other'
+      ? customCancelReason.trim()
+      : selectedCancelReason;
+
+    // Close reason dialog, trigger password confirmation
+    setIsCancelReasonDialogOpen(false);
     setPasswordAction({
       type: 'cancel',
-      bookingId: bookingId
+      bookingId: cancelBookingId,
+      cancelReason: finalReason,
     });
   };
 
   const executeCancelBooking = async () => {
     if (!passwordAction?.bookingId) return;
 
+    const cancelReason = passwordAction.cancelReason || 'Cancelled by admin';
+    const booking = appointments.find(b => b.id === passwordAction.bookingId);
+
     try {
-      // Persist to database FIRST
+      // Persist to database FIRST — set status to cancelled, payment to refunded, and save reason
       await API.appointments.update(passwordAction.bookingId, {
         status: 'cancelled',
+        payment_status: 'refunded',
+        cancellation_reason: cancelReason,
+        cancelled_by: `Admin - ${adminUser?.name || 'Admin'}`,
+        notes: `Admin cancelled: ${cancelReason}`,
       });
-      console.log('✅ Booking cancelled in database');
+      console.log('✅ Booking cancelled in database with reason:', cancelReason);
 
-      // Then update local state
-      const updatedAppointments = appointments.map(b =>
-        b.id === passwordAction.bookingId
-          ? { ...b, status: "cancelled" as const }
-          : b
-      );
-      onUpdateAppointments(updatedAppointments);
-      toast.success("Booking cancelled successfully!");
+      // Send notifications to customer and barber (don't block UI)
+      if (adminUser && booking) {
+        logAppointmentCancelledByAdmin(
+          adminUser.id,
+          adminUser.name,
+          adminUser.email,
+          passwordAction.bookingId,
+          {
+            service: booking.service || booking.service_name || 'Unknown Service',
+            customerId: booking.customer_id || booking.userId || '',
+            customerName: booking.customerName || booking.customer_name || 'Customer',
+            barberId: booking.barber_id || '',
+            barberName: booking.barber || booking.barber_name || 'Barber',
+            date: booking.date || booking.appointment_date || '',
+            time: booking.time || booking.appointment_time || '',
+            reason: cancelReason,
+          }
+        ).then(() => {
+          console.log('✅ Cancellation notifications sent to customer and barber');
+        }).catch((notifError) => {
+          console.error('❌ Failed to send cancellation notifications:', notifError);
+        });
+      }
+
+      toast.success('Booking cancelled successfully!');
       setPasswordAction(null);
+      setCancelBookingId(null);
+
+      // Refresh appointments from database to get the updated payment_status
+      // This ensures the UI reflects the actual DB state (payment_status: refunded → paymentStatus: rejected)
+      if (onRefreshAppointments) {
+        await onRefreshAppointments();
+      } else {
+        // Fallback: update local state optimistically if no refresh callback
+        const updatedAppointments = appointments.map(b =>
+          b.id === passwordAction.bookingId
+            ? {
+              ...b,
+              status: 'cancelled' as const,
+              paymentStatus: 'rejected' as const,
+              payment_status: 'refunded' as const,
+              cancellationReason: cancelReason,
+              cancellation_reason: cancelReason,
+              cancelledBy: adminUser?.name || 'Admin',
+              cancelledAt: new Date().toISOString(),
+              notes: `Admin cancelled: ${cancelReason}`,
+            }
+            : b
+        );
+        onUpdateAppointments(updatedAppointments);
+      }
     } catch (error) {
       console.error('❌ Failed to cancel booking:', error);
-      toast.error("Failed to cancel booking. Please try again.");
+      toast.error('Failed to cancel booking. Please try again.');
       setPasswordAction(null);
     }
   };
@@ -511,7 +610,7 @@ export function BookingReservationModule({ appointments, onUpdateAppointments }:
                             size="sm"
                             className="text-[#DB9D47] hover:text-[#C88A35] hover:bg-[#FBF7EF] disabled:opacity-30 disabled:cursor-not-allowed h-8 w-8 p-0"
                             onClick={() => handleEditBooking(booking)}
-                            disabled={booking.status === "cancelled" || booking.status === "rejected"}
+                            disabled={booking.status === "cancelled" || booking.status === "rejected" || booking.status === "completed"}
                             title={booking.status === "cancelled" || booking.status === "rejected" ? "Cancelled/rejected bookings cannot be edited" : "Edit booking"}
                           >
                             <Edit className="w-4 h-4" />
@@ -745,6 +844,88 @@ export function BookingReservationModule({ appointments, onUpdateAppointments }:
         itemName={passwordAction?.type === 'save' ? 'booking' : 'booking'}
       />
 
+      {/* Admin Cancellation Reason Dialog */}
+      <Dialog open={isCancelReasonDialogOpen} onOpenChange={setIsCancelReasonDialogOpen}>
+        <DialogContent className="sm:max-w-[480px] max-h-[85vh] overflow-y-auto bg-gradient-to-br from-[#FFFDF8] to-[#FFF8E8]">
+          <DialogHeader>
+            <DialogTitle className="text-[#5C4A3A] flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-red-500" />
+              Cancel Booking
+            </DialogTitle>
+            <DialogDescription className="text-[#87765E]">
+              Please select a reason for cancelling this booking. The customer will be notified.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            {/* Reason Selection */}
+            <div className="grid grid-cols-2 gap-2">
+              {ADMIN_CANCEL_REASONS.map((reason) => (
+                <button
+                  key={reason}
+                  onClick={() => setSelectedCancelReason(reason)}
+                  className={`p-3 rounded-lg border-2 text-left text-sm transition-all ${selectedCancelReason === reason
+                      ? 'border-[#DB9D47] bg-[#DB9D47]/10 text-[#5C4A3A] font-medium'
+                      : 'border-[#E8DCC8] bg-white text-[#87765E] hover:border-[#D4C5B0] hover:bg-[#FBF7EF]'
+                    } ${reason === 'other' ? 'col-span-2' : ''}`}
+                >
+                  <div className="flex items-center gap-2">
+                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${selectedCancelReason === reason
+                        ? 'border-[#DB9D47] bg-[#DB9D47]'
+                        : 'border-[#D4C5B0]'
+                      }`}>
+                      {selectedCancelReason === reason && (
+                        <div className="w-2 h-2 rounded-full bg-white" />
+                      )}
+                    </div>
+                    <span className="break-words">{reason === 'other' ? 'Other (specify below)' : reason}</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            {/* Custom reason textarea */}
+            {selectedCancelReason === 'other' && (
+              <div className="space-y-2">
+                <Label className="text-[#5C4A3A] font-medium">Specify reason</Label>
+                <Textarea
+                  value={customCancelReason}
+                  onChange={(e) => setCustomCancelReason(e.target.value)}
+                  placeholder="Enter your reason for cancellation..."
+                  className="border-[#E8DCC8] min-h-[80px] resize-none"
+                  maxLength={500}
+                />
+              </div>
+            )}
+
+            {/* Warning notice */}
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+              <p className="text-xs text-amber-800">
+                <strong>Note:</strong> Cancelling this booking will set the payment status to rejected and notify the customer.
+              </p>
+            </div>
+          </div>
+          <div className="flex justify-end gap-3 pt-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsCancelReasonDialogOpen(false);
+                setCancelBookingId(null);
+              }}
+              className="border-[#E8DCC8]"
+            >
+              Go Back
+            </Button>
+            <Button
+              onClick={handleConfirmCancelReason}
+              className="bg-red-600 hover:bg-red-700 text-white"
+              disabled={!selectedCancelReason || (selectedCancelReason === 'other' && !customCancelReason.trim())}
+            >
+              Confirm Cancellation
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* View Booking Details Dialog */}
       <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
         <DialogContent className="sm:max-w-[550px] max-h-[85vh] overflow-y-auto">
@@ -854,23 +1035,29 @@ export function BookingReservationModule({ appointments, onUpdateAppointments }:
               )}
 
               {/* Cancellation Reason */}
-              {viewBooking.status === 'cancelled' && (viewBooking.cancellationReason || (viewBooking.notes && viewBooking.notes.startsWith('Customer cancelled:'))) && (
+              {viewBooking.status === 'cancelled' && (viewBooking.cancellationReason || viewBooking.cancellation_reason || viewBooking.notes) && (
                 <div className="p-3 rounded-lg bg-red-50 border border-red-200">
                   <div className="flex items-center gap-2 mb-1">
                     <MessageSquare className="w-3.5 h-3.5 text-red-500" />
                     <span className="text-xs font-semibold text-red-700">Cancellation Reason</span>
                   </div>
                   <p className="text-sm text-red-600">
-                    {viewBooking.cancellationReason || viewBooking.notes?.replace('Customer cancelled: ', '')}
+                    {viewBooking.cancellationReason || viewBooking.cancellation_reason ||
+                      viewBooking.notes?.replace('Customer cancelled: ', '').replace('Admin cancelled: ', '').replace('Barber cancelled: ', '')}
                   </p>
-                  {viewBooking.cancelledBy && (
-                    <p className="text-xs text-red-400 mt-1 italic">Cancelled by: {viewBooking.cancelledBy}</p>
+                  {(viewBooking.cancelledBy || viewBooking.cancelled_by || viewBooking.notes) && (
+                    <p className="text-xs text-red-400 mt-1 italic">
+                      Cancelled by: {viewBooking.cancelledBy || viewBooking.cancelled_by ||
+                        (viewBooking.notes?.startsWith('Admin cancelled:') ? 'Admin' :
+                          viewBooking.notes?.startsWith('Barber cancelled:') ? 'Barber' :
+                            viewBooking.notes?.startsWith('Customer cancelled:') ? 'Customer' : 'Unknown')}
+                    </p>
                   )}
                 </div>
               )}
 
               {/* Notes (non-cancellation) */}
-              {viewBooking.notes && !viewBooking.notes.startsWith('Customer cancelled:') && (
+              {viewBooking.notes && !viewBooking.notes.startsWith('Customer cancelled:') && !viewBooking.notes.startsWith('Admin cancelled:') && !viewBooking.notes.startsWith('Barber cancelled:') && viewBooking.status !== 'cancelled' && (
                 <div className="p-3 rounded-lg bg-[#FBF7EF] border border-[#E8DCC8]">
                   <div className="flex items-center gap-2 mb-1">
                     <MessageSquare className="w-3.5 h-3.5 text-[#DB9D47]" />

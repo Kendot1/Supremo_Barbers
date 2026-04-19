@@ -36,6 +36,9 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
+  Eye,
+  CreditCard,
+  MessageSquare,
 } from "lucide-react";
 import { FaPesoSign } from "react-icons/fa6";
 import { toast } from "sonner";
@@ -79,6 +82,8 @@ export function CustomerBookingManagement({
   const [showRlsError, setShowRlsError] = useState(false);
   const [cancellationReason, setCancellationReason] = useState("");
   const [selectedCancelReason, setSelectedCancelReason] = useState("");
+  const [isViewDetailsOpen, setIsViewDetailsOpen] = useState(false);
+  const [viewBooking, setViewBooking] = useState<Appointment | null>(null);
 
   // Scroll to highlighted appointment
   useEffect(() => {
@@ -371,6 +376,7 @@ export function CustomerBookingManagement({
         payment_status: 'refunded',
         notes: `Customer cancelled: ${finalReason}`,
         cancellation_reason: finalReason,
+        cancelled_by: `Customer - ${user.name}`,
       });
 
       const updatedAppointments = appointments.map(apt => {
@@ -381,7 +387,9 @@ export function CustomerBookingManagement({
             paymentStatus: 'rejected' as const,  // camelCase for UI
             payment_status: 'refunded' as const,  // snake_case for DB sync
             cancellationReason: finalReason,
-            cancelledBy: user.name,
+            cancellation_reason: finalReason,
+            cancelledBy: `Customer - ${user.name}`,
+            cancelled_by: `Customer - ${user.name}`,
             cancelledAt,
             notes: `Customer cancelled: ${finalReason}`,
           };
@@ -655,10 +663,14 @@ export function CustomerBookingManagement({
                   <div
                     key={booking.id}
                     id={`appointment-${booking.id}`}
-                    className={`p-5 rounded-lg transition-all duration-500 ${isHighlighted
+                    className={`p-5 rounded-lg transition-all duration-500 cursor-pointer ${isHighlighted
                       ? 'bg-gradient-to-br from-[#FFF3C4] via-[#FBF7EF] to-white border-3 border-[#DB9D47] shadow-xl ring-4 ring-[#DB9D47]/30 animate-pulse'
-                      : 'bg-gradient-to-br from-[#FBF7EF] to-white border-2 border-[#E8DCC8] hover:shadow-lg'
+                      : 'bg-gradient-to-br from-[#FBF7EF] to-white border-2 border-[#E8DCC8] hover:shadow-lg hover:border-[#DB9D47]/50'
                       }`}
+                    onClick={() => {
+                      setViewBooking(booking);
+                      setIsViewDetailsOpen(true);
+                    }}
                   >
                     {/* Just Verified Badge */}
                     {isHighlighted && (
@@ -699,32 +711,12 @@ export function CustomerBookingManagement({
                             </div>
                           )}
 
-                          {/* Rejection Reason Display */}
-                          {(booking.status === 'rejected' || booking.paymentStatus === 'rejected') && booking.rejectionReason && (
-                            <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-                              <p className="text-xs font-semibold text-red-700 mb-1 flex items-center gap-1">
-                                <XCircle className="w-3 h-3" />
-                                Rejection Reason:
-                              </p>
-                              <p className="text-xs text-red-600">{booking.rejectionReason}</p>
-                              <p className="text-xs text-red-500 mt-2 italic">
-                                Please resubmit your payment proof to confirm your booking.
-                              </p>
-                            </div>
-                          )}
-
-                          {/* Also check notes field for rejection reason */}
-                          {(booking.status === 'rejected' || booking.paymentStatus === 'rejected') && !booking.rejectionReason && booking.notes && booking.notes.includes('Payment rejected') && (
-                            <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-                              <p className="text-xs font-semibold text-red-700 mb-1 flex items-center gap-1">
-                                <XCircle className="w-3 h-3" />
-                                Rejection Reason:
-                              </p>
-                              <p className="text-xs text-red-600">{booking.notes.replace('Payment rejected: ', '')}</p>
-                              <p className="text-xs text-red-500 mt-2 italic">
-                                Please resubmit your payment proof to confirm your booking.
-                              </p>
-                            </div>
+                          {/* Rejection hint - compact */}
+                          {(booking.status === 'rejected' || booking.paymentStatus === 'rejected') && (
+                            <p className="text-xs text-red-500 mt-2 flex items-center gap-1">
+                              <AlertCircle className="w-3 h-3" />
+                              Payment rejected — tap to view details
+                            </p>
                           )}
                         </div>
                       </div>
@@ -736,15 +728,13 @@ export function CustomerBookingManagement({
                       <p className="text-lg text-[#DB9D47]">₱{booking.price}</p>
                       <div className="flex gap-2 flex-wrap">
                         {/* Payment proof submission/resubmission logic */}
-                        {/* Show button ONLY if: no payment proof, OR pending (allow resubmit), OR rejected (allow resubmit) */}
-                        {/* Hide button when verified/paid */}
                         {(!booking.paymentProof || booking.paymentStatus === 'pending' || booking.paymentStatus === 'rejected') &&
                           booking.paymentStatus !== 'verified' && (
                             <Button
                               variant="outline"
                               size="sm"
                               className="border-[#94A670] text-[#94A670] hover:bg-[#94A670] hover:text-white"
-                              onClick={() => handlePaymentProof(booking)}
+                              onClick={(e) => { e.stopPropagation(); handlePaymentProof(booking); }}
                             >
                               <QrCode className="w-4 h-4 mr-1" />
                               Resubmit Payment
@@ -767,7 +757,7 @@ export function CustomerBookingManagement({
                             variant="outline"
                             size="sm"
                             className="border-[#DB9D47] text-[#DB9D47] hover:bg-[#DB9D47] hover:text-white"
-                            onClick={() => handleReschedule(booking)}
+                            onClick={(e) => { e.stopPropagation(); handleReschedule(booking); }}
                           >
                             <Edit className="w-4 h-4 mr-1" />
                             Reschedule
@@ -777,7 +767,7 @@ export function CustomerBookingManagement({
                           variant="outline"
                           size="sm"
                           className="border-[#E57373] text-[#E57373] hover:bg-[#E57373] hover:text-white"
-                          onClick={() => handleCancelBookingClick(booking)}
+                          onClick={(e) => { e.stopPropagation(); handleCancelBookingClick(booking); }}
                         >
                           <X className="w-4 h-4 mr-1" />
                           Cancel
@@ -807,16 +797,20 @@ export function CustomerBookingManagement({
               const hasReviewed = reviewedAppointments.has(booking.id);
               const canReview = booking.status === "completed" && !hasReviewed;
 
-              // Extract cancellation reason from cancellationReason field or notes field
-              const cancelReason = booking.cancellationReason ||
-                (booking.notes && booking.notes.startsWith('Customer cancelled: ')
-                  ? booking.notes.replace('Customer cancelled: ', '')
+              // Extract cancellation reason from cancellationReason field, cancellation_reason (DB), or notes field
+              const cancelReason = booking.cancellationReason || booking.cancellation_reason ||
+                (booking.notes && (booking.notes.startsWith('Customer cancelled: ') || booking.notes.startsWith('Admin cancelled: ') || booking.notes.startsWith('Barber cancelled: '))
+                  ? booking.notes.replace('Customer cancelled: ', '').replace('Admin cancelled: ', '').replace('Barber cancelled: ', '')
                   : null);
 
               return (
                 <div
                   key={booking.id}
-                  className="p-4 rounded-lg bg-[#FBF7EF] border border-[#E8DCC8]"
+                  className="p-4 rounded-lg bg-[#FBF7EF] border border-[#E8DCC8] cursor-pointer hover:shadow-md hover:border-[#DB9D47]/50 transition-all"
+                  onClick={() => {
+                    setViewBooking(booking);
+                    setIsViewDetailsOpen(true);
+                  }}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4 flex-1">
@@ -840,7 +834,7 @@ export function CustomerBookingManagement({
                           variant="outline"
                           size="sm"
                           className="border-yellow-500 text-yellow-600 hover:bg-yellow-500 hover:text-white"
-                          onClick={() => handleOpenReviewDialog(booking)}
+                          onClick={(e) => { e.stopPropagation(); handleOpenReviewDialog(booking); }}
                         >
                           <Star className="w-4 h-4 mr-1" />
                           Review
@@ -850,50 +844,12 @@ export function CustomerBookingManagement({
                         variant="outline"
                         size="sm"
                         className="border-[#DB9D47] text-[#DB9D47] hover:bg-[#DB9D47] hover:text-white"
-                        onClick={() => handleRebook(booking)}
+                        onClick={(e) => { e.stopPropagation(); handleRebook(booking); }}
                       >
                         Rebook
                       </Button>
                     </div>
                   </div>
-
-
-
-                  {/* Rejection Reason Display for Past Bookings */}
-                  {(booking.status === 'rejected' || booking.paymentStatus === 'rejected') && booking.rejectionReason && (
-                    <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-                      <p className="text-xs font-semibold text-red-700 flex items-center gap-1 mb-1">
-                        <AlertCircle className="w-3 h-3" />
-                        Rejected:
-                      </p>
-                      <p className="text-xs text-red-600">{booking.rejectionReason}</p>
-                    </div>
-                  )}
-
-                  {/* Also check notes field for rejection reason */}
-                  {(booking.status === 'rejected' || booking.paymentStatus === 'rejected') && !booking.rejectionReason && booking.notes && booking.notes.includes('Payment rejected') && (
-                    <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-                      <p className="text-xs font-semibold text-red-700 flex items-center gap-1 mb-1">
-                        <AlertCircle className="w-3 h-3" />
-                        Rejected:
-                      </p>
-                      <p className="text-xs text-red-600">{booking.notes.replace('Payment rejected: ', '')}</p>
-                    </div>
-                  )}
-
-                  {/* Cancellation Reason Display */}
-                  {booking.status === 'cancelled' && cancelReason && (
-                    <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-                      <p className="text-xs font-semibold text-red-700 flex items-center gap-1 mb-1">
-                        <XCircle className="w-3 h-3" />
-                        Cancellation Reason:
-                      </p>
-                      <p className="text-xs text-red-600">{cancelReason}</p>
-                      {booking.cancelledBy && (
-                        <p className="text-xs text-red-400 mt-1 italic">Cancelled by: {booking.cancelledBy}</p>
-                      )}
-                    </div>
-                  )}
                 </div>
               );
             })}
@@ -1341,6 +1297,153 @@ export function CustomerBookingManagement({
               disabled={isSubmittingReview || !reviewRating || !reviewComment}
             >
               {isSubmittingReview ? 'Submitting...' : 'Submit Review'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      {/* View Booking Details Dialog */}
+      <Dialog open={isViewDetailsOpen} onOpenChange={setIsViewDetailsOpen}>
+        <DialogContent className="sm:max-w-[500px] max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-[#5C4A3A] flex items-center gap-2">
+              <Eye className="w-5 h-5 text-[#DB9D47]" />
+              Booking Details
+            </DialogTitle>
+            <DialogDescription className="text-[#87765E]">
+              Full details for this booking
+            </DialogDescription>
+          </DialogHeader>
+          {viewBooking && (() => {
+            const viewStatusConfig = getStatusConfig(viewBooking.status);
+            const viewCancelReason = viewBooking.cancellationReason || viewBooking.cancellation_reason ||
+              (viewBooking.notes && (viewBooking.notes.startsWith('Customer cancelled: ') || viewBooking.notes.startsWith('Admin cancelled: ') || viewBooking.notes.startsWith('Barber cancelled: '))
+                ? viewBooking.notes.replace('Customer cancelled: ', '').replace('Admin cancelled: ', '').replace('Barber cancelled: ', '')
+                : null);
+            return (
+              <div className="space-y-4 py-2">
+                {/* Status */}
+                <div className="flex justify-between items-center">
+                  <Badge variant="outline" className={`${viewStatusConfig.color} text-sm px-3 py-1`}>
+                    {viewStatusConfig.label}
+                  </Badge>
+                  <span className="text-xs text-[#87765E]">ID: {viewBooking.id.slice(0, 8)}...</span>
+                </div>
+
+                {/* Service & Barber */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3 rounded-lg bg-[#FBF7EF] border border-[#E8DCC8]">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Scissors className="w-3.5 h-3.5 text-[#DB9D47]" />
+                      <span className="text-xs text-[#87765E]">Service</span>
+                    </div>
+                    <p className="text-sm text-[#5C4A3A] font-medium">{viewBooking.service}</p>
+                  </div>
+                  <div className="p-3 rounded-lg bg-[#FBF7EF] border border-[#E8DCC8]">
+                    <div className="flex items-center gap-2 mb-1">
+                      <User className="w-3.5 h-3.5 text-[#DB9D47]" />
+                      <span className="text-xs text-[#87765E]">Barber</span>
+                    </div>
+                    <p className="text-sm text-[#5C4A3A] font-medium">{viewBooking.barber}</p>
+                  </div>
+                </div>
+
+                {/* Date & Time */}
+                <div className="p-3 rounded-lg bg-[#FBF7EF] border border-[#E8DCC8]">
+                  <div className="flex items-center gap-4 text-sm text-[#5C4A3A]">
+                    <span className="flex items-center gap-1.5">
+                      <Calendar className="w-3.5 h-3.5 text-[#DB9D47]" />
+                      {parseLocalDate(viewBooking.date).toLocaleDateString('en-US', { weekday: 'short', month: 'long', day: 'numeric', year: 'numeric' })}
+                    </span>
+                    <span className="flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5 text-[#DB9D47]" />
+                      {viewBooking.time}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Payment Info */}
+                <div className="p-3 rounded-lg bg-[#FBF7EF] border border-[#E8DCC8]">
+                  <div className="flex items-center gap-2 mb-2">
+                    <CreditCard className="w-3.5 h-3.5 text-[#DB9D47]" />
+                    <span className="text-xs text-[#87765E]">Payment</span>
+                  </div>
+                  <div className="space-y-1.5 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-[#87765E]">Total Amount</span>
+                      <span className="text-[#5C4A3A] font-medium">₱{viewBooking.price.toLocaleString()}</span>
+                    </div>
+                    {(viewBooking.down_payment || viewBooking.downPaymentPaid) && (
+                      <div className="flex justify-between">
+                        <span className="text-[#87765E]">Down Payment</span>
+                        <span className="text-[#5C4A3A] font-medium">₱{(viewBooking.down_payment || viewBooking.price * 0.5).toLocaleString()}</span>
+                      </div>
+                    )}
+                    {viewBooking.status === 'completed' ? (
+                      <div className="flex justify-between items-center pt-1.5 border-t border-[#E8DCC8]">
+                        <span className="text-[#87765E]">Status</span>
+                        <Badge className="bg-green-500 text-white text-xs">Fully Paid</Badge>
+                      </div>
+                    ) : (
+                      <>
+                        {(viewBooking.remainingBalance > 0 || viewBooking.remaining_amount > 0) && (
+                          <div className="flex justify-between">
+                            <span className="text-[#87765E]">Remaining</span>
+                            <span className="text-orange-600 font-medium">₱{Number(viewBooking.remainingBalance || viewBooking.remaining_amount || 0).toFixed(2)}</span>
+                          </div>
+                        )}
+                        {(viewBooking.paymentStatus) && (
+                          <div className="flex justify-between items-center pt-1.5 border-t border-[#E8DCC8]">
+                            <span className="text-[#87765E]">Payment Status</span>
+                            <Badge className={`text-xs text-white ${
+                              viewBooking.paymentStatus === 'verified' ? 'bg-green-500' :
+                              viewBooking.paymentStatus === 'rejected' ? 'bg-red-500' : 'bg-orange-500'
+                            }`}>
+                              {viewBooking.paymentStatus}
+                            </Badge>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Rejection Reason */}
+                {(viewBooking.status === 'rejected' || viewBooking.paymentStatus === 'rejected') && (viewBooking.rejectionReason || (viewBooking.notes && viewBooking.notes.includes('Payment rejected'))) && (
+                  <div className="p-3 rounded-lg bg-red-50 border border-red-200">
+                    <div className="flex items-center gap-2 mb-1">
+                      <AlertCircle className="w-3.5 h-3.5 text-red-500" />
+                      <span className="text-xs font-semibold text-red-700">Rejection Reason</span>
+                    </div>
+                    <p className="text-sm text-red-600">
+                      {viewBooking.rejectionReason || viewBooking.notes?.replace('Payment rejected: ', '')}
+                    </p>
+                  </div>
+                )}
+
+                {/* Cancellation Reason */}
+                {viewBooking.status === 'cancelled' && viewCancelReason && (
+                  <div className="p-3 rounded-lg bg-red-50 border border-red-200">
+                    <div className="flex items-center gap-2 mb-1">
+                      <MessageSquare className="w-3.5 h-3.5 text-red-500" />
+                      <span className="text-xs font-semibold text-red-700">Cancellation Reason</span>
+                    </div>
+                    <p className="text-sm text-red-600">{viewCancelReason}</p>
+                    {(viewBooking.cancelledBy || viewBooking.cancelled_by || viewBooking.notes) && (
+                      <p className="text-xs text-red-400 mt-1 italic">
+                        Cancelled by: {viewBooking.cancelledBy || viewBooking.cancelled_by ||
+                          (viewBooking.notes?.startsWith('Admin cancelled:') ? 'Admin' :
+                            viewBooking.notes?.startsWith('Barber cancelled:') ? 'Barber' :
+                              viewBooking.notes?.startsWith('Customer cancelled:') ? 'You' : 'Unknown')}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+          <div className="flex justify-end">
+            <Button variant="outline" onClick={() => setIsViewDetailsOpen(false)} className="border-[#E8DCC8]">
+              Close
             </Button>
           </div>
         </DialogContent>

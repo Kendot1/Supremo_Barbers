@@ -47,6 +47,7 @@ import {
 } from "./ui/alert-dialog";
 import type { User as UserType } from "../App";
 import API from "../services/api.service";
+import { projectId, publicAnonKey } from "../utils/supabase/info";
 import {
   logPasswordChange,
   logProfileUpdate,
@@ -86,6 +87,14 @@ export function CustomerProfile({
     newPassword: "",
     confirmPassword: "",
   });
+
+  // Forgot password state
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotStep, setForgotStep] = useState(1);
+  const [forgotOtp, setForgotOtp] = useState("");
+  const [forgotNewPassword, setForgotNewPassword] = useState("");
+  const [forgotConfirmPassword, setForgotConfirmPassword] = useState("");
+  const [forgotLoading, setForgotLoading] = useState(false);
 
   // Password for profile changes (used when email changes)
   const [profilePassword, setProfilePassword] = useState("");
@@ -474,6 +483,72 @@ export function CustomerProfile({
     }
   };
 
+  // Forgot password handlers
+  const handleForgotPasswordSendOTP = async () => {
+    setForgotLoading(true);
+    try {
+      const response = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/make-server-70e1fc66/api/auth/forgot-password`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${publicAnonKey}` },
+          body: JSON.stringify({ email: user.email.toLowerCase() }),
+        }
+      );
+      const data = await response.json();
+      if (!response.ok || !data.success) { toast.error(data.error || "Failed to send reset code"); return; }
+      if (data.token) sessionStorage.setItem('forgot_password_token', data.token);
+      toast.success("Reset code sent!", { description: `Check ${user.email} inbox` });
+      setForgotStep(2);
+    } catch { toast.error("Network error. Please try again."); } finally { setForgotLoading(false); }
+  };
+
+  const handleForgotPasswordVerifyOTP = async () => {
+    if (!forgotOtp || forgotOtp.length !== 6) { toast.error("Please enter the 6-digit code"); return; }
+    setForgotLoading(true);
+    try {
+      const token = sessionStorage.getItem('forgot_password_token');
+      if (!token) { toast.error("Session expired. Please try again."); setForgotStep(1); return; }
+      const response = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/make-server-70e1fc66/api/auth/verify-reset-otp`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${publicAnonKey}` },
+          body: JSON.stringify({ email: user.email.toLowerCase(), otp: forgotOtp, token }),
+        }
+      );
+      const data = await response.json();
+      if (!response.ok || !data.success) { toast.error(data.error || "Invalid code"); return; }
+      toast.success("Code verified! Set your new password.");
+      setForgotStep(3);
+    } catch { toast.error("Failed to verify code."); } finally { setForgotLoading(false); }
+  };
+
+  const handleForgotPasswordReset = async () => {
+    if (forgotNewPassword.length < 8) { toast.error("Password must be at least 8 characters"); return; }
+    if (forgotNewPassword !== forgotConfirmPassword) { toast.error("Passwords do not match"); return; }
+    setForgotLoading(true);
+    try {
+      const token = sessionStorage.getItem('forgot_password_token');
+      if (!token) { toast.error("Session expired. Please start over."); setForgotStep(1); return; }
+      const response = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/make-server-70e1fc66/api/auth/reset-password`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${publicAnonKey}` },
+          body: JSON.stringify({ email: user.email.toLowerCase(), newPassword: forgotNewPassword, token }),
+        }
+      );
+      const data = await response.json();
+      if (!response.ok || !data.success) { toast.error(data.error || "Failed to reset password"); return; }
+      sessionStorage.removeItem('forgot_password_token');
+      toast.success("Password reset successfully!");
+      setShowForgotPassword(false);
+      setForgotStep(1);
+      setForgotOtp(""); setForgotNewPassword(""); setForgotConfirmPassword("");
+    } catch { toast.error("Failed to reset password."); } finally { setForgotLoading(false); }
+  };
+
   const getInitials = (name: string) => {
     return name
       .split(" ")
@@ -742,96 +817,159 @@ export function CustomerProfile({
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <PasswordInput
-            label="Current Password"
-            id="currentPassword"
-            value={passwordData.currentPassword}
-            onChange={(value) =>
-              setPasswordData({
-                ...passwordData,
-                currentPassword: value,
-              })
-            }
-            placeholder="••••••••"
-            showStrength={false}
-            className="border-[#E8DCC8] focus:border-[#DB9D47] focus:ring-[#DB9D47]"
-          />
+          {!showForgotPassword ? (
+            <>
+              <PasswordInput
+                label="Current Password"
+                id="currentPassword"
+                value={passwordData.currentPassword}
+                onChange={(value) =>
+                  setPasswordData({ ...passwordData, currentPassword: value })
+                }
+                placeholder="••••••••"
+                showStrength={false}
+                className="border-[#E8DCC8] focus:border-[#DB9D47] focus:ring-[#DB9D47]"
+              />
 
-          <PasswordInput
-            label="New Password"
-            id="newPassword"
-            value={passwordData.newPassword}
-            onChange={(value) =>
-              setPasswordData({
-                ...passwordData,
-                newPassword: value,
-              })
-            }
-            placeholder="••••••••"
-            showStrength={true}
-            userName={user.name}
-            className="border-[#E8DCC8] focus:border-[#DB9D47] focus:ring-[#DB9D47]"
-          />
+              <PasswordInput
+                label="New Password"
+                id="newPassword"
+                value={passwordData.newPassword}
+                onChange={(value) =>
+                  setPasswordData({ ...passwordData, newPassword: value })
+                }
+                placeholder="••••••••"
+                showStrength={true}
+                userName={user.name}
+                className="border-[#E8DCC8] focus:border-[#DB9D47] focus:ring-[#DB9D47]"
+              />
 
-          <ConfirmPasswordInput
-            label="Confirm New Password"
-            id="confirmPassword"
-            value={passwordData.confirmPassword}
-            onChange={(value) =>
-              setPasswordData({
-                ...passwordData,
-                confirmPassword: value,
-              })
-            }
-            password={passwordData.newPassword}
-            placeholder="••••••••"
-            className="border-[#E8DCC8] focus:border-[#DB9D47] focus:ring-[#DB9D47]"
-          />
+              <ConfirmPasswordInput
+                label="Confirm New Password"
+                id="confirmPassword"
+                value={passwordData.confirmPassword}
+                onChange={(value) =>
+                  setPasswordData({ ...passwordData, confirmPassword: value })
+                }
+                password={passwordData.newPassword}
+                placeholder="••••••••"
+                className="border-[#E8DCC8] focus:border-[#DB9D47] focus:ring-[#DB9D47]"
+              />
 
-          <Button
-            onClick={() => {
-              // Validate first before showing confirmation
-              if (
-                !passwordData.currentPassword ||
-                !passwordData.newPassword ||
-                !passwordData.confirmPassword
-              ) {
-                toast.error(
-                  "Please fill in all password fields",
-                );
-                return;
-              }
-              if (
-                passwordData.newPassword !==
-                passwordData.confirmPassword
-              ) {
-                toast.error("New passwords do not match");
-                return;
-              }
+              <div className="flex items-center justify-between">
+                <button
+                  type="button"
+                  className="text-sm text-[#DB9D47] hover:text-[#C88A35] hover:underline transition-colors"
+                  onClick={() => { setShowForgotPassword(true); setForgotStep(1); }}
+                >
+                  Forgot Password?
+                </button>
+                <Button
+                  onClick={() => {
+                    if (!passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword) {
+                      toast.error("Please fill in all password fields");
+                      return;
+                    }
+                    if (passwordData.newPassword !== passwordData.confirmPassword) {
+                      toast.error("New passwords do not match");
+                      return;
+                    }
+                    const passwordValidation = validatePassword(passwordData.newPassword, user.name);
+                    if (!passwordValidation.isValid) {
+                      toast.error("Password does not meet security requirements", {
+                        description: passwordValidation.issues[0] || "Please create a stronger password"
+                      });
+                      return;
+                    }
+                    setShowPasswordConfirm(true);
+                  }}
+                  disabled={passwordLoading}
+                  className="bg-[#D98555] hover:bg-[#C77545] text-white"
+                >
+                  {passwordLoading ? (
+                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Updating...</>
+                  ) : (
+                    "Update Password"
+                  )}
+                </Button>
+              </div>
+            </>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-sm font-semibold text-[#5C4A3A]">Reset Password via Email</h4>
+                <button
+                  type="button"
+                  className="text-xs text-[#87765E] hover:text-[#5C4A3A] hover:underline"
+                  onClick={() => {
+                    setShowForgotPassword(false); setForgotStep(1);
+                    setForgotOtp(""); setForgotNewPassword(""); setForgotConfirmPassword("");
+                  }}
+                >
+                  ← Back to Change Password
+                </button>
+              </div>
 
-              // Comprehensive password validation
-              const passwordValidation = validatePassword(passwordData.newPassword, user.name);
-              if (!passwordValidation.isValid) {
-                toast.error("Password does not meet security requirements", {
-                  description: passwordValidation.issues[0] || "Please create a stronger password"
-                });
-                return;
-              }
+              {forgotStep === 1 && (
+                <div className="space-y-3">
+                  <p className="text-sm text-[#87765E]">
+                    We'll send a 6-digit verification code to <strong className="text-[#5C4A3A]">{user.email}</strong>
+                  </p>
+                  <Button className="w-full bg-[#DB9D47] hover:bg-[#C88A35] text-white" onClick={handleForgotPasswordSendOTP} disabled={forgotLoading}>
+                    {forgotLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Sending...</> : "Send Verification Code"}
+                  </Button>
+                </div>
+              )}
 
-              setShowPasswordConfirm(true);
-            }}
-            disabled={passwordLoading}
-            className="bg-[#D98555] hover:bg-[#C77545] text-white"
-          >
-            {passwordLoading ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Updating...
-              </>
-            ) : (
-              "Update Password"
-            )}
-          </Button>
+              {forgotStep === 2 && (
+                <div className="space-y-3">
+                  <p className="text-sm text-[#87765E]">
+                    Enter the 6-digit code sent to <strong className="text-[#5C4A3A]">{user.email}</strong>
+                  </p>
+                  <Input
+                    value={forgotOtp}
+                    onChange={(e) => setForgotOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="000000"
+                    className="border-[#E8DCC8] text-center text-xl tracking-[0.5em] font-mono"
+                    maxLength={6}
+                  />
+                  <Button className="w-full bg-[#DB9D47] hover:bg-[#C88A35] text-white" onClick={handleForgotPasswordVerifyOTP} disabled={forgotLoading || forgotOtp.length !== 6}>
+                    {forgotLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Verifying...</> : "Verify Code"}
+                  </Button>
+                  <button type="button" className="text-xs text-[#DB9D47] hover:underline w-full text-center" onClick={handleForgotPasswordSendOTP} disabled={forgotLoading}>
+                    Resend code
+                  </button>
+                </div>
+              )}
+
+              {forgotStep === 3 && (
+                <div className="space-y-3">
+                  <PasswordInput
+                    label="New Password"
+                    id="forgotNewPassword"
+                    value={forgotNewPassword}
+                    onChange={(value) => setForgotNewPassword(value)}
+                    placeholder="Enter new password"
+                    showStrength={true}
+                    userName={user.name}
+                    className="border-[#E8DCC8]"
+                  />
+                  <ConfirmPasswordInput
+                    label="Confirm New Password"
+                    id="forgotConfirmPassword"
+                    value={forgotConfirmPassword}
+                    onChange={(value) => setForgotConfirmPassword(value)}
+                    password={forgotNewPassword}
+                    placeholder="Confirm new password"
+                    className="border-[#E8DCC8]"
+                  />
+                  <Button className="w-full bg-[#DB9D47] hover:bg-[#C88A35] text-white" onClick={handleForgotPasswordReset} disabled={forgotLoading}>
+                    {forgotLoading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Resetting...</> : "Reset Password"}
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 

@@ -249,8 +249,10 @@ function App() {
       paymentVerifiedAt: apt.paymentVerifiedAt,
       paymentVerifiedBy: apt.paymentVerifiedBy,
       cancellationReason: apt.cancellation_reason || apt.cancellationReason,
-      cancelledBy: apt.cancelledBy,
-      cancelledAt: apt.cancelledAt,
+      cancellation_reason: apt.cancellation_reason || apt.cancellationReason,
+      cancelledBy: apt.cancelled_by || apt.cancelledBy,
+      cancelled_by: apt.cancelled_by || apt.cancelledBy,
+      cancelledAt: apt.cancelled_at || apt.cancelledAt,
     };
   }, []);
 
@@ -301,10 +303,23 @@ function App() {
       if (userRole === 'admin') {
         // Admin sees all appointments
         fetchedAppointments = await API.appointments.getAll();
-      } else if (userRole === 'barber') {
-        // Barbers now see ALL appointments (for bookings management)
-        console.log('📅 Fetching ALL appointments for barber...');
-        fetchedAppointments = await API.appointments.getAll();
+      } else if (userRole === 'barber' && userId) {
+        // Barbers see only THEIR appointments
+        console.log('📅 Fetching appointments for barber user:', userId);
+        try {
+          // Look up the barber profile to get the barber record ID
+          const barberProfile = await API.barbers.getByUserId(userId);
+          if (barberProfile && barberProfile.id) {
+            console.log('📅 Found barber profile ID:', barberProfile.id);
+            fetchedAppointments = await API.appointments.getByBarberId(barberProfile.id);
+          } else {
+            console.warn('📅 No barber profile found for user:', userId, '- fetching by user ID fallback');
+            fetchedAppointments = await API.appointments.getByBarberId(userId);
+          }
+        } catch (barberLookupError) {
+          console.warn('📅 Barber profile lookup failed, using user ID as fallback:', barberLookupError);
+          fetchedAppointments = await API.appointments.getByBarberId(userId);
+        }
       } else if (userRole === 'customer' && userId) {
         // Customer sees only their appointments - use customer ID endpoint
         fetchedAppointments = await API.appointments.getByCustomerId(userId);

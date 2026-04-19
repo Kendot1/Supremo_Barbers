@@ -1292,6 +1292,69 @@ export async function logAppointmentCancelledByBarber(
 }
 
 /**
+ * Log & notify: Admin cancelled an appointment.
+ * Notifies customer and barber.
+ */
+export async function logAppointmentCancelledByAdmin(
+  userId: string,
+  userName: string,
+  userEmail: string,
+  appointmentId: string,
+  appointmentDetails: {
+    service: string;
+    customerId: string;
+    customerName: string;
+    barberId: string;
+    barberName: string;
+    date: string;
+    time: string;
+    reason: string;
+  }
+): Promise<void> {
+  // Audit log
+  await createAuditLog({
+    userId,
+    userRole: 'admin',
+    userName,
+    userEmail,
+    action: 'appointment_cancelled_by_admin',
+    entityType: 'appointment',
+    entityId: appointmentId,
+    description: `Admin ${userName} cancelled appointment for ${appointmentDetails.customerName} - ${appointmentDetails.service} - Reason: ${appointmentDetails.reason}`,
+    status: 'warning',
+    metadata: appointmentDetails,
+  });
+
+  // Notify customer
+  await createNotification({
+    userId: appointmentDetails.customerId,
+    userRole: 'customer',
+    type: 'appointment_cancelled',
+    title: '❌ Appointment Cancelled by Admin',
+    message: `Your ${appointmentDetails.service} appointment with ${appointmentDetails.barberName} on ${new Date(appointmentDetails.date).toLocaleDateString()} at ${appointmentDetails.time} was cancelled by administration. Reason: ${appointmentDetails.reason}. Your payment has been rejected.`,
+    relatedId: appointmentId,
+    relatedType: 'appointment',
+    actionUrl: `/appointments?highlight=${appointmentId}`,
+    actionLabel: 'View History',
+  });
+
+  // Notify barber
+  if (appointmentDetails.barberId) {
+    await createNotification({
+      userId: appointmentDetails.barberId,
+      userRole: 'barber',
+      type: 'appointment_cancelled',
+      title: '❌ Appointment Cancelled by Admin',
+      message: `Admin cancelled ${appointmentDetails.customerName}'s ${appointmentDetails.service} appointment on ${new Date(appointmentDetails.date).toLocaleDateString()} at ${appointmentDetails.time}. Reason: ${appointmentDetails.reason}`,
+      relatedId: appointmentId,
+      relatedType: 'appointment',
+      actionUrl: '/appointments',
+      actionLabel: 'View Schedule',
+    });
+  }
+}
+
+/**
  * Log & notify: Barber completed an appointment.
  * Notifies customer and admin.
  */

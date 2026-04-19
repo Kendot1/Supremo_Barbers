@@ -135,6 +135,7 @@ import { BarberEarningsOverview } from "./BarberEarningsOverview";
 import { NotificationCenter } from "./NotificationCenter";
 import type { User, Appointment } from "../App";
 import API from "../services/api.service";
+import { projectId, publicAnonKey } from "../utils/supabase/info";
 import {
   logPasswordChange,
   logProfileUpdate,
@@ -214,17 +215,21 @@ export function EnhancedBarberDashboard({
   console.log("💈 User avatarUrl:", user.avatarUrl);
 
   // Barber Profile State
+  const [barberDbId, setBarberDbId] = useState<string | null>(null);
+  const [newSpecialty, setNewSpecialty] = useState("");
+  const [showAddSpecialty, setShowAddSpecialty] = useState(false);
   const [barberProfile, setBarberProfile] = useState({
     bio:
       user.bio ||
-      "Professional barber with 5 years of experience",
-    specialties: ["Haircut", "Beard Trim", "Shaving"],
+      "",
+    specialties: [] as string[],
     workingHours: { start: "09:00", end: "18:00" },
     breakTime: { start: "12:00", end: "13:00" },
     daysOff: ["Sunday"],
-    contactPhone: user.phone || "09123456789",
+    contactPhone: user.phone || "",
     contactEmail: user.email,
     avatarUrl: user.avatarUrl || "",
+    availableHours: {} as any,
   });
 
   console.log(
@@ -247,6 +252,17 @@ export function EnhancedBarberDashboard({
     confirmPassword: "",
   });
   const [passwordLoading, setPasswordLoading] = useState(false);
+
+  // Forgot password state
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotStep, setForgotStep] = useState(1); // 1=email sent, 2=verify OTP, 3=new password
+  const [forgotOtp, setForgotOtp] = useState("");
+  const [forgotNewPassword, setForgotNewPassword] = useState("");
+  const [forgotConfirmPassword, setForgotConfirmPassword] = useState("");
+  const [forgotLoading, setForgotLoading] = useState(false);
+
+  // Email change state
+  const [emailChangePassword, setEmailChangePassword] = useState("");
 
   // Filter appointments for this barber (must be defined before useEffect that uses it)
   const barberAppointments = allAppointments.filter((apt) => {
@@ -292,11 +308,11 @@ export function EnhancedBarberDashboard({
           "💈 Fetching barber profile for user:",
           user.id,
         );
-        const barberProfile = await API.barbers.getByUserId(
+        const barberData = await API.barbers.getByUserId(
           user.id,
         );
 
-        if (!barberProfile) {
+        if (!barberData) {
           console.warn(
             "💈 No barber profile found for user:",
             user.id,
@@ -306,15 +322,33 @@ export function EnhancedBarberDashboard({
           return;
         }
 
-        console.log("💈 Barber profile found:", barberProfile);
+        // Store barber DB ID for profile updates
+        setBarberDbId(barberData.id);
+
+        // Populate profile state from barbers table
+        const dbSpecialties = barberData.specialties || [];
+        const dbAvailableHours = barberData.available_hours || barberData.availableHours || {};
+        setBarberProfile(prev => ({
+          ...prev,
+          specialties: dbSpecialties.length > 0 ? dbSpecialties : prev.specialties,
+          availableHours: dbAvailableHours,
+          workingHours: {
+            start: dbAvailableHours?.start || prev.workingHours.start,
+            end: dbAvailableHours?.end || prev.workingHours.end,
+          },
+        }));
+        console.log("💈 Loaded specialties from DB:", dbSpecialties);
+        console.log("💈 Loaded available_hours from DB:", dbAvailableHours);
+
+        console.log("💈 Barber profile found:", barberData);
         console.log(
           "💈 Fetching reviews for barber ID:",
-          barberProfile.id,
+          barberData.id,
         );
 
         // Now fetch reviews using the barber profile ID
         const reviews = await API.reviews.getByBarberId(
-          barberProfile.id,
+          barberData.id,
         );
         console.log("💈 Fetched reviews:", reviews);
 
@@ -384,8 +418,8 @@ export function EnhancedBarberDashboard({
     const lastWeekCompletionRate =
       lastWeekAppointments.length > 0
         ? (lastWeekCompleted.length /
-            lastWeekAppointments.length) *
-          100
+          lastWeekAppointments.length) *
+        100
         : 0;
 
     setPreviousPeriodStats({
@@ -519,18 +553,18 @@ export function EnhancedBarberDashboard({
   const completionRate =
     barberAppointments.length > 0
       ? Math.round(
-          (completedAppointments.length /
-            barberAppointments.length) *
-            100,
-        )
+        (completedAppointments.length /
+          barberAppointments.length) *
+        100,
+      )
       : 0;
   const cancellationRate =
     barberAppointments.length > 0
       ? Math.round(
-          (cancelledAppointments.length /
-            barberAppointments.length) *
-            100,
-        )
+        (cancelledAppointments.length /
+          barberAppointments.length) *
+        100,
+      )
       : 0;
   const onTimeRate = 95; // Mock data - could be calculated from actual timestamps
 
@@ -544,28 +578,28 @@ export function EnhancedBarberDashboard({
   const bookingsTrend =
     previousPeriodStats.todayBookings > 0
       ? Math.round(
-          ((todayAppointments.length -
-            previousPeriodStats.todayBookings) /
-            previousPeriodStats.todayBookings) *
-            100,
-        )
+        ((todayAppointments.length -
+          previousPeriodStats.todayBookings) /
+          previousPeriodStats.todayBookings) *
+        100,
+      )
       : 0;
   const earningsTrend =
     previousPeriodStats.todayEarnings > 0
       ? Math.round(
-          ((todayEarnings - previousPeriodStats.todayEarnings) /
-            previousPeriodStats.todayEarnings) *
-            100,
-        )
+        ((todayEarnings - previousPeriodStats.todayEarnings) /
+          previousPeriodStats.todayEarnings) *
+        100,
+      )
       : 0;
   const completionTrend =
     previousPeriodStats.completionRate > 0
       ? Math.round(
-          ((completionRate -
-            previousPeriodStats.completionRate) /
-            previousPeriodStats.completionRate) *
-            100,
-        )
+        ((completionRate -
+          previousPeriodStats.completionRate) /
+          previousPeriodStats.completionRate) *
+        100,
+      )
       : 0;
 
   const stats = [
@@ -624,18 +658,27 @@ export function EnhancedBarberDashboard({
   ) => {
     try {
       console.log('🎯 Marking appointment as complete:', appointmentId);
-      
-      // Update in database
+
+      // Update in database - also clear remaining balance and mark payment as paid
       const updated = await API.appointments.update(appointmentId, {
         status: "completed",
+        remaining_amount: 0,
+        payment_status: "paid",
       });
-      
+
       console.log('✅ Database updated:', updated);
 
-      // Update local state
+      // Update local state with payment info cleared
       const updatedAppointments = allAppointments.map((apt) =>
         apt.id === appointmentId
-          ? { ...apt, status: "completed" as const }
+          ? {
+              ...apt,
+              status: "completed" as const,
+              remainingBalance: 0,
+              remaining_amount: 0,
+              paymentStatus: "paid",
+              payment_status: "paid",
+            }
           : apt,
       );
       onUpdateAppointments(updatedAppointments);
@@ -761,25 +804,84 @@ export function EnhancedBarberDashboard({
     try {
       setIsSavingProfile(true);
 
-      // Update user in database
+      const emailChanged = barberProfile.contactEmail.toLowerCase() !== user.email.toLowerCase();
+
+      // Handle email change if needed
+      if (emailChanged) {
+        if (!emailChangePassword) {
+          toast.error("Password required", {
+            description: "Please enter your password to change your email address.",
+          });
+          setIsSavingProfile(false);
+          return;
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(barberProfile.contactEmail)) {
+          toast.error("Invalid email format");
+          setIsSavingProfile(false);
+          return;
+        }
+
+        try {
+          const result = await API.users.changeEmail(user.id, {
+            newEmail: barberProfile.contactEmail,
+            password: emailChangePassword,
+          });
+          toast.success(`Email changed to ${result.newEmail}`);
+          onUserUpdate({ ...user, email: result.newEmail });
+        } catch (emailErr: any) {
+          if (emailErr.message?.includes('duplicate') || emailErr.message?.includes('already')) {
+            toast.error("Email already in use", {
+              description: "This email is registered to another account.",
+            });
+          } else {
+            toast.error("Failed to change email", {
+              description: emailErr.message || "Please check your password and try again.",
+            });
+          }
+          setIsSavingProfile(false);
+          setEmailChangePassword("");
+          return;
+        }
+        setEmailChangePassword("");
+      }
+
+      // Update user in database (bio, phone)
       await API.users.update(user.id, {
-        name: user.name, // Keep existing name
+        name: user.name,
         phone: barberProfile.contactPhone,
         bio: barberProfile.bio,
       });
+
+      // Update barbers table (specialties, available_hours)
+      if (barberDbId) {
+        const availableHoursData = {
+          schedule: barberProfile.availableHours?.schedule || `Mon-Sat, ${barberProfile.workingHours.start}-${barberProfile.workingHours.end}`,
+          start: barberProfile.workingHours.start,
+          end: barberProfile.workingHours.end,
+        };
+        await API.barbers.update(barberDbId, {
+          specialties: barberProfile.specialties,
+          available_hours: availableHoursData,
+        });
+        console.log('✅ Barbers table updated with specialties and hours');
+      }
 
       // Update the user object in App.tsx state
       onUserUpdate({
         ...user,
         phone: barberProfile.contactPhone,
         bio: barberProfile.bio,
+        ...(emailChanged ? { email: barberProfile.contactEmail } : {}),
       });
 
       // Log profile update to audit logs
       const changes = [];
-      if (barberProfile.contactPhone !== user.phone)
-        changes.push("phone");
+      if (barberProfile.contactPhone !== user.phone) changes.push("phone");
       if (barberProfile.bio !== user.bio) changes.push("bio");
+      if (emailChanged) changes.push("email");
+      changes.push("specialties", "working_hours");
 
       if (changes.length > 0) {
         await logProfileUpdate(
@@ -792,8 +894,7 @@ export function EnhancedBarberDashboard({
       }
 
       toast.success("Profile updated successfully!", {
-        description:
-          "Your professional information has been saved.",
+        description: "Your professional information has been saved.",
       });
     } catch (error) {
       console.error("Error updating profile:", error);
@@ -802,6 +903,124 @@ export function EnhancedBarberDashboard({
       });
     } finally {
       setIsSavingProfile(false);
+    }
+  };
+
+  // Forgot password handlers
+  const handleForgotPasswordSendOTP = async () => {
+    setForgotLoading(true);
+    try {
+      const response = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/make-server-70e1fc66/api/auth/forgot-password`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${publicAnonKey}`,
+          },
+          body: JSON.stringify({ email: user.email.toLowerCase() }),
+        }
+      );
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        toast.error(data.error || "Failed to send reset code");
+        return;
+      }
+      if (data.token) {
+        sessionStorage.setItem('forgot_password_token', data.token);
+      }
+      toast.success("Reset code sent!", { description: `Check ${user.email} inbox` });
+      setForgotStep(2);
+    } catch (error) {
+      console.error("Forgot password error:", error);
+      toast.error("Network error. Please try again.");
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const handleForgotPasswordVerifyOTP = async () => {
+    if (!forgotOtp || forgotOtp.length !== 6) {
+      toast.error("Please enter the 6-digit code");
+      return;
+    }
+    setForgotLoading(true);
+    try {
+      const token = sessionStorage.getItem('forgot_password_token');
+      if (!token) {
+        toast.error("Session expired. Please try again.");
+        setForgotStep(1);
+        return;
+      }
+      const response = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/make-server-70e1fc66/api/auth/verify-reset-otp`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${publicAnonKey}`,
+          },
+          body: JSON.stringify({ email: user.email.toLowerCase(), otp: forgotOtp, token }),
+        }
+      );
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        toast.error(data.error || "Invalid code");
+        return;
+      }
+      toast.success("Code verified! Set your new password.");
+      setForgotStep(3);
+    } catch (error) {
+      toast.error("Failed to verify code.");
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const handleForgotPasswordReset = async () => {
+    if (forgotNewPassword.length < 8) {
+      toast.error("Password must be at least 8 characters");
+      return;
+    }
+    if (forgotNewPassword !== forgotConfirmPassword) {
+      toast.error("Passwords do not match");
+      return;
+    }
+    setForgotLoading(true);
+    try {
+      const token = sessionStorage.getItem('forgot_password_token');
+      if (!token) {
+        toast.error("Session expired. Please start over.");
+        setForgotStep(1);
+        return;
+      }
+      const response = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/make-server-70e1fc66/api/auth/reset-password`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${publicAnonKey}`,
+          },
+          body: JSON.stringify({ email: user.email.toLowerCase(), newPassword: forgotNewPassword, token }),
+        }
+      );
+      const data = await response.json();
+      if (!response.ok || !data.success) {
+        toast.error(data.error || "Failed to reset password");
+        return;
+      }
+      sessionStorage.removeItem('forgot_password_token');
+      toast.success("Password reset successfully!");
+      setShowForgotPassword(false);
+      setForgotStep(1);
+      setForgotOtp("");
+      setForgotNewPassword("");
+      setForgotConfirmPassword("");
+    } catch (error) {
+      toast.error("Failed to reset password.");
+    } finally {
+      setForgotLoading(false);
     }
   };
 
@@ -909,21 +1128,27 @@ export function EnhancedBarberDashboard({
       // Update in database
       await API.appointments.update(selectedAppointment.id, {
         status: "cancelled",
+        payment_status: "refunded",
         cancellation_reason: finalReason,
-        cancelledBy: user.name,
-        cancelledAt: new Date().toISOString(),
+        cancelled_by: `Barber - ${user.name}`,
+        notes: `Barber cancelled: ${finalReason}`,
       });
 
       // Update local state
       const updatedAppointments = allAppointments.map((apt) =>
         apt.id === selectedAppointment.id
           ? {
-              ...apt,
-              status: "cancelled" as const,
-              cancellationReason: finalReason,
-              cancelledBy: user.name,
-              cancelledAt: new Date().toISOString(),
-            }
+            ...apt,
+            status: "cancelled" as const,
+            paymentStatus: "rejected" as const,
+            payment_status: "refunded" as const,
+            cancellationReason: finalReason,
+            cancellation_reason: finalReason,
+            cancelledBy: `Barber - ${user.name}`,
+            cancelled_by: `Barber - ${user.name}`,
+            cancelledAt: new Date().toISOString(),
+            notes: `Barber cancelled: ${finalReason}`,
+          }
           : apt,
       );
       onUpdateAppointments(updatedAppointments);
@@ -992,7 +1217,7 @@ export function EnhancedBarberDashboard({
       if (appointment) {
         try {
           const { createNotification } = await import('../services/audit-notification.service');
-          
+
           // Notify customer
           await createNotification({
             userId: appointment.userId || appointment.customer_id || '',
@@ -1065,7 +1290,7 @@ export function EnhancedBarberDashboard({
       if (appointment) {
         try {
           const { createNotification } = await import('../services/audit-notification.service');
-          
+
           // Notify customer
           await createNotification({
             userId: appointment.userId || appointment.customer_id || '',
@@ -1136,7 +1361,7 @@ export function EnhancedBarberDashboard({
       label: "My Schedule",
       icon: Calendar,
     },
-    { id: "bookings", label: "All Bookings", icon: BookOpen },
+    { id: "bookings", label: "My Bookings", icon: BookOpen },
     { id: "earnings", label: "Earnings", icon: FaPesoSign },
     { id: "reviews", label: "Reviews", icon: Star },
     { id: "profile", label: "My Profile", icon: UserIcon },
@@ -1144,11 +1369,8 @@ export function EnhancedBarberDashboard({
 
   // Filter appointments based on search and filters
   const getFilteredAppointments = () => {
-    // Use all appointments for bookings tab, barber appointments for other tabs
-    let filtered =
-      activeTab === "bookings"
-        ? allAppointments
-        : barberAppointments;
+    // Use barber's own appointments for all tabs
+    let filtered = barberAppointments;
 
     // Status filter
     if (statusFilter !== "all") {
@@ -1231,10 +1453,9 @@ export function EnhancedBarberDashboard({
                   onClick={() => setActiveTab(item.id)}
                   className={`
                     w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all
-                    ${
-                      activeTab === item.id
-                        ? "bg-[#DB9D47] text-white shadow-lg shadow-[#DB9D47]/50"
-                        : "text-[#D4C5B0] hover:bg-[#6E5A48] hover:text-[#F5EDD8]"
+                    ${activeTab === item.id
+                      ? "bg-[#DB9D47] text-white shadow-lg shadow-[#DB9D47]/50"
+                      : "text-[#D4C5B0] hover:bg-[#6E5A48] hover:text-[#F5EDD8]"
                     }
                   `}
                 >
@@ -1316,7 +1537,7 @@ export function EnhancedBarberDashboard({
                     // Parse URL and extract query parameters
                     const [path, queryString] = url.split('?');
                     const params = new URLSearchParams(queryString || '');
-                    
+
                     // Map the URL to dashboard tabs
                     if (path === "/appointments") {
                       setActiveTab("appointments");
@@ -1445,7 +1666,7 @@ export function EnhancedBarberDashboard({
                                     apt.status === "completed"
                                       ? "default"
                                       : apt.status ===
-                                          "upcoming"
+                                        "upcoming"
                                         ? "secondary"
                                         : "outline"
                                   }
@@ -1477,7 +1698,8 @@ export function EnhancedBarberDashboard({
                     </CardHeader>
                     <CardContent>
                       <div
-                        className={`space-y-3 ${pendingAppointments.length > 5 ? "max-h-[400px] overflow-y-auto pr-2" : ""}`}
+                        className="space-y-3 max-h-[350px] overflow-y-auto pr-1"
+                        style={{ scrollbarWidth: 'thin', scrollbarColor: '#DB9D47 #FBF7EF' }}
                       >
                         {pendingAppointments.length === 0 ? (
                           <div className="text-center py-8 text-[#87765E]">
@@ -1611,11 +1833,10 @@ export function EnhancedBarberDashboard({
                     <div className="flex items-center justify-between">
                       <div>
                         <CardTitle className="text-[#5C4A3A]">
-                          All Bookings Management
+                          My Bookings
                         </CardTitle>
                         <CardDescription className="text-[#87765E]">
-                          View and manage all appointments in
-                          the system
+                          View and manage your appointments
                         </CardDescription>
                       </div>
                       <Button
@@ -1818,16 +2039,16 @@ export function EnhancedBarberDashboard({
                                       <Badge
                                         className={
                                           appointment.status ===
-                                          "confirmed"
+                                            "confirmed"
                                             ? "bg-[#94A670] hover:bg-[#94A670]"
                                             : appointment.status ===
-                                                "pending"
+                                              "pending"
                                               ? "bg-[#DB9D47] hover:bg-[#DB9D47]"
                                               : appointment.status ===
-                                                  "completed"
+                                                "completed"
                                                 ? "bg-[#5C4A3A] hover:bg-[#5C4A3A]"
                                                 : appointment.status ===
-                                                    "cancelled"
+                                                  "cancelled"
                                                   ? "bg-red-500 hover:bg-red-500"
                                                   : "bg-[#87765E] hover:bg-[#87765E]"
                                         }
@@ -1847,10 +2068,10 @@ export function EnhancedBarberDashboard({
                                       </div>
                                       {appointment.paymentStatus ===
                                         "verified" && (
-                                        <div className="text-xs text-[#94A670]">
-                                          Paid
-                                        </div>
-                                      )}
+                                          <div className="text-xs text-[#94A670]">
+                                            Paid
+                                          </div>
+                                        )}
                                     </TableCell>
                                     <TableCell className="text-right">
                                       <div className="flex items-center justify-end gap-1">
@@ -1858,84 +2079,84 @@ export function EnhancedBarberDashboard({
                                         {(appointment.status ===
                                           "confirmed" ||
                                           appointment.status ===
-                                            "upcoming" ||
+                                          "upcoming" ||
                                           appointment.status ===
-                                            "verified") && (
-                                          <Button
-                                            size="sm"
-                                            variant="ghost"
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              handleCompleteAppointment(
-                                                appointment.id,
-                                              );
-                                            }}
-                                            className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
-                                            title="Mark as Complete"
-                                          >
-                                            <CheckCircle2 className="w-4 h-4" />
-                                          </Button>
-                                        )}
+                                          "verified") && (
+                                            <Button
+                                              size="sm"
+                                              variant="ghost"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleCompleteAppointment(
+                                                  appointment.id,
+                                                );
+                                              }}
+                                              className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
+                                              title="Mark as Complete"
+                                            >
+                                              <CheckCircle2 className="w-4 h-4" />
+                                            </Button>
+                                          )}
 
                                         {/* Cancel Button */}
                                         {(appointment.status ===
                                           "pending" ||
                                           appointment.status ===
-                                            "confirmed" ||
+                                          "confirmed" ||
                                           appointment.status ===
-                                            "upcoming" ||
+                                          "upcoming" ||
                                           appointment.status ===
-                                            "verified") && (
-                                          <Button
-                                            size="sm"
-                                            variant="ghost"
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              setSelectedAppointment(
-                                                appointment,
-                                              );
-                                              setShowCancelDialog(
-                                                true,
-                                              );
-                                            }}
-                                            className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                            title="Cancel Appointment"
-                                          >
-                                            <XCircle className="w-4 h-4" />
-                                          </Button>
-                                        )}
+                                          "verified") && (
+                                            <Button
+                                              size="sm"
+                                              variant="ghost"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                setSelectedAppointment(
+                                                  appointment,
+                                                );
+                                                setShowCancelDialog(
+                                                  true,
+                                                );
+                                              }}
+                                              className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                              title="Cancel Appointment"
+                                            >
+                                              <XCircle className="w-4 h-4" />
+                                            </Button>
+                                          )}
 
-                                        {/* View Button */}
                                         <Button
                                           variant="ghost"
                                           size="sm"
-                                          onClick={() => {
+                                          onClick={(e) => {
+                                            e.stopPropagation();
                                             setSelectedAppointment(
                                               appointment,
                                             );
-                                            setIsViewingAppointment(
+                                            setShowAppointmentDetails(
                                               true,
                                             );
                                           }}
-                                          className="h-8 w-8 p-0 hover:bg-[#FBF7EF]"
+                                          className="h-8 w-8 p-0 text-[#5C4A3A] hover:text-[#DB9D47] hover:bg-[#FBF7EF]"
                                           title="View Details"
                                         >
-                                          
+                                          <Eye className="w-4 h-4" />
                                         </Button>
 
                                         {/* Show placeholder for completed/cancelled to maintain alignment */}
                                         {(appointment.status ===
                                           "completed" ||
                                           appointment.status ===
-                                            "cancelled" ||
+                                          "cancelled" ||
                                           appointment.status ===
-                                            "rejected") && (
-                                          <div className="h-8 w-8 flex items-center justify-center text-[#87765E]">
-                                            <span className="text-xs">
-                                              —
-                                            </span>
-                                          </div>
-                                        )}
+                                          "rejected") && (
+                                            <div className="h-8 w-8 flex items-center justify-center text-[#87765E]">
+                                              <span className="text-xs">
+                                                —
+                                              </span>
+                                            </div>
+                                          )}
                                       </div>
                                     </TableCell>
                                   </TableRow>
@@ -1949,7 +2170,7 @@ export function EnhancedBarberDashboard({
                     {/* Summary */}
                     <div className="mt-4 text-sm text-[#87765E]">
                       Showing {getFilteredAppointments().length}{" "}
-                      of {allAppointments.length} total bookings
+                      of {barberAppointments.length} total bookings
                     </div>
                   </CardContent>
                 </Card>
@@ -2052,18 +2273,18 @@ export function EnhancedBarberDashboard({
                                   </p>
                                   <p className="text-xs text-[#87765E]">
                                     {review.date ||
-                                    review.createdAt
+                                      review.createdAt
                                       ? new Date(
-                                          review.date ||
-                                            review.createdAt,
-                                        ).toLocaleDateString(
-                                          "en-US",
-                                          {
-                                            month: "short",
-                                            day: "numeric",
-                                            year: "numeric",
-                                          },
-                                        )
+                                        review.date ||
+                                        review.createdAt,
+                                      ).toLocaleDateString(
+                                        "en-US",
+                                        {
+                                          month: "short",
+                                          day: "numeric",
+                                          year: "numeric",
+                                        },
+                                      )
                                       : "No date"}
                                   </p>
                                 </div>
@@ -2184,16 +2405,78 @@ export function EnhancedBarberDashboard({
                               <Badge
                                 key={idx}
                                 variant="secondary"
-                                className="bg-[#DB9D47] text-white"
+                                className="bg-[#DB9D47] text-white cursor-pointer hover:bg-red-500 transition-colors group"
+                                onClick={() => {
+                                  setBarberProfile({
+                                    ...barberProfile,
+                                    specialties: barberProfile.specialties.filter((_, i) => i !== idx),
+                                  });
+                                }}
+                                title="Click to remove"
                               >
                                 {specialty}
+                                <X className="w-3 h-3 ml-1 opacity-0 group-hover:opacity-100 transition-opacity" />
                               </Badge>
                             ),
                           )}
-                          <Button size="sm" variant="outline">
-                            + Add Specialty
-                          </Button>
+                          {showAddSpecialty ? (
+                            <div className="flex items-center gap-1">
+                              <Input
+                                value={newSpecialty}
+                                onChange={(e) => setNewSpecialty(e.target.value)}
+                                placeholder="New specialty..."
+                                className="h-8 w-40 text-sm border-[#E8DCC8]"
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter' && newSpecialty.trim()) {
+                                    setBarberProfile({
+                                      ...barberProfile,
+                                      specialties: [...barberProfile.specialties, newSpecialty.trim()],
+                                    });
+                                    setNewSpecialty("");
+                                    setShowAddSpecialty(false);
+                                  }
+                                }}
+                                autoFocus
+                              />
+                              <Button
+                                size="sm"
+                                className="h-8 bg-[#94A670] hover:bg-[#7E8F5E] text-white"
+                                onClick={() => {
+                                  if (newSpecialty.trim()) {
+                                    setBarberProfile({
+                                      ...barberProfile,
+                                      specialties: [...barberProfile.specialties, newSpecialty.trim()],
+                                    });
+                                    setNewSpecialty("");
+                                    setShowAddSpecialty(false);
+                                  }
+                                }}
+                              >
+                                Add
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-8"
+                                onClick={() => { setShowAddSpecialty(false); setNewSpecialty(""); }}
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="border-[#DB9D47] text-[#DB9D47] hover:bg-[#DB9D47] hover:text-white"
+                              onClick={() => setShowAddSpecialty(true)}
+                            >
+                              + Add Specialty
+                            </Button>
+                          )}
                         </div>
+                        {barberProfile.specialties.length === 0 && (
+                          <p className="text-xs text-[#87765E] italic">No specialties added yet. Click "+ Add Specialty" to add one.</p>
+                        )}
                       </div>
 
                       {/* Contact Info */}
@@ -2227,40 +2510,53 @@ export function EnhancedBarberDashboard({
                                 })
                               }
                               className="pl-10 border-[#E8DCC8]"
-                              disabled
+                              type="email"
                             />
                           </div>
+                          {barberProfile.contactEmail.toLowerCase() !== user.email.toLowerCase() && (
+                            <div className="space-y-2">
+                              <p className="text-xs text-orange-600">Password required to change email</p>
+                              <PasswordInput
+                                value={emailChangePassword}
+                                onChange={(e) => setEmailChangePassword(e.target.value)}
+                                placeholder="Enter password to confirm"
+                                className="border-[#E8DCC8]"
+                              />
+                            </div>
+                          )}
                         </div>
                       </div>
 
                       <div className="flex justify-end gap-3">
                         <Button
                           variant="outline"
-                          onClick={() => {
-                            // Reset to original values
-                            setBarberProfile({
-                              bio:
-                                user.bio ||
-                                "Professional barber with 5 years of experience",
-                              specialties: [
-                                "Haircut",
-                                "Beard Trim",
-                                "Shaving",
-                              ],
-                              workingHours: {
-                                start: "09:00",
-                                end: "18:00",
-                              },
-                              breakTime: {
-                                start: "12:00",
-                                end: "13:00",
-                              },
-                              daysOff: ["Sunday"],
-                              contactPhone:
-                                user.phone || "09123456789",
-                              contactEmail: user.email,
-                              avatarUrl: user.avatarUrl || "",
-                            });
+                          onClick={async () => {
+                            // Reset by reloading from DB
+                            try {
+                              const freshBarber = barberDbId ? await API.barbers.getByUserId(user.id) : null;
+                              const dbSpecialties = freshBarber?.specialties || [];
+                              const dbAvailableHours = freshBarber?.available_hours || freshBarber?.availableHours || {};
+                              setBarberProfile({
+                                bio: user.bio || "",
+                                specialties: dbSpecialties,
+                                workingHours: {
+                                  start: dbAvailableHours?.start || "09:00",
+                                  end: dbAvailableHours?.end || "18:00",
+                                },
+                                breakTime: {
+                                  start: "12:00",
+                                  end: "13:00",
+                                },
+                                daysOff: ["Sunday"],
+                                contactPhone: user.phone || "",
+                                contactEmail: user.email,
+                                avatarUrl: user.avatarUrl || "",
+                                availableHours: dbAvailableHours,
+                              });
+                              toast.info("Profile reset to saved values");
+                            } catch {
+                              toast.error("Failed to reload profile");
+                            }
                           }}
                         >
                           Cancel
@@ -2295,285 +2591,190 @@ export function EnhancedBarberDashboard({
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label
-                          htmlFor="currentPassword"
-                          className="text-[#5C4A3A]"
-                        >
-                          Current Password
-                        </Label>
-                        <PasswordInput
-                          id="currentPassword"
-                          value={passwordData.currentPassword}
-                          onChange={(e) =>
-                            setPasswordData({
-                              ...passwordData,
-                              currentPassword: e.target.value,
-                            })
-                          }
-                          placeholder="Enter current password"
-                          className="border-[#E8DCC8] focus:border-[#DB9D47] focus:ring-[#DB9D47]"
-                        />
+                    {!showForgotPassword ? (
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="currentPassword" className="text-[#5C4A3A]">
+                            Current Password
+                          </Label>
+                          <PasswordInput
+                            id="currentPassword"
+                            value={passwordData.currentPassword}
+                            onChange={(e) =>
+                              setPasswordData({ ...passwordData, currentPassword: e.target.value })
+                            }
+                            placeholder="Enter current password"
+                            className="border-[#E8DCC8] focus:border-[#DB9D47] focus:ring-[#DB9D47]"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="newPassword" className="text-[#5C4A3A]">
+                            New Password
+                          </Label>
+                          <PasswordInput
+                            id="newPassword"
+                            value={passwordData.newPassword}
+                            onChange={(e) =>
+                              setPasswordData({ ...passwordData, newPassword: e.target.value })
+                            }
+                            placeholder="Enter new password"
+                            className="border-[#E8DCC8] focus:border-[#DB9D47] focus:ring-[#DB9D47]"
+                          />
+                          <p className="text-xs text-[#87765E]">
+                            Must be at least 8 characters long
+                          </p>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="confirmPassword" className="text-[#5C4A3A]">
+                            Confirm New Password
+                          </Label>
+                          <PasswordInput
+                            id="confirmPassword"
+                            value={passwordData.confirmPassword}
+                            onChange={(e) =>
+                              setPasswordData({ ...passwordData, confirmPassword: e.target.value })
+                            }
+                            placeholder="Confirm new password"
+                            className="border-[#E8DCC8] focus:border-[#DB9D47] focus:ring-[#DB9D47]"
+                          />
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <button
+                            type="button"
+                            className="text-sm text-[#DB9D47] hover:text-[#C88A35] hover:underline transition-colors"
+                            onClick={() => {
+                              setShowForgotPassword(true);
+                              setForgotStep(1);
+                            }}
+                          >
+                            Forgot Password?
+                          </button>
+                          <Button
+                            className="bg-[#D98555] hover:bg-[#C77545] text-white"
+                            onClick={handlePasswordButtonClick}
+                            disabled={passwordLoading}
+                          >
+                            {passwordLoading ? (
+                              <>
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                Updating...
+                              </>
+                            ) : (
+                              "Update Password"
+                            )}
+                          </Button>
+                        </div>
                       </div>
-                      <div className="space-y-2">
-                        <Label
-                          htmlFor="newPassword"
-                          className="text-[#5C4A3A]"
-                        >
-                          New Password
-                        </Label>
-                        <PasswordInput
-                          id="newPassword"
-                          value={passwordData.newPassword}
-                          onChange={(e) =>
-                            setPasswordData({
-                              ...passwordData,
-                              newPassword: e.target.value,
-                            })
-                          }
-                          placeholder="Enter new password"
-                          className="border-[#E8DCC8] focus:border-[#DB9D47] focus:ring-[#DB9D47]"
-                        />
-                        <p className="text-xs text-[#87765E]">
-                          Must be at least 8 characters long
-                        </p>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="text-sm font-semibold text-[#5C4A3A]">Reset Password via Email</h4>
+                          <button
+                            type="button"
+                            className="text-xs text-[#87765E] hover:text-[#5C4A3A] hover:underline"
+                            onClick={() => {
+                              setShowForgotPassword(false);
+                              setForgotStep(1);
+                              setForgotOtp("");
+                              setForgotNewPassword("");
+                              setForgotConfirmPassword("");
+                            }}
+                          >
+                            ← Back to Change Password
+                          </button>
+                        </div>
+
+                        {forgotStep === 1 && (
+                          <div className="space-y-3">
+                            <p className="text-sm text-[#87765E]">
+                              We'll send a 6-digit verification code to <strong className="text-[#5C4A3A]">{user.email}</strong>
+                            </p>
+                            <Button
+                              className="w-full bg-[#DB9D47] hover:bg-[#C88A35] text-white"
+                              onClick={handleForgotPasswordSendOTP}
+                              disabled={forgotLoading}
+                            >
+                              {forgotLoading ? (
+                                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Sending...</>
+                              ) : (
+                                "Send Verification Code"
+                              )}
+                            </Button>
+                          </div>
+                        )}
+
+                        {forgotStep === 2 && (
+                          <div className="space-y-3">
+                            <p className="text-sm text-[#87765E]">
+                              Enter the 6-digit code sent to <strong className="text-[#5C4A3A]">{user.email}</strong>
+                            </p>
+                            <Input
+                              value={forgotOtp}
+                              onChange={(e) => setForgotOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                              placeholder="000000"
+                              className="border-[#E8DCC8] text-center text-xl tracking-[0.5em] font-mono"
+                              maxLength={6}
+                            />
+                            <Button
+                              className="w-full bg-[#DB9D47] hover:bg-[#C88A35] text-white"
+                              onClick={handleForgotPasswordVerifyOTP}
+                              disabled={forgotLoading || forgotOtp.length !== 6}
+                            >
+                              {forgotLoading ? (
+                                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Verifying...</>
+                              ) : (
+                                "Verify Code"
+                              )}
+                            </Button>
+                            <button
+                              type="button"
+                              className="text-xs text-[#DB9D47] hover:underline w-full text-center"
+                              onClick={handleForgotPasswordSendOTP}
+                              disabled={forgotLoading}
+                            >
+                              Resend code
+                            </button>
+                          </div>
+                        )}
+
+                        {forgotStep === 3 && (
+                          <div className="space-y-3">
+                            <div className="space-y-2">
+                              <Label className="text-[#5C4A3A]">New Password</Label>
+                              <PasswordInput
+                                value={forgotNewPassword}
+                                onChange={(e) => setForgotNewPassword(e.target.value)}
+                                placeholder="Enter new password"
+                                className="border-[#E8DCC8]"
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-[#5C4A3A]">Confirm New Password</Label>
+                              <PasswordInput
+                                value={forgotConfirmPassword}
+                                onChange={(e) => setForgotConfirmPassword(e.target.value)}
+                                placeholder="Confirm new password"
+                                className="border-[#E8DCC8]"
+                              />
+                            </div>
+                            <Button
+                              className="w-full bg-[#DB9D47] hover:bg-[#C88A35] text-white"
+                              onClick={handleForgotPasswordReset}
+                              disabled={forgotLoading}
+                            >
+                              {forgotLoading ? (
+                                <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Resetting...</>
+                              ) : (
+                                "Reset Password"
+                              )}
+                            </Button>
+                          </div>
+                        )}
                       </div>
-                      <div className="space-y-2">
-                        <Label
-                          htmlFor="confirmPassword"
-                          className="text-[#5C4A3A]"
-                        >
-                          Confirm New Password
-                        </Label>
-                        <PasswordInput
-                          id="confirmPassword"
-                          value={passwordData.confirmPassword}
-                          onChange={(e) =>
-                            setPasswordData({
-                              ...passwordData,
-                              confirmPassword: e.target.value,
-                            })
-                          }
-                          placeholder="Confirm new password"
-                          className="border-[#E8DCC8] focus:border-[#DB9D47] focus:ring-[#DB9D47]"
-                        />
-                      </div>
-                      <div className="flex justify-end">
-                        <Button
-                          className="bg-[#D98555] hover:bg-[#C77545] text-white"
-                          onClick={handlePasswordButtonClick}
-                          disabled={passwordLoading}
-                        >
-                          {passwordLoading ? (
-                            <>
-                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                              Updating...
-                            </>
-                          ) : (
-                            "Update Password"
-                          )}
-                        </Button>
-                      </div>
-                    </div>
+                    )}
                   </CardContent>
                 </Card>
 
-                {/* Notification Preferences */}
-                <Card className="border-[#E8DCC8]">
-                  <CardHeader>
-                    <CardTitle className="text-[#5C4A3A]">
-                      Notification Preferences
-                    </CardTitle>
-                    <CardDescription className="text-[#87765E]">
-                      Choose what notifications you want to
-                      receive
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between p-3 bg-[#FBF7EF] rounded-lg">
-                        <div className="space-y-0.5">
-                          <div className="text-[#5C4A3A]">
-                            New Bookings
-                          </div>
-                          <div className="text-xs text-[#87765E]">
-                            Get notified when customers book
-                            appointments
-                          </div>
-                        </div>
-                        <Switch defaultChecked />
-                      </div>
-                      <div className="flex items-center justify-between p-3 bg-[#FBF7EF] rounded-lg">
-                        <div className="space-y-0.5">
-                          <div className="text-[#5C4A3A]">
-                            Appointment Reminders
-                          </div>
-                          <div className="text-xs text-[#87765E]">
-                            Receive reminders for upcoming
-                            appointments
-                          </div>
-                        </div>
-                        <Switch defaultChecked />
-                      </div>
-                      <div className="flex items-center justify-between p-3 bg-[#FBF7EF] rounded-lg">
-                        <div className="space-y-0.5">
-                          <div className="text-[#5C4A3A]">
-                            Customer Reviews
-                          </div>
-                          <div className="text-xs text-[#87765E]">
-                            Get notified when customers leave
-                            reviews
-                          </div>
-                        </div>
-                        <Switch defaultChecked />
-                      </div>
-                      <div className="flex items-center justify-between p-3 bg-[#FBF7EF] rounded-lg">
-                        <div className="space-y-0.5">
-                          <div className="text-[#5C4A3A]">
-                            Payment Updates
-                          </div>
-                          <div className="text-xs text-[#87765E]">
-                            Notifications for payment
-                            confirmations
-                          </div>
-                        </div>
-                        <Switch defaultChecked />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Booking Preferences */}
-                <Card className="border-[#E8DCC8]">
-                  <CardHeader>
-                    <CardTitle className="text-[#5C4A3A]">
-                      Booking Preferences
-                    </CardTitle>
-                    <CardDescription className="text-[#87765E]">
-                      Manage how customers can book with you
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between p-3 bg-[#FBF7EF] rounded-lg">
-                        <div className="space-y-0.5">
-                          <div className="text-[#5C4A3A]">
-                            Auto-Confirm Bookings
-                          </div>
-                          <div className="text-xs text-[#87765E]">
-                            Automatically confirm new
-                            appointments
-                          </div>
-                        </div>
-                        <Switch />
-                      </div>
-                      <div className="flex items-center justify-between p-3 bg-[#FBF7EF] rounded-lg">
-                        <div className="space-y-0.5">
-                          <div className="text-[#5C4A3A]">
-                            Accept Walk-ins
-                          </div>
-                          <div className="text-xs text-[#87765E]">
-                            Allow customers to book same-day
-                            appointments
-                          </div>
-                        </div>
-                        <Switch defaultChecked />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Maximum Daily Bookings</Label>
-                        <Input
-                          type="number"
-                          defaultValue="10"
-                          min="1"
-                          max="20"
-                          className="border-[#E8DCC8]"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Booking Lead Time (hours)</Label>
-                        <Select defaultValue="2">
-                          <SelectTrigger className="border-[#E8DCC8]">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="1">
-                              1 hour
-                            </SelectItem>
-                            <SelectItem value="2">
-                              2 hours
-                            </SelectItem>
-                            <SelectItem value="4">
-                              4 hours
-                            </SelectItem>
-                            <SelectItem value="24">
-                              24 hours
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Display Preferences */}
-                <Card className="border-[#E8DCC8]">
-                  <CardHeader>
-                    <CardTitle className="text-[#5C4A3A]">
-                      Display Preferences
-                    </CardTitle>
-                    <CardDescription className="text-[#87765E]">
-                      Customize your dashboard appearance
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between p-3 bg-[#FBF7EF] rounded-lg">
-                        <div className="space-y-0.5">
-                          <div className="text-[#5C4A3A]">
-                            Show Earnings on Dashboard
-                          </div>
-                          <div className="text-xs text-[#87765E]">
-                            Display earnings statistics on main
-                            view
-                          </div>
-                        </div>
-                        <Switch defaultChecked />
-                      </div>
-                      <div className="flex items-center justify-between p-3 bg-[#FBF7EF] rounded-lg">
-                        <div className="space-y-0.5">
-                          <div className="text-[#5C4A3A]">
-                            Show Customer Notes
-                          </div>
-                          <div className="text-xs text-[#87765E]">
-                            Display customer preferences in
-                            appointment details
-                          </div>
-                        </div>
-                        <Switch defaultChecked />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Default Calendar View</Label>
-                        <Select defaultValue="week">
-                          <SelectTrigger className="border-[#E8DCC8]">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="day">
-                              Day View
-                            </SelectItem>
-                            <SelectItem value="week">
-                              Week View
-                            </SelectItem>
-                            <SelectItem value="month">
-                              Month View
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
               </div>
             )}
           </div>
@@ -2755,7 +2956,7 @@ export function EnhancedBarberDashboard({
                 <div className="flex items-center gap-2 mt-1">
                   <FaPesoSign className="w-4 h-4 text-[#DB9D47]" />
                   <p className="text-[#5C4A3A] font-medium text-lg">
-                    ₱
+
                     {selectedAppointment.price.toLocaleString()}
                   </p>
                 </div>
@@ -2768,22 +2969,21 @@ export function EnhancedBarberDashboard({
                 </Label>
                 <div className="mt-1">
                   <Badge
-                    className={`${
-                      selectedAppointment.status === "completed"
-                        ? "bg-green-500 hover:bg-green-600"
+                    className={`${selectedAppointment.status === "completed"
+                      ? "bg-green-500 hover:bg-green-600"
+                      : selectedAppointment.status ===
+                        "pending"
+                        ? "bg-orange-500 hover:bg-orange-600"
                         : selectedAppointment.status ===
-                            "pending"
-                          ? "bg-orange-500 hover:bg-orange-600"
+                          "confirmed" ||
+                          selectedAppointment.status ===
+                          "upcoming"
+                          ? "bg-[#DB9D47] hover:bg-[#C88A3A]"
                           : selectedAppointment.status ===
-                                "confirmed" ||
-                              selectedAppointment.status ===
-                                "upcoming"
-                            ? "bg-[#DB9D47] hover:bg-[#C88A3A]"
-                            : selectedAppointment.status ===
-                                "cancelled"
-                              ? "bg-red-500 hover:bg-red-600"
-                              : "bg-gray-500 hover:bg-gray-600"
-                    } text-white capitalize`}
+                            "cancelled"
+                            ? "bg-red-500 hover:bg-red-600"
+                            : "bg-gray-500 hover:bg-gray-600"
+                      } text-white capitalize`}
                   >
                     {selectedAppointment.status}
                   </Badge>
@@ -2791,41 +2991,72 @@ export function EnhancedBarberDashboard({
               </div>
 
               {/* Payment Info */}
-              {selectedAppointment.downPaymentPaid && (
-                <div className="p-3 bg-green-50 rounded-lg border border-green-200">
-                  <Label className="text-green-700 text-xs font-medium">
-                    Payment Information
-                  </Label>
-                  <div className="mt-2 space-y-1 text-sm">
+              <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                <Label className="text-green-700 text-xs font-medium">
+                  Payment Information
+                </Label>
+                <div className="mt-2 space-y-1 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-green-600">
+                      Total Amount:
+                    </span>
+                    <span className="text-green-700 font-medium">
+                      ₱{selectedAppointment.price.toLocaleString()}
+                    </span>
+                  </div>
+                  {selectedAppointment.down_payment || selectedAppointment.downPaymentPaid ? (
                     <div className="flex justify-between">
                       <span className="text-green-600">
                         Down Payment:
                       </span>
                       <span className="text-green-700 font-medium">
-                        ₱
-                        {(
-                          selectedAppointment.price * 0.5
-                        ).toFixed(2)}
+                        ₱{(selectedAppointment.down_payment || selectedAppointment.price * 0.5).toLocaleString()}
                       </span>
                     </div>
-                    {selectedAppointment.remainingBalance && (
-                      <div className="flex justify-between">
-                        <span className="text-green-600">
-                          Remaining:
-                        </span>
-                        <span className="text-green-700 font-medium">
-                          ₱
-                          {selectedAppointment.remainingBalance}
-                        </span>
-                      </div>
-                    )}
-                  </div>
+                  ) : null}
+                  {selectedAppointment.status === "completed" ? (
+                    <div className="flex justify-between items-center pt-1 border-t border-green-200">
+                      <span className="text-green-600 font-medium">
+                        Payment Status:
+                      </span>
+                      <Badge className="bg-green-500 hover:bg-green-600 text-white text-xs">
+                        Fully Paid
+                      </Badge>
+                    </div>
+                  ) : (
+                    <>
+                      {(selectedAppointment.remainingBalance > 0 || selectedAppointment.remaining_amount > 0) && (
+                        <div className="flex justify-between">
+                          <span className="text-green-600">
+                            Remaining:
+                          </span>
+                          <span className="text-orange-600 font-medium">
+                            ₱{Number(selectedAppointment.remainingBalance || selectedAppointment.remaining_amount || 0).toFixed(2)}
+                          </span>
+                        </div>
+                      )}
+                      {(selectedAppointment.paymentStatus || selectedAppointment.payment_status) && (
+                        <div className="flex justify-between items-center pt-1 border-t border-green-200">
+                          <span className="text-green-600">
+                            Payment Status:
+                          </span>
+                          <Badge className={`text-xs text-white ${
+                            (selectedAppointment.paymentStatus || selectedAppointment.payment_status) === 'verified' ? 'bg-green-500' :
+                            (selectedAppointment.paymentStatus || selectedAppointment.payment_status) === 'rejected' ? 'bg-red-500' :
+                            'bg-orange-500'
+                          }`}>
+                            {selectedAppointment.paymentStatus || selectedAppointment.payment_status}
+                          </Badge>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
-              )}
+              </div>
 
               {/* Show cancellation details if appointment is cancelled */}
               {selectedAppointment.status === "cancelled" &&
-                selectedAppointment.cancellationReason && (
+                (selectedAppointment.cancellationReason || selectedAppointment.cancellation_reason || selectedAppointment.notes) && (
                   <div className="pt-2 border-t border-[#E8DCC8]">
                     <Label className="text-[#87765E]">
                       Cancellation Details
@@ -2835,12 +3066,16 @@ export function EnhancedBarberDashboard({
                         <span className="font-medium">
                           Reason:
                         </span>{" "}
-                        {selectedAppointment.cancellationReason}
+                        {selectedAppointment.cancellationReason || selectedAppointment.cancellation_reason ||
+                          selectedAppointment.notes?.replace('Customer cancelled: ', '').replace('Admin cancelled: ', '').replace('Barber cancelled: ', '')}
                       </p>
-                      {selectedAppointment.cancelledBy && (
+                      {(selectedAppointment.cancelledBy || selectedAppointment.cancelled_by || selectedAppointment.notes) && (
                         <p className="text-xs text-red-600 mt-1">
                           Cancelled by:{" "}
-                          {selectedAppointment.cancelledBy}
+                          {selectedAppointment.cancelledBy || selectedAppointment.cancelled_by ||
+                            (selectedAppointment.notes?.startsWith('Admin cancelled:') ? 'Admin' :
+                              selectedAppointment.notes?.startsWith('Barber cancelled:') ? 'Barber' :
+                                selectedAppointment.notes?.startsWith('Customer cancelled:') ? 'Customer' : 'Unknown')}
                         </p>
                       )}
                       {selectedAppointment.cancelledAt && (
@@ -2860,44 +3095,44 @@ export function EnhancedBarberDashboard({
             {(selectedAppointment?.status === "upcoming" ||
               selectedAppointment?.status === "confirmed" ||
               selectedAppointment?.status === "pending") && (
-              <>
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setShowAppointmentDetails(false);
-                    setShowCancelDialog(true);
-                  }}
-                  className="flex-1 border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700"
-                >
-                  <XCircle className="w-4 h-4 mr-2" />
-                  Cancel
-                </Button>
-                {(selectedAppointment?.status === "upcoming" ||
-                  selectedAppointment?.status ===
-                    "confirmed" ||
-                  selectedAppointment?.status ===
-                    "verified") && (
+                <>
                   <Button
-                    onClick={() =>
-                      handleCompleteAppointment(
-                        selectedAppointment.id,
-                      )
-                    }
-                    className="flex-1 bg-[#94A670] hover:bg-[#7E8F5E]"
+                    variant="outline"
+                    onClick={() => {
+                      setShowAppointmentDetails(false);
+                      setShowCancelDialog(true);
+                    }}
+                    className="flex-1 border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700"
                   >
-                    <CheckCircle2 className="w-4 h-4 mr-2" />
-                    Mark Complete
+                    <XCircle className="w-4 h-4 mr-2" />
+                    Cancel
                   </Button>
-                )}
-              </>
-            )}
+                  {(selectedAppointment?.status === "upcoming" ||
+                    selectedAppointment?.status ===
+                    "confirmed" ||
+                    selectedAppointment?.status ===
+                    "verified") && (
+                      <Button
+                        onClick={() =>
+                          handleCompleteAppointment(
+                            selectedAppointment.id,
+                          )
+                        }
+                        className="flex-1 bg-[#94A670] hover:bg-[#7E8F5E]"
+                      >
+                        <CheckCircle2 className="w-4 h-4 mr-2" />
+                        Mark Complete
+                      </Button>
+                    )}
+                </>
+              )}
             {(selectedAppointment?.status === "cancelled" ||
               selectedAppointment?.status === "rejected") && (
-              <div className="w-full text-center text-sm text-[#87765E] py-2">
-                This appointment has been{" "}
-                {selectedAppointment.status}
-              </div>
-            )}
+                <div className="w-full text-center text-sm text-[#87765E] py-2">
+                  This appointment has been{" "}
+                  {selectedAppointment.status}
+                </div>
+              )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -1373,14 +1373,16 @@ app.post("/make-server-70e1fc66/api/auth/login", async (c) => {
         } else {
           // Lock period expired, unlock the account (FIRE-AND-FORGET)
           fireAndForget(
-            adminClient
-              .from("users")
-              .update({
-                is_locked: false,
-                locked_until: null,
-                failed_login_attempts: 0,
-              })
-              .eq("username", loginUsername),
+            (async () => {
+              await adminClient
+                .from("users")
+                .update({
+                  is_locked: false,
+                  locked_until: null,
+                  failed_login_attempts: 0,
+                })
+                .eq("username", loginUsername);
+            })(),
             "Unlock expired account"
           );
         }
@@ -1592,21 +1594,23 @@ app.post("/make-server-70e1fc66/api/auth/login", async (c) => {
 
     // Reset failed login attempts on successful login (PARALLEL - don't block response)
     fireAndForget(
-      Promise.all([
-        adminClient
-          .from("users")
-          .update({
-            failed_login_attempts: 0,
-            last_failed_login_at: null,
-            is_locked: false,
-            locked_until: null,
-          })
-          .eq("id", profile.id),
-        adminClient
-          .from("login_attempts")
-          .delete()
-          .eq("username", profile.username),
-      ]),
+      (async () => {
+        await Promise.all([
+          adminClient
+            .from("users")
+            .update({
+              failed_login_attempts: 0,
+              last_failed_login_at: null,
+              is_locked: false,
+              locked_until: null,
+            })
+            .eq("id", profile.id),
+          adminClient
+            .from("login_attempts")
+            .delete()
+            .eq("username", profile.username),
+        ]);
+      })(),
       "Reset failed login attempts"
     );
 

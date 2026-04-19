@@ -428,6 +428,8 @@ export function ImprovedSuperAdminDashboard({
               <BookingReservationModule
                 appointments={appointments}
                 onUpdateAppointments={onUpdateAppointments}
+                onRefreshAppointments={onRefreshAppointments}
+                adminUser={user}
               />
             )}
             {activeTab === "payments" && (

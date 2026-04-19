@@ -399,34 +399,61 @@ const API = {
       if (USE_LOCAL_BACKEND) {
         return LocalBackend.users.update(id, { isActive: false });
       }
-      const result = await apiCall<User>(
-        `/users/${id}`,
+      // Use direct Supabase REST API (PostgREST) to update is_active column
+      // The Edge Function doesn't support this field, so we bypass it
+      const token = getAuthToken();
+      const response = await fetch(
+        `${SUPABASE_URL}/rest/v1/users?id=eq.${id}`,
         {
-          method: 'PUT',
-          body: JSON.stringify({ isActive: false }),
-        },
-        false
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': publicAnonKey,
+            'Authorization': `Bearer ${token || publicAnonKey}`,
+            'Prefer': 'return=representation',
+          },
+          body: JSON.stringify({ is_active: false }),
+        }
       );
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Failed to suspend user:', errorText);
+        throw new Error(`Failed to deactivate user: ${errorText}`);
+      }
+      const result = await response.json();
       // Invalidate users cache so fetchUsers returns fresh data
       apiCache.invalidate('users:all');
-      return result;
+      return result[0] || result;
     },
     
     unsuspend: async (id: string) => {
       if (USE_LOCAL_BACKEND) {
         return LocalBackend.users.update(id, { isActive: true });
       }
-      const result = await apiCall<User>(
-        `/users/${id}`,
+      // Use direct Supabase REST API (PostgREST) to update is_active column
+      const token = getAuthToken();
+      const response = await fetch(
+        `${SUPABASE_URL}/rest/v1/users?id=eq.${id}`,
         {
-          method: 'PUT',
-          body: JSON.stringify({ isActive: true }),
-        },
-        false
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': publicAnonKey,
+            'Authorization': `Bearer ${token || publicAnonKey}`,
+            'Prefer': 'return=representation',
+          },
+          body: JSON.stringify({ is_active: true }),
+        }
       );
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ Failed to unsuspend user:', errorText);
+        throw new Error(`Failed to reactivate user: ${errorText}`);
+      }
+      const result = await response.json();
       // Invalidate users cache so fetchUsers returns fresh data
       apiCache.invalidate('users:all');
-      return result;
+      return result[0] || result;
     },
     
     delete: async (id: string) => {
