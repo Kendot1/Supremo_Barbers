@@ -198,7 +198,7 @@ class Cache<T> {
         }
 
         if (cleaned > 0) {
-            console.log(`🧹 [${this.name}] Cleaned ${cleaned} expired cache entries`);
+            
         }
     }
 }
@@ -235,7 +235,7 @@ export function clearAllCaches(): void {
     appointmentCache.clear();
     statsCache.clear();
     aiCache.clear();
-    console.log('🧹 All caches cleared');
+   
 }
 
 /**
