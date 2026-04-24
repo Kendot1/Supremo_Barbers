@@ -37,6 +37,7 @@ import {
 } from "../utils/validation";
 import { validatePassword, getPasswordFeedback } from "../utils/passwordValidator";
 import { logNewDeviceLogin, logNewDeviceLoginWithAdminAlert, logUserRegistration, logUserLogin, logFailedLogin } from "../services/audit-notification.service";
+import { parseUserAgent } from "../utils/deviceInfo";
 
 interface LoginPageProps {
   onLogin: (user: any) => void;
@@ -262,6 +263,13 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
           localStorage.setItem('rememberedPassword', password);
         }
 
+        // Register device in background (fire-and-forget)
+        const deviceInfo = parseUserAgent(navigator.userAgent);
+        API.users.registerDevice(response.user.id, {
+          ...deviceInfo,
+          userAgent: navigator.userAgent,
+          isTrusted: false,
+        }).catch(() => {});
 
         // Show success message and trigger login immediately
         toast.success(`Welcome back, ${response.user.name}!`);
@@ -301,6 +309,14 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
             localStorage.removeItem('rememberedUsername');
             localStorage.removeItem('rememberedPassword');
           }
+
+          // Register device in background (fire-and-forget)
+          const trustedDeviceInfo = parseUserAgent(navigator.userAgent);
+          API.users.registerDevice(response.user.id, {
+            ...trustedDeviceInfo,
+            userAgent: navigator.userAgent,
+            isTrusted: true,
+          }).catch(() => {});
 
           toast.success(`Welcome back, ${response.user.name}!`, {
             description: 'Trusted device recognised — 2FA skipped.'
@@ -491,10 +507,15 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
           const trustedKey = `trusted_device_${pendingLoginData.user.email.toLowerCase()}`;
           localStorage.setItem(trustedKey, 'true');
           localStorage.setItem(`${trustedKey}_ts`, Date.now().toString());
-          // toast.info('This device is now trusted — you won\'t need 2FA next time.', {
-          //   duration: 4000,
-          // }); // Removed - redundant notification
         }
+
+        // Register device in background (fire-and-forget)
+        const otpDeviceInfo = parseUserAgent(navigator.userAgent);
+        API.users.registerDevice(pendingLoginData.user.id, {
+          ...otpDeviceInfo,
+          userAgent: navigator.userAgent,
+          isTrusted: pendingLoginData.user.role === 'customer',
+        }).catch(() => {});
 
         // Handle Remember Me (synchronous)
         if (rememberMe) {

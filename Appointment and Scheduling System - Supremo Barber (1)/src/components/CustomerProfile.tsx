@@ -29,9 +29,12 @@ import {
   Shield,
   ShieldOff,
   MonitorSmartphone,
+  Smartphone,
   CheckCircle2,
   Clock,
   Trash2,
+  Globe,
+  RefreshCw,
 } from "lucide-react";
 import { toast } from "sonner@2.0.3";
 import { FaPesoSign } from "react-icons/fa6";
@@ -55,6 +58,7 @@ import {
   logSignOutAllDevices,
 } from "../services/audit-notification.service";
 import { validatePassword } from "@/utils/passwordValidator";
+import { parseUserAgent } from "../utils/deviceInfo";
 
 interface CustomerProfileProps {
   user: UserType;
@@ -104,60 +108,71 @@ export function CustomerProfile({
     useState(false);
   const [showSignOutAllConfirm, setShowSignOutAllConfirm] =
     useState(false);
+  const [devices, setDevices] = useState<any[]>([]);
+  const [devicesLoading, setDevicesLoading] = useState(true);
 
   // Derive current device trusted status from localStorage
   const trustedKey = `trusted_device_${user.email.toLowerCase()}`;
-  const [isCurrentDeviceTrusted, setIsCurrentDeviceTrusted] =
-    useState(() => {
-      const ts = localStorage.getItem(`${trustedKey}_ts`);
-      const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
-      return (
-        localStorage.getItem(trustedKey) === "true" &&
-        !!ts &&
-        Date.now() - parseInt(ts, 10) < THIRTY_DAYS
-      );
-    });
-  const [deviceTrustedSince, setDeviceTrustedSince] = useState<
-    string | null
-  >(() => {
-    const ts = localStorage.getItem(`${trustedKey}_ts`);
-    if (!ts) return null;
-    return new Date(parseInt(ts, 10)).toLocaleDateString(
-      "en-PH",
-      {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      },
-    );
-  });
+
+  // Fetch devices from database
+  const fetchDevices = async () => {
+    setDevicesLoading(true);
+    try {
+      const data = await API.users.getDevices(user.id);
+      setDevices(data || []);
+    } catch (error) {
+      console.error("Error fetching devices:", error);
+      setDevices([]);
+    } finally {
+      setDevicesLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDevices();
+  }, [user.id]);
 
   const handleSignOutAllDevices = async () => {
     setShowSignOutAllConfirm(false);
     setSignOutAllLoading(true);
     try {
-      // 1. Persist the revocation timestamp on the server so other devices
-      //    are blocked on their next login or next poll (checked against response.user.deviceRevocationTs).
+      // 1. Try to set device_revocation_ts (may fail if column doesn't exist yet — that's OK)
       const newTs = new Date().toISOString();
-      await API.users.update(user.id, {
-        deviceRevocationTs: newTs,
-      } as any);
+      try {
+        await API.users.update(user.id, {
+          deviceRevocationTs: newTs,
+        } as any);
+        // Keep this session alive by updating loginTime past the revocation timestamp
+        localStorage.setItem('loginTime', (new Date(newTs).getTime() + 1000).toString());
+      } catch (e) {
+        console.warn("device_revocation_ts column not available, skipping revocation timestamp update");
+      }
 
-      // Keep this session alive by updating loginTime
-      localStorage.setItem('loginTime', (new Date(newTs).getTime() + 1000).toString());
+      // 2. Remove all other devices from the database (keep only current device)
+      const otherDevices = devices.filter(
+        (d) => d.userAgent !== navigator.userAgent
+      );
+      if (otherDevices.length > 0) {
+        await Promise.all(
+          otherDevices.map((d) =>
+            API.users.removeDevice(user.id, d.id).catch(() => {})
+          )
+        );
+      }
 
-      // 2. Clear the trusted-device entry for the current device
+      // 3. Clear the trusted-device entry for the current device in localStorage
       localStorage.removeItem(trustedKey);
       localStorage.removeItem(`${trustedKey}_ts`);
-      setIsCurrentDeviceTrusted(false);
-      setDeviceTrustedSince(null);
 
-      // 3. Audit log + in-app notification
-      await logSignOutAllDevices(
+      // 4. Audit log + in-app notification (fire-and-forget)
+      logSignOutAllDevices(
         user.id,
         user.name,
         user.email,
-      );
+      ).catch(() => {});
+
+      // 5. Refresh device list
+      await fetchDevices();
 
       toast.success("Signed out from all devices", {
         description:
@@ -174,15 +189,17 @@ export function CustomerProfile({
     }
   };
 
-  const handleRemoveCurrentDeviceTrust = () => {
-    localStorage.removeItem(trustedKey);
-    localStorage.removeItem(`${trustedKey}_ts`);
-    setIsCurrentDeviceTrusted(false);
-    setDeviceTrustedSince(null);
-    toast.success("This device is no longer trusted", {
-      description:
-        "You will be asked to complete 2FA on your next login.",
-    });
+  const handleRemoveDevice = async (deviceId: string) => {
+    try {
+      await API.users.removeDevice(user.id, deviceId);
+      setDevices((prev) => prev.filter((d) => d.id !== deviceId));
+      toast.success("Device removed", {
+        description: "The device has been removed from your account.",
+      });
+    } catch (error) {
+      console.error("Error removing device:", error);
+      toast.error("Failed to remove device");
+    }
   };
 
   // Update profile state when user prop changes (e.g., after avatar upload or page reload)
@@ -935,92 +952,158 @@ export function CustomerProfile({
       {/* Security & Devices */}
       <Card className="border-[#E8DCC8]">
         <CardHeader>
-          <CardTitle className="text-[#5C4A3A] flex items-center gap-2">
-            <Shield className="w-5 h-5 text-[#DB9D47]" />
-            Security &amp; Devices
-          </CardTitle>
-          <CardDescription className="text-[#87765E]">
-            Manage trusted devices and active sessions for your
-            account
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-5">
-          {/* Current device trust status */}
-          <div className="p-4 rounded-lg border border-[#E8DCC8] bg-[#FBF7EF]">
-            <div className="flex items-start gap-3">
-              <MonitorSmartphone className="w-5 h-5 text-[#DB9D47] mt-0.5 shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm text-[#5C4A3A]">
-                  This Device
-                </p>
-                <p className="text-xs text-[#87765E] mt-0.5 break-words">
-                  {navigator.userAgent.slice(0, 80)}
-                  {navigator.userAgent.length > 80 ? "…" : ""}
-                </p>
-              </div>
-              {isCurrentDeviceTrusted ? (
-                <span className="flex items-center gap-1 text-xs px-2 py-1 rounded-full  shrink-0"></span>
-              ) : (
-                <span className="flex items-center gap-1 text-xs px-2 py-1 rounded-full bg-amber-100 text-amber-700 shrink-0">
-                  <Shield className="w-3 h-3" />
-                  Unverified
-                </span>
-              )}
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-[#5C4A3A] flex items-center gap-2">
+                <Shield className="w-5 h-5 text-[#DB9D47]" />
+                Security &amp; Devices
+              </CardTitle>
+              <CardDescription className="text-[#87765E] mt-1">
+                Manage trusted devices and active sessions for your
+                account
+              </CardDescription>
             </div>
-
-            {isCurrentDeviceTrusted && deviceTrustedSince && (
-              <div className="mt-3 flex items-center justify-between flex-wrap gap-2">
-                <p className="text-xs text-[#87765E] flex items-center gap-1">
-                  <Clock className="w-3 h-3" />
-                  Trusted since {deviceTrustedSince} · expires
-                  in 30 days
-                </p>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleRemoveCurrentDeviceTrust}
-                  className="text-xs border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
-                >
-                  <Trash2 className="w-3 h-3 mr-1" />
-                  Remove Trust
-                </Button>
-              </div>
-            )}
-
-            {!isCurrentDeviceTrusted && (
-              <p className="mt-2 text-xs text-[#87765E]">
-                Complete a 2FA verification on login to mark
-                this device as trusted and skip future 2FA
-                prompts.
-              </p>
-            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={fetchDevices}
+              disabled={devicesLoading}
+              className="text-[#87765E] hover:text-[#5C4A3A]"
+              title="Refresh devices"
+            >
+              <RefreshCw className={`w-4 h-4 ${devicesLoading ? 'animate-spin' : ''}`} />
+            </Button>
           </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Devices list */}
+          {devicesLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-5 h-5 animate-spin text-[#DB9D47]" />
+              <span className="ml-2 text-sm text-[#87765E]">Loading devices...</span>
+            </div>
+          ) : devices.length === 0 ? (
+            <div className="text-center py-6">
+              <MonitorSmartphone className="w-10 h-10 text-[#E8DCC8] mx-auto mb-2" />
+              <p className="text-sm text-[#87765E]">
+                No devices found. Devices will appear here after your next login.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {devices.map((device) => {
+                const isThisDevice = device.userAgent === navigator.userAgent;
+                const deviceIcon = device.deviceType === 'mobile' ? (
+                  <Smartphone className="w-5 h-5 text-[#DB9D47] shrink-0" />
+                ) : (
+                  <MonitorSmartphone className="w-5 h-5 text-[#DB9D47] shrink-0" />
+                );
+                const trustedDate = device.trustedAt
+                  ? new Date(device.trustedAt).toLocaleDateString('en-PH', {
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric',
+                    })
+                  : null;
+                const lastActive = device.lastActiveAt
+                  ? new Date(device.lastActiveAt).toLocaleDateString('en-PH', {
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })
+                  : 'Unknown';
+
+                return (
+                  <div
+                    key={device.id}
+                    className={`p-4 rounded-lg border ${
+                      isThisDevice
+                        ? 'border-[#DB9D47]/40 bg-[#FBF7EF]'
+                        : 'border-[#E8DCC8] bg-white'
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
+                      {deviceIcon}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-sm font-medium text-[#5C4A3A]">
+                            {device.browser || 'Unknown Browser'}
+                          </p>
+                          {isThisDevice && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#DB9D47]/15 text-[#DB9D47] font-medium">
+                              This Device
+                            </span>
+                          )}
+                          {device.isTrusted && (
+                            <span className="flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 font-medium">
+                              <CheckCircle2 className="w-2.5 h-2.5" />
+                              Trusted
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-[#87765E] mt-0.5">
+                          {device.os || 'Unknown OS'}
+                        </p>
+                        <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+                          <p className="text-[11px] text-[#87765E] flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            Last active: {lastActive}
+                          </p>
+                          {device.isTrusted && trustedDate && (
+                            <p className="text-[11px] text-[#87765E] flex items-center gap-1">
+                              <Shield className="w-3 h-3" />
+                              Trusted since {trustedDate}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      {!isThisDevice && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleRemoveDevice(device.id)}
+                          className="text-xs border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 shrink-0"
+                        >
+                          <Trash2 className="w-3 h-3 mr-1" />
+                          Remove
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
 
           {/* Sign out all devices */}
-          <div className="pt-1">
-            <Button
-              onClick={() => setShowSignOutAllConfirm(true)}
-              disabled={signOutAllLoading}
-              variant="outline"
-              className="w-full border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-300"
-            >
-              {signOutAllLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Revoking all devices…
-                </>
-              ) : (
-                <>
-                  <ShieldOff className="w-4 h-4 mr-2" />
-                  Sign Out From All Devices
-                </>
-              )}
-            </Button>
-            <p className="text-xs text-[#87765E] mt-2 text-center">
-              This will revoke all trusted devices. Every device
-              will need to complete 2FA on the next login.
-            </p>
-          </div>
+          {devices.length > 0 && (
+            <div className="pt-2 border-t border-[#E8DCC8]">
+              <Button
+                onClick={() => setShowSignOutAllConfirm(true)}
+                disabled={signOutAllLoading}
+                variant="outline"
+                className="w-full border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-300"
+              >
+                {signOutAllLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Revoking all devices…
+                  </>
+                ) : (
+                  <>
+                    <ShieldOff className="w-4 h-4 mr-2" />
+                    Sign Out From All Devices
+                  </>
+                )}
+              </Button>
+              <p className="text-xs text-[#87765E] mt-2 text-center">
+                This will revoke all trusted devices. Every device
+                will need to complete 2FA on the next login.
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 

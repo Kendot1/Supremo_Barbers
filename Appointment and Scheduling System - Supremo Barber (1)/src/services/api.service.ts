@@ -456,6 +456,51 @@ const API = {
         false
       );
     },
+
+    // Device management
+    getDevices: async (userId: string) => {
+      return apiCall<any[]>(`/users/${userId}/devices`, undefined, false);
+    },
+
+    registerDevice: async (userId: string, deviceInfo: {
+      deviceName: string;
+      browser: string;
+      os: string;
+      deviceType: string;
+      userAgent: string;
+      ipAddress?: string;
+      isTrusted: boolean;
+    }) => {
+      return apiCall<any>(
+        `/users/${userId}/devices`,
+        {
+          method: 'POST',
+          body: JSON.stringify(deviceInfo),
+        },
+        false
+      );
+    },
+
+    removeDevice: async (userId: string, deviceId: string) => {
+      return apiCall<{ message: string }>(
+        `/users/${userId}/devices/${deviceId}`,
+        {
+          method: 'DELETE',
+        },
+        false
+      );
+    },
+
+    signOutAllDevices: async (userId: string, currentUserAgent: string) => {
+      return apiCall<{ message: string; deviceRevocationTs: string }>(
+        `/users/${userId}/devices/sign-out-all`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ currentUserAgent }),
+        },
+        false
+      );
+    },
   },
 
   // ==================== BARBERS ====================

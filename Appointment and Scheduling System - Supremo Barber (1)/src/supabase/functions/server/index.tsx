@@ -3547,6 +3547,220 @@ app.post(
   },
 );
 
+// ==================== USER DEVICES ====================
+
+// Get all devices for a user
+app.get("/make-server-70e1fc66/api/users/:id/devices", async (c) => {
+  try {
+    const userId = c.req.param("id");
+    const supabase = getAdminClient();
+
+    const { data, error } = await supabase
+      .from("user_devices")
+      .select("*")
+      .eq("user_id", userId)
+      .order("last_active_at", { ascending: false });
+
+    if (error) throw error;
+
+    const devices = (data || []).map((d: any) => ({
+      id: d.id,
+      userId: d.user_id,
+      deviceName: d.device_name,
+      browser: d.browser,
+      os: d.os,
+      deviceType: d.device_type,
+      userAgent: d.user_agent,
+      ipAddress: d.ip_address,
+      isTrusted: d.is_trusted,
+      isCurrent: d.is_current,
+      lastActiveAt: d.last_active_at,
+      trustedAt: d.trusted_at,
+      createdAt: d.created_at,
+    }));
+
+    return c.json({ success: true, data: devices });
+  } catch (error: any) {
+    console.error("Get user devices error:", error);
+    return c.json(
+      { success: false, error: error.message },
+      500,
+    );
+  }
+});
+
+// Register or update a device on login
+app.post("/make-server-70e1fc66/api/users/:id/devices", async (c) => {
+  try {
+    const userId = c.req.param("id");
+    const { deviceName, browser, os, deviceType, userAgent, ipAddress, isTrusted } = await c.req.json();
+    const supabase = getAdminClient();
+
+    // Check if device with same user_agent already exists for this user
+    const { data: existing } = await supabase
+      .from("user_devices")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("user_agent", userAgent || "")
+      .maybeSingle();
+
+    let device;
+    if (existing) {
+      // Update existing device record
+      const { data, error } = await supabase
+        .from("user_devices")
+        .update({
+          device_name: deviceName || "Unknown Device",
+          browser: browser || null,
+          os: os || null,
+          device_type: deviceType || "desktop",
+          ip_address: ipAddress || null,
+          is_trusted: isTrusted || false,
+          last_active_at: new Date().toISOString(),
+          trusted_at: isTrusted ? new Date().toISOString() : null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", existing.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      device = data;
+    } else {
+      // Insert new device record
+      const { data, error } = await supabase
+        .from("user_devices")
+        .insert({
+          user_id: userId,
+          device_name: deviceName || "Unknown Device",
+          browser: browser || null,
+          os: os || null,
+          device_type: deviceType || "desktop",
+          user_agent: userAgent || null,
+          ip_address: ipAddress || null,
+          is_trusted: isTrusted || false,
+          last_active_at: new Date().toISOString(),
+          trusted_at: isTrusted ? new Date().toISOString() : null,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      device = data;
+    }
+
+    return c.json({
+      success: true,
+      data: {
+        id: device.id,
+        userId: device.user_id,
+        deviceName: device.device_name,
+        browser: device.browser,
+        os: device.os,
+        deviceType: device.device_type,
+        userAgent: device.user_agent,
+        isTrusted: device.is_trusted,
+        lastActiveAt: device.last_active_at,
+        trustedAt: device.trusted_at,
+        createdAt: device.created_at,
+      },
+    });
+  } catch (error: any) {
+    console.error("Register device error:", error);
+    return c.json(
+      { success: false, error: error.message },
+      500,
+    );
+  }
+});
+
+// Remove a specific device
+app.delete("/make-server-70e1fc66/api/users/:id/devices/:deviceId", async (c) => {
+  try {
+    const userId = c.req.param("id");
+    const deviceId = c.req.param("deviceId");
+    const supabase = getAdminClient();
+
+    const { error } = await supabase
+      .from("user_devices")
+      .delete()
+      .eq("id", deviceId)
+      .eq("user_id", userId);
+
+    if (error) throw error;
+
+    return c.json({ success: true, data: { message: "Device removed successfully" } });
+  } catch (error: any) {
+    console.error("Remove device error:", error);
+    return c.json(
+      { success: false, error: error.message },
+      500,
+    );
+  }
+});
+
+// Sign out from all devices - removes all device records and updates revocation timestamp
+app.post("/make-server-70e1fc66/api/users/:id/devices/sign-out-all", async (c) => {
+  try {
+    const userId = c.req.param("id");
+    const { currentUserAgent } = await c.req.json();
+    const supabase = getAdminClient();
+
+    // 1. Delete all device records for this user EXCEPT the current device
+    const { error: deleteError } = await supabase
+      .from("user_devices")
+      .delete()
+      .eq("user_id", userId)
+      .neq("user_agent", currentUserAgent || "___none___");
+
+    if (deleteError) {
+      console.error("Error deleting other devices:", deleteError);
+    }
+
+    // 2. Mark the current device as untrusted
+    if (currentUserAgent) {
+      await supabase
+        .from("user_devices")
+        .update({
+          is_trusted: false,
+          trusted_at: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("user_id", userId)
+        .eq("user_agent", currentUserAgent);
+    }
+
+    // 3. Update device_revocation_ts on the user record to invalidate all other sessions
+    const newTs = new Date().toISOString();
+    const { error: updateError } = await supabase
+      .from("users")
+      .update({ device_revocation_ts: newTs })
+      .eq("id", userId);
+
+    if (updateError) {
+      console.error("Error updating device_revocation_ts:", updateError);
+      throw updateError;
+    }
+
+    // Invalidate user cache
+    await invalidateUserCache(userId);
+
+    return c.json({
+      success: true,
+      data: {
+        message: "Signed out from all devices",
+        deviceRevocationTs: newTs,
+      },
+    });
+  } catch (error: any) {
+    console.error("Sign out all devices error:", error);
+    return c.json(
+      { success: false, error: error.message },
+      500,
+    );
+  }
+});
+
 // ==================== BARBERS ====================
 
 app.get("/make-server-70e1fc66/api/barbers", async (c) => {
