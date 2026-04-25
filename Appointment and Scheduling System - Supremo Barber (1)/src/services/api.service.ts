@@ -385,7 +385,7 @@ const API = {
         return LocalBackend.users.update(id, { isActive: false });
       }
       // Use direct Supabase REST API (PostgREST) to update is_active column
-      // The Edge Function doesn't support this field, so we bypass it
+      // Also set device_revocation_ts to force-logout all active sessions
       const token = getAuthToken();
       const response = await fetch(
         `${SUPABASE_URL}/rest/v1/users?id=eq.${id}`,
@@ -397,7 +397,10 @@ const API = {
             'Authorization': `Bearer ${token || publicAnonKey}`,
             'Prefer': 'return=representation',
           },
-          body: JSON.stringify({ is_active: false }),
+          body: JSON.stringify({
+            is_active: false,
+            device_revocation_ts: new Date().toISOString(),
+          }),
         }
       );
       if (!response.ok) {
@@ -406,6 +409,24 @@ const API = {
         throw new Error(`Failed to deactivate user: ${errorText}`);
       }
       const result = await response.json();
+
+      // Also delete all device records for this user (force logout everywhere)
+      try {
+        await fetch(
+          `${SUPABASE_URL}/rest/v1/user_devices?user_id=eq.${id}`,
+          {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': publicAnonKey,
+              'Authorization': `Bearer ${token || publicAnonKey}`,
+            },
+          }
+        );
+      } catch (e) {
+        console.warn('Could not clear user devices on suspend:', e);
+      }
+
       // Invalidate users cache so fetchUsers returns fresh data
       apiCache.invalidate('users:all');
       return result[0] || result;
@@ -448,6 +469,40 @@ const API = {
         LocalBackend.users.delete(id);
         return { message: 'User deleted successfully' };
       }
+
+      // First, revoke all devices and set revocation timestamp to force-logout active sessions
+      const token = getAuthToken();
+      try {
+        // Set device_revocation_ts so any active sessions get force-logged-out
+        await fetch(
+          `${SUPABASE_URL}/rest/v1/users?id=eq.${id}`,
+          {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': publicAnonKey,
+              'Authorization': `Bearer ${token || publicAnonKey}`,
+            },
+            body: JSON.stringify({ device_revocation_ts: new Date().toISOString() }),
+          }
+        );
+        // Delete all device records for this user
+        await fetch(
+          `${SUPABASE_URL}/rest/v1/user_devices?user_id=eq.${id}`,
+          {
+            method: 'DELETE',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': publicAnonKey,
+              'Authorization': `Bearer ${token || publicAnonKey}`,
+            },
+          }
+        );
+      } catch (e) {
+        console.warn('Could not revoke devices before user deletion:', e);
+      }
+
+      // Then delete the user
       return apiCall<{ message: string }>(
         `/users/${id}`,
         {

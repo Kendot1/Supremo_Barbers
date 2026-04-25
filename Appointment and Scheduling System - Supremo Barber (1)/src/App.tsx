@@ -494,8 +494,39 @@ function App() {
               return; // Stop processing updates since we're logging out
             }
           }
+
+          // Check if current device was removed from the trusted device list
+          if (currentUser.role === 'customer') {
+            try {
+              const devices = await API.users.getDevices(currentUser.id);
+              const thisDevice = (devices || []).find(
+                (d: any) => d.userAgent === navigator.userAgent
+              );
+              // If the device was removed from the list, force logout
+              if (devices && devices.length >= 0 && !thisDevice) {
+                // Device not found in the list — it was removed
+                const trustedKey = `trusted_device_${currentUser.email.toLowerCase()}`;
+                localStorage.removeItem(trustedKey);
+                localStorage.removeItem(`${trustedKey}_ts`);
+                console.warn('Current device removed from trusted list');
+                handleLogout();
+                toast.error("Device Removed", { description: "This device has been removed from your account. Please log in again." });
+                return;
+              }
+            } catch (deviceErr) {
+              // Don't block the flow if device check fails
+              console.warn('Device check error (non-critical):', deviceErr);
+            }
+          }
         }
-      } catch (err) {
+      } catch (err: any) {
+        // If user not found (deleted), force logout
+        if (err?.message?.includes('not found') || err?.message?.includes('404') || err?.message?.includes('User not found')) {
+          console.warn('User account deleted, forcing logout');
+          handleLogout();
+          toast.error("Account Removed", { description: "Your account has been removed. You have been logged out." });
+          return;
+        }
         console.error('Auto-refresh revocation check error:', err);
       }
 

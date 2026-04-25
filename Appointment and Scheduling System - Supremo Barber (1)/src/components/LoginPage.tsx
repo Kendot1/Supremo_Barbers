@@ -286,19 +286,35 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
         const THIRTY_DAYS = 30 * 24 * 60 * 60 * 1000;
 
         // Also check server-side revocation timestamp (set when "Sign Out All Devices" is used).
-        // response.user.deviceRevocationTs is set by the backend when the customer revokes all devices.
         const revocationTs = response.user.deviceRevocationTs
           ? new Date(response.user.deviceRevocationTs).getTime()
           : 0;
         const trustTimestamp = trustedTs ? parseInt(trustedTs, 10) : 0;
 
-        const isValid = localStorage.getItem(trustedKey) === 'true'
+        // Step 1: Quick localStorage check (fast path)
+        const localTrustValid = localStorage.getItem(trustedKey) === 'true'
           && !!trustedTs
           && (Date.now() - trustTimestamp) < THIRTY_DAYS
-          && trustTimestamp > revocationTs; // Must be trusted AFTER the last revocation
+          && trustTimestamp > revocationTs;
 
-        if (isValid) {
-          // Trusted device — skip 2FA and log in immediately
+        // Step 2: Verify against server-side device list
+        // If the device was removed by the user from Security & Devices, it won't be in the list
+        let serverDeviceTrusted = false;
+        if (localTrustValid) {
+          try {
+            const devices = await API.users.getDevices(response.user.id);
+            const matchingDevice = (devices || []).find(
+              (d: any) => d.userAgent === navigator.userAgent
+            );
+            serverDeviceTrusted = matchingDevice && matchingDevice.isTrusted;
+          } catch (e) {
+            // If we can't check server, fall back to local trust
+            serverDeviceTrusted = true;
+          }
+        }
+
+        if (localTrustValid && serverDeviceTrusted) {
+          // Device is trusted both locally and on server — skip 2FA
           localStorage.setItem('authToken', response.token);
           localStorage.setItem('currentUser', JSON.stringify(response.user));
           localStorage.setItem('loginTime', Date.now().toString());
@@ -310,7 +326,7 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
             localStorage.removeItem('rememberedPassword');
           }
 
-          // Register device in background (fire-and-forget)
+          // Update device last_active in background (fire-and-forget)
           const trustedDeviceInfo = parseUserAgent(navigator.userAgent);
           API.users.registerDevice(response.user.id, {
             ...trustedDeviceInfo,
@@ -325,7 +341,7 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
           return;
         }
 
-        // Expired, revoked, or missing — clean up stale trust keys
+        // Device not trusted or removed from server list — clean up stale trust keys
         localStorage.removeItem(trustedKey);
         localStorage.removeItem(`${trustedKey}_ts`);
 

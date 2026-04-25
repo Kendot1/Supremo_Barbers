@@ -115,21 +115,28 @@ export function CustomerProfile({
   const trustedKey = `trusted_device_${user.email.toLowerCase()}`;
 
   // Fetch devices from database
-  const fetchDevices = async () => {
-    setDevicesLoading(true);
+  const fetchDevices = async (silent = false) => {
+    if (!silent) setDevicesLoading(true);
     try {
       const data = await API.users.getDevices(user.id);
       setDevices(data || []);
     } catch (error) {
       console.error("Error fetching devices:", error);
-      setDevices([]);
+      if (!silent) setDevices([]);
     } finally {
-      setDevicesLoading(false);
+      if (!silent) setDevicesLoading(false);
     }
   };
 
+  // Initial fetch + auto-refresh every 15s to keep device list synced across sessions
   useEffect(() => {
     fetchDevices();
+
+    const intervalId = setInterval(() => {
+      fetchDevices(true); // silent refresh — no loading spinner
+    }, 15000);
+
+    return () => clearInterval(intervalId);
   }, [user.id]);
 
   const handleSignOutAllDevices = async () => {
@@ -191,10 +198,18 @@ export function CustomerProfile({
 
   const handleRemoveDevice = async (deviceId: string) => {
     try {
+      const device = devices.find((d) => d.id === deviceId);
       await API.users.removeDevice(user.id, deviceId);
       setDevices((prev) => prev.filter((d) => d.id !== deviceId));
+
+      // If the removed device was the current device, clear local trust too
+      if (device && device.userAgent === navigator.userAgent) {
+        localStorage.removeItem(trustedKey);
+        localStorage.removeItem(`${trustedKey}_ts`);
+      }
+
       toast.success("Device removed", {
-        description: "The device has been removed from your account.",
+        description: "The device has been removed. It will need to verify via 2FA on its next login.",
       });
     } catch (error) {
       console.error("Error removing device:", error);
