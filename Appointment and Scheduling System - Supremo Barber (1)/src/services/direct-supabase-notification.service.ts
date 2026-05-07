@@ -76,7 +76,6 @@ export async function createDirectNotification(
       targetUserIds = targetUserIds.filter(id => id !== notificationData.actor_id);
       
       if (targetUserIds.length === 0) {
-        console.log('ℹ️ DIRECT SUPABASE: Notification skipped as the only recipient is the actor.');
         return null;
       }
     }

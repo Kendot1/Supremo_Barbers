@@ -793,178 +793,164 @@ export function PaymentVerification({
   return (
     <div className="space-y-4 md:space-y-6">
       {/* Header with Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+      <div className="grid grid-cols-4 gap-1.5 sm:gap-2 md:gap-4">
         <Card className="border-[#DB9D47] bg-[#FBF7EF]">
-          <CardContent className="pt-4 md:pt-6 p-3 md:p-6">
-            <div className="flex items-center justify-between">
+          <CardContent className="pt-2.5 sm:pt-4 md:pt-6 p-2 sm:p-3 md:p-6">
+            <div className="flex items-center justify-between gap-1">
               <div>
-                <p className="text-xs md:text-sm text-[#87765E]">
+                <p className="text-[10px] sm:text-xs md:text-sm text-[#87765E]">
                   All
                 </p>
-                <p className="text-2xl md:text-3xl text-[#5C4A3A]">
+                <p className="text-lg sm:text-2xl md:text-3xl text-[#5C4A3A]">
                   {pendingCount + verifiedCount + rejectedCount}
                 </p>
               </div>
-              <FileText className="w-8 h-8 md:w-10 md:h-10 text-[#DB9D47]" />
+              <FileText className="w-5 h-5 sm:w-7 sm:h-7 md:w-10 md:h-10 text-[#DB9D47] flex-shrink-0" />
             </div>
           </CardContent>
         </Card>
 
         <Card className="border-yellow-200 bg-yellow-50">
-          <CardContent className="pt-4 md:pt-6 p-3 md:p-6">
-            <div className="flex items-center justify-between">
+          <CardContent className="pt-2.5 sm:pt-4 md:pt-6 p-2 sm:p-3 md:p-6">
+            <div className="flex items-center justify-between gap-1">
               <div>
-                <p className="text-xs md:text-sm text-yellow-700">
+                <p className="text-[10px] sm:text-xs md:text-sm text-yellow-700">
                   Pending
                 </p>
-                <p className="text-2xl md:text-3xl text-yellow-900">
+                <p className="text-lg sm:text-2xl md:text-3xl text-yellow-900">
                   {pendingCount}
                 </p>
               </div>
-              <Clock className="w-8 h-8 md:w-10 md:h-10 text-yellow-600" />
+              <Clock className="w-5 h-5 sm:w-7 sm:h-7 md:w-10 md:h-10 text-yellow-600 flex-shrink-0" />
             </div>
           </CardContent>
         </Card>
 
         <Card className="border-green-200 bg-green-50">
-          <CardContent className="pt-4 md:pt-6 p-3 md:p-6">
-            <div className="flex items-center justify-between">
+          <CardContent className="pt-2.5 sm:pt-4 md:pt-6 p-2 sm:p-3 md:p-6">
+            <div className="flex items-center justify-between gap-1">
               <div>
-                <p className="text-xs md:text-sm text-green-700">
+                <p className="text-[10px] sm:text-xs md:text-sm text-green-700">
                   Verified
                 </p>
-                <p className="text-2xl md:text-3xl text-green-900">
+                <p className="text-lg sm:text-2xl md:text-3xl text-green-900">
                   {verifiedCount}
                 </p>
               </div>
-              <CheckCircle2 className="w-8 h-8 md:w-10 md:h-10 text-green-600" />
+              <CheckCircle2 className="w-5 h-5 sm:w-7 sm:h-7 md:w-10 md:h-10 text-green-600 flex-shrink-0" />
             </div>
           </CardContent>
         </Card>
 
         <Card className="border-red-200 bg-red-50">
-          <CardContent className="pt-4 md:pt-6 p-3 md:p-6">
-            <div className="flex items-center justify-between">
+          <CardContent className="pt-2.5 sm:pt-4 md:pt-6 p-2 sm:p-3 md:p-6">
+            <div className="flex items-center justify-between gap-1">
               <div>
-                <p className="text-xs md:text-sm text-red-700">
+                <p className="text-[10px] sm:text-xs md:text-sm text-red-700">
                   Rejected
                 </p>
-                <p className="text-2xl md:text-3xl text-red-900">
+                <p className="text-lg sm:text-2xl md:text-3xl text-red-900">
                   {rejectedCount}
                 </p>
               </div>
-              <XCircle className="w-8 h-8 md:w-10 md:h-10 text-red-600" />
+              <XCircle className="w-5 h-5 sm:w-7 sm:h-7 md:w-10 md:h-10 text-red-600 flex-shrink-0" />
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Main Table Card */}
       <Card className="border-[#E8DCC8]">
-        <CardHeader>
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 md:gap-4">
-            <div>
-              <CardTitle className="text-[#5C4A3A] text-base md:text-lg flex items-center gap-2">
+        <CardHeader className="px-3 py-3 sm:px-6 sm:py-4">
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <CardTitle className="text-[#5C4A3A] text-sm md:text-lg flex items-center gap-2">
                 Payment Verification
                 {isRefreshing && (
                   <RefreshCw className="w-4 h-4 animate-spin text-[#DB9D47]" />
                 )}
               </CardTitle>
-              <CardDescription className="text-[#87765E] text-xs md:text-sm">
+              <CardDescription className="text-[#87765E] text-xs md:text-sm hidden sm:block">
                 Review and verify customer payment proofs from
                 database
               </CardDescription>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => fetchPayments(true)}
                 disabled={isRefreshing}
-                className="border-[#DB9D47] text-[#DB9D47] hover:bg-[#DB9D47] hover:text-white"
+                className="border-[#DB9D47] text-[#DB9D47] hover:bg-[#DB9D47] hover:text-white h-7 sm:h-8 px-1.5 sm:px-2"
               >
                 <RefreshCw
-                  className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`}
+                  className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isRefreshing ? "animate-spin" : ""}`}
                 />
-                <span className="ml-2 hidden sm:inline">
-                  Refresh
-                </span>
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleExportPayments}
-                className="border-[#DB9D47] text-[#DB9D47] hover:bg-[#DB9D47] hover:text-white"
+                className="border-[#DB9D47] text-[#DB9D47] hover:bg-[#DB9D47] hover:text-white h-7 sm:h-8 px-1.5 sm:px-2"
               >
-                <Download className="w-4 h-4" />
-                <span className="ml-2 hidden sm:inline">
-                  Export CSV
-                </span>
+                <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
               </Button>
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-3 sm:px-6">
           {/* Status Filter Tabs */}
           <Tabs
             value={filterStatus}
             onValueChange={(value: any) =>
               setFilterStatus(value)
             }
-            className="mb-4 md:mb-6"
+            className="mb-3 md:mb-6"
           >
-            <TabsList className="grid w-full grid-cols-4 bg-[#FBF7EF]">
+            <TabsList className="grid w-full grid-cols-4 bg-[#FBF7EF] h-8 sm:h-9">
               <TabsTrigger
                 value="all"
-                className="text-xs md:text-sm"
+                className="text-[10px] sm:text-xs md:text-sm px-1 sm:px-2"
               >
-                All (
-                {
-                  appointmentsWithPaymentData.filter(
-                    (apt) => apt.payment || apt.paymentProof,
-                  ).length
-                }
-                )
+                All ({pendingCount + verifiedCount + rejectedCount})
               </TabsTrigger>
               <TabsTrigger
                 value="pending"
-                className="text-xs md:text-sm"
+                className="text-[10px] sm:text-xs md:text-sm px-1 sm:px-2"
               >
-                Pending ({pendingCount})
+                <span className="hidden sm:inline">Pending </span>({pendingCount})
               </TabsTrigger>
               <TabsTrigger
                 value="verified"
-                className="text-xs md:text-sm"
+                className="text-[10px] sm:text-xs md:text-sm px-1 sm:px-2"
               >
-                Verified ({verifiedCount})
+                <span className="hidden sm:inline">Verified </span>({verifiedCount})
               </TabsTrigger>
               <TabsTrigger
                 value="rejected"
-                className="text-xs md:text-sm"
+                className="text-[10px] sm:text-xs md:text-sm px-1 sm:px-2"
               >
-                Rejected ({rejectedCount})
+                <span className="hidden sm:inline">Rejected </span>({rejectedCount})
               </TabsTrigger>
             </TabsList>
           </Tabs>
 
-          {/* Search and Filter Row */}
-          <div className="flex flex-col md:flex-row gap-3 md:gap-4 mb-4 md:mb-6">
+          <div className="flex gap-2 mb-3 md:mb-6">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#87765E] w-4 h-4" />
               <Input
-                placeholder="Search payments by customer, service, reference..."
+                placeholder="Search payments..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 border-[#E8DCC8] text-sm"
+                className="pl-9 border-[#E8DCC8] text-sm h-9"
               />
             </div>
             <Select
               value={filterBarber}
               onValueChange={setFilterBarber}
             >
-              <SelectTrigger className="w-full md:w-48 border-[#E8DCC8] text-sm">
-                <Filter className="w-4 h-4 mr-2" />
-                <SelectValue placeholder="Filter by barber" />
+              <SelectTrigger className="w-[120px] sm:w-48 border-[#E8DCC8] text-xs sm:text-sm h-9">
+                <Filter className="w-3.5 h-3.5 mr-1 sm:mr-2 flex-shrink-0" />
+                <SelectValue placeholder="Barber" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Barbers</SelectItem>
@@ -978,9 +964,8 @@ export function PaymentVerification({
           </div>
 
           {/* Payment Count */}
-          <div className="mb-4 md:mb-6 text-sm text-[#87765E]">
-            Showing: {appointmentsWithPayment.length} payment
-            {appointmentsWithPayment.length !== 1 ? "s" : ""}
+          <div className="mb-2 md:mb-4 text-xs sm:text-sm text-[#87765E]">
+            Showing: {appointmentsWithPayment.length} payment{appointmentsWithPayment.length !== 1 ? "s" : ""}
           </div>
 
           {/* Table */}
@@ -1093,7 +1078,7 @@ export function PaymentVerification({
                           )}
                         </TableCell>
                         <TableCell>
-                          <div className="flex gap-1 flex-wrap">
+                          <div className="flex gap-1 flex-nowrap">
                             <Button
                               size="sm"
                               variant="outline"
@@ -1170,14 +1155,14 @@ export function PaymentVerification({
           </DialogHeader>
 
           {selectedAppointment && (
-            <div className="space-y-6">
+            <div className="space-y-3 sm:space-y-5">
               {/* Appointment Details */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-[#FBF7EF] rounded-lg">
+              <div className="grid grid-cols-2 gap-2 sm:gap-4 p-2.5 sm:p-4 bg-[#FBF7EF] rounded-lg">
                 <div>
-                  <p className="text-sm text-[#87765E]">
+                  <p className="text-xs sm:text-sm text-[#87765E]">
                     Customer
                   </p>
-                  <p className="text-[#5C4A3A]">
+                  <p className="text-xs sm:text-sm text-[#5C4A3A]">
                     {selectedAppointment.customerName}
                   </p>
                 </div>
@@ -1289,14 +1274,14 @@ export function PaymentVerification({
               <div>
                 <p className="text-sm text-[#87765E] mb-2 flex items-center gap-2">
                   <ImageIcon className="w-4 h-4" />
-                  Payment Proof from Cloudflare R2
+                  Payment Proof
                 </p>
                 {selectedAppointment.paymentProof ? (
                   <div className="border border-[#E8DCC8] rounded-lg overflow-hidden">
                     <img
                       src={selectedAppointment.paymentProof}
                       alt="Payment Proof"
-                      className="w-full h-auto max-h-[400px] object-contain bg-gray-50"
+                      className="w-full h-auto max-h-[250px] sm:max-h-[400px] object-contain bg-gray-50"
                       onError={(e) => {
                         console.error(
                           "Failed to load image:",
@@ -1307,9 +1292,9 @@ export function PaymentVerification({
                     />
                   </div>
                 ) : (
-                  <div className="p-8 text-center border border-[#E8DCC8] rounded-lg bg-[#FBF7EF]">
-                    <AlertCircle className="w-12 h-12 text-[#87765E] mx-auto mb-2" />
-                    <p className="text-[#87765E]">
+                  <div className="p-4 sm:p-8 text-center border border-[#E8DCC8] rounded-lg bg-[#FBF7EF]">
+                    <AlertCircle className="w-8 h-8 sm:w-12 sm:h-12 text-[#87765E] mx-auto mb-2" />
+                    <p className="text-sm text-[#87765E]">
                       No payment proof uploaded
                     </p>
                   </div>
@@ -1333,14 +1318,14 @@ export function PaymentVerification({
                 )}
 
               {/* Action Buttons */}
-              <div className="flex gap-3 justify-end">
+              <div className="flex gap-2 sm:gap-3 justify-end flex-wrap">
                 {selectedAppointment.paymentStatus ===
                   "pending" ? (
                   <>
                     <Button
                       variant="outline"
                       onClick={() => setIsViewDialogOpen(false)}
-                      className="border-[#E8DCC8] text-[#5C4A3A]"
+                      className="border-[#E8DCC8] text-[#5C4A3A] text-xs sm:text-sm h-8 sm:h-9"
                     >
                       Close
                     </Button>
@@ -1350,9 +1335,9 @@ export function PaymentVerification({
                         setIsViewDialogOpen(false);
                         handleRejectClick(selectedAppointment);
                       }}
-                      className="border-red-500 text-red-600 hover:bg-red-500 hover:text-white"
+                      className="border-red-500 text-red-600 hover:bg-red-500 hover:text-white text-xs sm:text-sm h-8 sm:h-9"
                     >
-                      <XCircle className="w-4 h-4 mr-2" />
+                      <XCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                       Reject
                     </Button>
                     <Button
@@ -1360,9 +1345,9 @@ export function PaymentVerification({
                         setIsViewDialogOpen(false);
                         handleApproveClick(selectedAppointment);
                       }}
-                      className="bg-green-600 hover:bg-green-700 text-white"
+                      className="bg-green-600 hover:bg-green-700 text-white text-xs sm:text-sm h-8 sm:h-9"
                     >
-                      <CheckCircle2 className="w-4 h-4 mr-2" />
+                      <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
                       Approve
                     </Button>
                   </>
@@ -1370,7 +1355,7 @@ export function PaymentVerification({
                   <Button
                     variant="outline"
                     onClick={() => setIsViewDialogOpen(false)}
-                    className="border-[#E8DCC8] text-[#5C4A3A]"
+                    className="border-[#E8DCC8] text-[#5C4A3A] text-xs sm:text-sm h-8 sm:h-9"
                   >
                     Close
                   </Button>
@@ -1399,7 +1384,7 @@ export function PaymentVerification({
           </AlertDialogHeader>
 
           {selectedAppointment && (
-            <div className="mt-4 p-3 bg-[#FBF7EF] rounded-lg space-y-1 text-sm">
+            <div className="mt-2 sm:mt-4 p-2.5 sm:p-3 bg-[#FBF7EF] rounded-lg space-y-1 text-xs sm:text-sm">
               <p className="text-[#5C4A3A]">
                 <span className="text-[#87765E]">
                   Customer:
@@ -1476,8 +1461,8 @@ export function PaymentVerification({
                 onChange={(e) =>
                   setRejectionReason(e.target.value)
                 }
-                className="mt-2 border-[#E8DCC8]"
-                rows={4}
+                className="mt-2 border-[#E8DCC8] text-sm"
+                rows={3}
               />
             </div>
           </div>

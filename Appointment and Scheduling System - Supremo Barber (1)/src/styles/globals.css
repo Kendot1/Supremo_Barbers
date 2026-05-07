@@ -208,6 +208,19 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Mobile keyboard fix: ensure focused inputs have space when scrolled into view */
+input, textarea, select {
+  scroll-margin-bottom: 120px;
+  scroll-margin-top: 80px;
+}
+
+/* Prevent iOS Safari from zooming in on input focus (requires 16px minimum) */
+@supports (-webkit-touch-callout: none) {
+  input, textarea, select {
+    font-size: max(16px, 1em);
+  }
+}
+
 /* Custom animations */
 @keyframes fadeIn {
   from {

@@ -271,44 +271,44 @@ export function UserManagement() {
   return (
     <>
       {/* Analytics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-3 gap-2 sm:gap-3 md:gap-4 mb-4 md:mb-6">
         <Card className="border-[#DB9D47]/20 bg-gradient-to-br from-white to-amber-50/30">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">Total Customers</p>
-                <p className="text-3xl font-bold text-[#DB9D47]">{totalCustomers}</p>
+          <CardContent className="pt-3 sm:pt-4 md:pt-6 p-2.5 sm:p-3 md:p-6">
+            <div className="flex items-center justify-between gap-1">
+              <div className="min-w-0">
+                <p className="text-[10px] sm:text-xs md:text-sm text-muted-foreground mb-0.5 sm:mb-1"><span className="hidden sm:inline">Total Customers</span><span className="sm:hidden">Total</span></p>
+                <p className="text-lg sm:text-xl md:text-3xl font-bold text-[#DB9D47]">{totalCustomers}</p>
               </div>
-              <div className="h-12 w-12 rounded-full bg-[#DB9D47]/10 flex items-center justify-center">
-                <Users className="w-6 h-6 text-[#DB9D47]" />
+              <div className="h-8 w-8 sm:h-10 sm:w-10 md:h-12 md:w-12 rounded-full bg-[#DB9D47]/10 flex items-center justify-center flex-shrink-0">
+                <Users className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-[#DB9D47]" />
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card className="border-green-500/20 bg-gradient-to-br from-white to-green-50/30">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">Active Customers</p>
-                <p className="text-3xl font-bold text-green-600">{activeCustomers}</p>
+          <CardContent className="pt-3 sm:pt-4 md:pt-6 p-2.5 sm:p-3 md:p-6">
+            <div className="flex items-center justify-between gap-1">
+              <div className="min-w-0">
+                <p className="text-[10px] sm:text-xs md:text-sm text-muted-foreground mb-0.5 sm:mb-1"><span className="hidden sm:inline">Active Customers</span><span className="sm:hidden">Active</span></p>
+                <p className="text-lg sm:text-xl md:text-3xl font-bold text-green-600">{activeCustomers}</p>
               </div>
-              <div className="h-12 w-12 rounded-full bg-green-500/10 flex items-center justify-center">
-                <UserCheck className="w-6 h-6 text-green-600" />
+              <div className="h-8 w-8 sm:h-10 sm:w-10 md:h-12 md:w-12 rounded-full bg-green-500/10 flex items-center justify-center flex-shrink-0">
+                <UserCheck className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-green-600" />
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card className="border-blue-500/20 bg-gradient-to-br from-white to-blue-50/30">
-          <CardContent className="pt-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">New (30 Days)</p>
-                <p className="text-3xl font-bold text-blue-600">{newCustomers}</p>
+          <CardContent className="pt-3 sm:pt-4 md:pt-6 p-2.5 sm:p-3 md:p-6">
+            <div className="flex items-center justify-between gap-1">
+              <div className="min-w-0">
+                <p className="text-[10px] sm:text-xs md:text-sm text-muted-foreground mb-0.5 sm:mb-1"><span className="hidden sm:inline">New (30 Days)</span><span className="sm:hidden">New</span></p>
+                <p className="text-lg sm:text-xl md:text-3xl font-bold text-blue-600">{newCustomers}</p>
               </div>
-              <div className="h-12 w-12 rounded-full bg-blue-500/10 flex items-center justify-center">
-                <UserPlusIcon className="w-6 h-6 text-blue-600" />
+              <div className="h-8 w-8 sm:h-10 sm:w-10 md:h-12 md:w-12 rounded-full bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+                <UserPlusIcon className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-blue-600" />
               </div>
             </div>
           </CardContent>
@@ -316,17 +316,17 @@ export function UserManagement() {
       </div>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="px-3 py-3 sm:px-6 sm:py-4">
           <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Customer Management</CardTitle>
-              <CardDescription>Manage customer accounts</CardDescription>
+            <div className="min-w-0">
+              <CardTitle className="text-sm md:text-base">Customer Management</CardTitle>
+              <CardDescription className="text-xs md:text-sm hidden sm:block">Manage customer accounts</CardDescription>
             </div>
             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
               <DialogTrigger asChild>
-                <Button className="cursor-pointer transition-transform duration-200 hover:scale-105 active:scale-95 shadow-md">
-                  <UserPlus className="w-4 h-4 mr-2 group-hover:animate-bounce" />
-                  Add User
+                <Button className="cursor-pointer transition-transform duration-200 hover:scale-105 active:scale-95 shadow-md text-xs sm:text-sm px-2.5 sm:px-4 h-8 sm:h-9 flex-shrink-0">
+                  <UserPlus className="w-4 h-4 mr-1.5 sm:mr-2" />
+                  <span>Add</span><span className="hidden sm:inline">&nbsp;User</span>
                 </Button>
               </DialogTrigger>
               <DialogContent>
@@ -394,38 +394,39 @@ export function UserManagement() {
             </Dialog>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-3 md:space-y-4 px-3 sm:px-6">
           {/* Filters */}
-          <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex gap-2 sm:gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-slate-400" />
               <Input
                 placeholder="Search customers..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9"
+                className="pl-9 text-sm"
               />
             </div>
             <Button
               variant="outline"
               size="sm"
               onClick={handleExportToCSV}
+              className="flex-shrink-0 px-2.5 sm:px-3"
             >
-              <Download className="w-4 h-4 mr-2" />
-              Export CSV
+              <Download className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">Export CSV</span>
             </Button>
           </div>
 
           {/* Users Table */}
           <div className="border rounded-lg overflow-x-auto">
-            <Table className="min-w-[600px]">
+            <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Join Date</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="text-xs sm:text-sm">Name</TableHead>
+                  <TableHead className="hidden sm:table-cell text-xs sm:text-sm">Email</TableHead>
+                  <TableHead className="text-xs sm:text-sm">Status</TableHead>
+                  <TableHead className="hidden md:table-cell text-xs sm:text-sm">Join Date</TableHead>
+                  <TableHead className="text-right text-xs sm:text-sm">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -444,35 +445,48 @@ export function UserManagement() {
                   </TableRow>
                 ) : currentUsers.map((user) => (
                   <TableRow key={user.id}>
-                    <TableCell>{user.name}</TableCell>
-                    <TableCell>{user.email}</TableCell>
-                    <TableCell>
-                      <Badge variant={user.isActive ? 'default' : 'secondary'} className={user.isActive ? 'bg-green-100 text-green-700 border-green-200' : 'bg-red-100 text-red-700 border-red-200'}>
+                    <TableCell className="text-xs sm:text-sm py-2.5 sm:py-3">
+                      <div>
+                        {user.name}
+                        <div className="sm:hidden text-[10px] text-muted-foreground mt-0.5 truncate max-w-[160px]">{user.email}</div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-xs sm:text-sm hidden sm:table-cell">{user.email}</TableCell>
+                    <TableCell className="py-2.5 sm:py-3">
+                      <Badge variant={user.isActive ? 'default' : 'secondary'} className={`text-[10px] sm:text-xs ${user.isActive ? 'bg-green-100 text-green-700 border-green-200' : 'bg-red-100 text-red-700 border-red-200'}`}>
                         {user.isActive ? (
-                          <CheckCircle2 className="w-3 h-3 mr-1" />
+                          <CheckCircle2 className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-0.5 sm:mr-1" />
                         ) : (
-                          <XCircle className="w-3 h-3 mr-1" />
+                          <XCircle className="w-2.5 h-2.5 sm:w-3 sm:h-3 mr-0.5 sm:mr-1" />
                         )}
-                        {user.isActive ? 'Active' : 'Inactive'}
+                        <span className="hidden sm:inline">{user.isActive ? 'Active' : 'Inactive'}</span>
+                        <span className="sm:hidden">{user.isActive ? 'On' : 'Off'}</span>
                       </Badge>
                     </TableCell>
-                    <TableCell>{user.joinDate}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
+                    <TableCell className="hidden md:table-cell text-xs sm:text-sm">{user.joinDate}</TableCell>
+                    <TableCell className="text-right py-2.5 sm:py-3">
+                      <div className="flex items-center justify-end gap-1">
                         <Button
                           variant="ghost"
                           size="sm"
-                          className={user.isActive ? 'text-red-600 hover:text-red-700 hover:bg-red-50' : 'text-green-600 hover:text-green-700 hover:bg-green-50'}
+                          className={`h-7 w-7 sm:h-8 sm:w-auto p-0 sm:px-2 ${user.isActive ? 'text-red-600 hover:text-red-700 hover:bg-red-50' : 'text-green-600 hover:text-green-700 hover:bg-green-50'}`}
                           onClick={() => handleToggleStatus(user.id)}
+                          title={user.isActive ? 'Deactivate' : 'Activate'}
                         >
-                          {user.isActive ? 'Deactivate' : 'Activate'}
+                          {user.isActive ? (
+                            <><XCircle className="w-3.5 h-3.5 sm:mr-1" /><span className="hidden sm:inline text-xs">Deactivate</span></>
+                          ) : (
+                            <><CheckCircle2 className="w-3.5 h-3.5 sm:mr-1" /><span className="hidden sm:inline text-xs">Activate</span></>
+                          )}
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
+                          className="h-7 w-7 sm:h-8 sm:w-8 p-0"
                           onClick={() => handleDeleteUser(user.id)}
+                          title="Delete user"
                         >
-                          <Trash2 className="w-4 h-4 text-red-600" />
+                          <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-600" />
                         </Button>
                       </div>
                     </TableCell>

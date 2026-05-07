@@ -101,7 +101,6 @@ class APICache {
     entry.hits++;
     this.stats.hits++;
 
-    // Log cache hit (removed console.log to reduce noise)
 
     return entry.data as T;
   }

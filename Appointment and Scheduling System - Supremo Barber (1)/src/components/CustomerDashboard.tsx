@@ -161,10 +161,10 @@ export function CustomerDashboard({
               <img
                 src="https://pub-86f4b5249e5c4021bb05d46908eeb094.r2.dev/supremo-barber/supremoWebLogo.png"
                 alt="Supremo Barber Logo"
-                className="h-10 w-10 sm:h-12 sm:w-12"
+                className="h-9 w-9 sm:h-10 sm:w-10 lg:h-12 lg:w-12"
               />
               <div>
-                <span className="text-base sm:text-xl text-[#5C4A3A]">Supremo Barber</span>
+                <span className="text-sm sm:text-base lg:text-xl font-semibold text-[#5C4A3A]">Supremo Barber</span>
                 <p className="text-xs text-[#87765E] hidden sm:block">Welcome, {user.name}</p>
               </div>
             </div>
@@ -325,22 +325,22 @@ export function CustomerDashboard({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-[#5C4A3A] hover:bg-[#FBF7EF]"
+                    className="text-[#5C4A3A] hover:bg-[#FBF7EF] p-2"
                   >
                     <Menu className="w-5 h-5" />
                   </Button>
                 </SheetTrigger>
-                <SheetContent side="right" className="w-[280px] bg-white border-l border-[#E8DCC8]">
+                <SheetContent side="right" className="w-[280px] sm:w-[320px] bg-white border-l border-[#E8DCC8]">
                   <SheetHeader>
-                    <SheetTitle className="text-[#5C4A3A] flex items-center gap-2">
+                    <SheetTitle className="text-[#5C4A3A] flex items-center gap-2 text-base">
                       <img
                         src="https://pub-86f4b5249e5c4021bb05d46908eeb094.r2.dev/supremo-barber/supremoWebLogo.png"
                         alt="Supremo Barber Logo"
-                        className="h-8 w-8"
+                        className="h-7 w-7 sm:h-8 sm:w-8"
                       />
                       Menu
                     </SheetTitle>
-                    <SheetDescription className="text-[#87765E]">
+                    <SheetDescription className="text-[#87765E] text-sm">
                       Navigate through your dashboard
                     </SheetDescription>
                   </SheetHeader>
@@ -478,18 +478,18 @@ export function CustomerDashboard({
       </nav>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-8">
+      <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-20 pb-8">
         {/* Stats Grid - Only show on home tab */}
         {activeTab === 'home' && (
-          <div className="grid grid-cols-2 gap-4 mb-6">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
             {stats.map((stat, index) => (
               <Card key={index} className="border-[#E8DCC8]">
-                <CardContent className="pt-4 sm:pt-6">
-                  <div className="flex items-center justify-between mb-2">
+                <CardContent className="pt-3 sm:pt-4 pb-3 sm:pb-4 px-3 sm:px-4">
+                  <div className="flex items-center justify-between mb-1.5 sm:mb-2">
                     <stat.icon className={`w-4 h-4 sm:w-5 sm:h-5 ${stat.color}`} />
                   </div>
-                  <div className="text-xl sm:text-2xl text-[#5C4A3A] mb-1">{stat.value}</div>
-                  <p className="text-xs sm:text-sm text-[#87765E]">{stat.label}</p>
+                  <div className="text-lg sm:text-xl lg:text-2xl font-semibold text-[#5C4A3A] mb-0.5 sm:mb-1">{stat.value}</div>
+                  <p className="text-xs sm:text-sm text-[#87765E] leading-tight">{stat.label}</p>
                 </CardContent>
               </Card>
             ))}

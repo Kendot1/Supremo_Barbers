@@ -223,10 +223,10 @@ export function ImprovedSuperAdminDashboard({
   ];
 
   return (
-    <div className="min-h-screen bg-[#FFFDF8] flex flex-col">
+    <div className="min-h-screen bg-[#FFFDF8] flex flex-col" style={{ overflowX: 'clip' }}>
 
 
-      <div className="flex flex-1">
+      <div className="flex flex-1 w-full" style={{ overflowX: 'clip' }}>
         {/* Sidebar - Hidden on mobile, visible on desktop */}
         <aside
           className={`
@@ -303,10 +303,11 @@ export function ImprovedSuperAdminDashboard({
 
         {/* Main Content - No margin on mobile, margin on desktop for sidebar */}
         <main
-          className={`flex-1 transition-all duration-300 ${sidebarOpen ? "lg:ml-64" : "lg:ml-20"} flex flex-col`}
+          className={`flex-1 transition-all duration-300 min-w-0 ${sidebarOpen ? "lg:ml-64" : "lg:ml-20"} flex flex-col`}
+          style={{ overflowX: 'clip' }}
         >
           {/* Top Bar */}
-          <header className="bg-white border-b-2 border-[#E8DCC8] sticky top-0 z-10 shadow-sm">
+          <header className="bg-white border-b-2 border-[#E8DCC8] sticky top-0 z-10 shadow-sm overflow-hidden">
             <div className="px-3 py-3 md:px-6 md:py-4 flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-0">
                 {/* Sidebar toggle - only visible on desktop */}
@@ -322,13 +323,86 @@ export function ImprovedSuperAdminDashboard({
                     <Menu className="w-5 h-5" />
                   )}
                 </Button>
-                <h1 className="text-base md:text-xl lg:text-2xl text-[#5C4A3A] truncate">
-                  {
-                    menuItems.find(
-                      (item) => item.id === activeTab,
-                    )?.label
-                  }
-                </h1>
+                {/* Mobile: Hamburger Menu (left side) */}
+                <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+                  <SheetTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="lg:hidden text-[#5C4A3A] hover:bg-[#FBF7EF] p-2"
+                    >
+                      <Menu className="w-5 h-5" />
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent side="left" className="w-[280px] sm:w-[320px] bg-white border-r border-[#E8DCC8]">
+                    <SheetHeader>
+                      <SheetTitle className="text-[#5C4A3A] flex items-center gap-2 text-base">
+                        <img
+                          src="https://pub-86f4b5249e5c4021bb05d46908eeb094.r2.dev/supremo-barber/supremoWebLogo.png"
+                          alt="Supremo Barber Logo"
+                          className="h-7 w-7 sm:h-8 sm:w-8"
+                        />
+                        Supremo Barber
+                      </SheetTitle>
+
+                    </SheetHeader>
+
+                    <div className="mt-6 flex flex-col gap-2">
+                      {menuItems.map((item) => (
+                        <button
+                          key={item.id}
+                          onClick={() => {
+                            setActiveTab(item.id);
+                            setMobileMenuOpen(false);
+                          }}
+                          className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm transition-colors ${activeTab === item.id
+                            ? 'bg-[#DB9D47] text-white'
+                            : 'text-[#5C4A3A] hover:bg-[#FBF7EF]'
+                            }`}
+                        >
+                          <item.icon className="w-5 h-5" />
+                          <span>{item.label}</span>
+                        </button>
+                      ))}
+
+                      {/* Divider */}
+                      <div className="h-px bg-[#E8DCC8] my-2" />
+
+                      {/* Logout Button */}
+                      <button
+                        onClick={() => {
+                          setMobileMenuOpen(false);
+                          onLogout();
+                        }}
+                        className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm text-[#E57373] hover:bg-red-50 transition-colors"
+                      >
+                        <LogOut className="w-5 h-5" />
+                        <span>Logout</span>
+                      </button>
+                    </div>
+
+                    {/* User Info at Bottom */}
+                    <div className="absolute bottom-6 left-0 right-0 px-6">
+                      <div className="bg-[#FBF7EF] border border-[#E8DCC8] rounded-lg p-3">
+                        <p className="text-xs text-[#87765E] mb-1">Logged in as</p>
+                        <p className="text-sm text-[#5C4A3A]">{user.name}</p>
+                        <p className="text-xs text-[#87765E]">{user.email}</p>
+                      </div>
+                    </div>
+                  </SheetContent>
+                </Sheet>
+                {/* Mobile: show logo */}
+
+                <div className="min-w-0">
+                  <h1 className="text-base md:text-xl lg:text-2xl text-[#5C4A3A] truncate">
+                    {
+                      menuItems.find(
+                        (item) => item.id === activeTab,
+                      )?.label
+                    }
+                  </h1>
+
+                </div>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
                 <NotificationCenter
@@ -367,28 +441,28 @@ export function ImprovedSuperAdminDashboard({
             </div>
           </header>
 
-          {/* Content Area - Add bottom padding on mobile for bottom nav */}
-          <div className="p-3 md:p-4 lg:p-6 pb-20 lg:pb-6 flex-1 min-h-0">
+          {/* Content Area */}
+          <div className="p-3 md:p-4 lg:p-6 flex-1 min-h-0 overflow-x-hidden">
             {activeTab === "overview" && (
               <div className="space-y-4 md:space-y-6 max-w-full overflow-x-hidden">
-                {/* Stats Grid - 1 Row, 3 Columns */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+                {/* Stats Grid - Always 3 Columns */}
+                <div className="grid grid-cols-3 gap-2 sm:gap-3 md:gap-4">
                   {stats.map((stat, index) => (
                     <div
                       key={index}
-                      className="flex flex-col p-3 sm:p-4 bg-[#FBF7EF] rounded-lg border border-[#E8DCC8] hover:shadow-md transition-shadow"
+                      className="flex flex-col p-2.5 sm:p-3 md:p-4 bg-[#FBF7EF] rounded-lg border border-[#E8DCC8] hover:shadow-md transition-shadow"
                     >
-                      <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center justify-between mb-1.5 sm:mb-2">
                         <div
-                          className={`${stat.color} p-2 rounded-lg`}
+                          className={`${stat.color} p-1.5 sm:p-2 rounded-lg`}
                         >
-                          <stat.icon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                          <stat.icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 text-white" />
                         </div>
                       </div>
-                      <p className="text-xl sm:text-2xl text-[#5C4A3A] mb-1 truncate">
+                      <p className="text-base sm:text-xl md:text-2xl text-[#5C4A3A] mb-0.5 sm:mb-1 truncate">
                         {stat.value}
                       </p>
-                      <p className="text-xs sm:text-sm text-[#87765E] truncate">
+                      <p className="text-[10px] sm:text-xs md:text-sm text-[#87765E] truncate">
                         {stat.label}
                       </p>
                     </div>
@@ -465,100 +539,7 @@ export function ImprovedSuperAdminDashboard({
         <Footer />
       </div>
 
-      {/* Mobile Bottom Navigation - Only visible on mobile/tablet */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t-2 border-[#E8DCC8] z-30 shadow-lg">
-        <div className="flex items-center justify-around py-1.5 px-1">
-          {menuItems.slice(0, 4).map((item) => (
-            <button
-              key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              className={`
-                flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-lg transition-all min-w-0
-                ${activeTab === item.id
-                  ? "bg-[#DB9D47] text-white"
-                  : "text-[#87765E] hover:bg-[#FBF7EF]"
-                }
-              `}
-            >
-              <item.icon className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" />
-              <span className="text-[10px] md:text-xs whitespace-nowrap truncate max-w-[60px] md:max-w-none">
-                {item.label.split(" ")[0]}
-              </span>
-            </button>
-          ))}
 
-          {/* More menu button for additional items */}
-          <Sheet
-            open={mobileMenuOpen}
-            onOpenChange={setMobileMenuOpen}
-          >
-            <SheetTrigger asChild>
-              <button
-                className={`
-                  flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-lg transition-all min-w-0
-                  ${menuItems
-                    .slice(4)
-                    .some((item) => item.id === activeTab)
-                    ? "bg-[#DB9D47] text-white"
-                    : "text-[#87765E] hover:bg-[#FBF7EF]"
-                  }
-                `}
-              >
-                <Menu className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" />
-                <span className="text-[10px] md:text-xs">
-                  More
-                </span>
-              </button>
-            </SheetTrigger>
-            <SheetContent
-              side="bottom"
-              className="bg-white border-[#E8DCC8]"
-            >
-              <SheetHeader>
-                <SheetTitle className="text-[#5C4A3A]">
-                  Menu
-                </SheetTitle>
-                <SheetDescription className="text-[#87765E]">
-                  Select a section to view
-                </SheetDescription>
-              </SheetHeader>
-              <div className="grid grid-cols-2 gap-3 mt-6">
-                {menuItems.slice(4).map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => {
-                      setActiveTab(item.id);
-                      setMobileMenuOpen(false);
-                    }}
-                    className={`
-                      flex items-center gap-3 px-4 py-3 rounded-lg transition-all
-                      ${activeTab === item.id
-                        ? "bg-[#DB9D47] text-white"
-                        : "text-[#5C4A3A] bg-[#FBF7EF] hover:bg-[#F5EDD8]"
-                      }
-                    `}
-                  >
-                    <item.icon className="w-5 h-5 flex-shrink-0" />
-                    <span className="text-sm">
-                      {item.label}
-                    </span>
-                  </button>
-                ))}
-                <button
-                  onClick={() => {
-                    onLogout();
-                    setMobileMenuOpen(false);
-                  }}
-                  className="flex items-center gap-3 px-4 py-3 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-all col-span-2"
-                >
-                  <LogOut className="w-5 h-5 flex-shrink-0" />
-                  <span className="text-sm">Logout</span>
-                </button>
-              </div>
-            </SheetContent>
-          </Sheet>
-        </div>
-      </nav>
     </div>
   );
 }

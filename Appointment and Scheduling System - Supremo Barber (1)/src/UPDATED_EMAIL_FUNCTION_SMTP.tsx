@@ -30,7 +30,6 @@ async function sendEmail(to: string, subject: string, html: string): Promise<boo
       return false;
     }
 
-    console.log(`📧 Attempting to send email to ${to} via ${smtpHost}:${smtpPort}`);
 
     // Use deno-smtp library approach (simplified)
     const message = createEmailMessage(smtpFrom, to, subject, html);
@@ -47,7 +46,6 @@ async function sendEmail(to: string, subject: string, html: string): Promise<boo
     );
 
     if (success) {
-      console.log('✅ Email sent successfully to:', to);
       return true;
     } else {
       console.error('❌ Email send failed');
@@ -138,12 +136,10 @@ async function sendSMTP(
       const buffer = new Uint8Array(4096);
       const n = await conn!.read(buffer);
       const response = decoder.decode(buffer.subarray(0, n || 0));
-      console.log('SMTP <<', response.trim());
       return response;
     };
 
     const sendCommand = async (command: string): Promise<string> => {
-      console.log('SMTP >>', command.trim());
       await conn!.write(encoder.encode(command + '\r\n'));
       return await readResponse();
     };

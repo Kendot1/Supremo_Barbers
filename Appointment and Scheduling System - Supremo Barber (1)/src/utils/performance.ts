@@ -202,7 +202,6 @@ export function reportWebVitals() {
                     clsValue += (entry as any).value;
                 }
             }
-            console.log('📊 CLS:', clsValue);
         });
         clsObserver.observe({ entryTypes: ['layout-shift'] });
     } catch (e) {

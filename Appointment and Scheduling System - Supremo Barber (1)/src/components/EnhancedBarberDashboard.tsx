@@ -11,6 +11,14 @@ import { Badge } from "./ui/badge";
 import { toast } from "sonner@2.0.3";
 import { Footer } from "./Footer";
 import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger
+} from "./ui/sheet";
+import {
   Calendar,
   LogOut,
   Menu,
@@ -172,6 +180,7 @@ export function EnhancedBarberDashboard({
 
   const [activeTab, setActiveTab] = useState("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [timeRange, setTimeRange] = useState("weekly");
   const [selectedAppointment, setSelectedAppointment] =
     useState<Appointment | null>(null);
@@ -1394,9 +1403,9 @@ export function EnhancedBarberDashboard({
   const filteredAppointments = getFilteredAppointments();
 
   return (
-    <div className="min-h-screen bg-[#FFFDF8] flex flex-col overflow-x-hidden">
-      <div className="flex flex-1 overflow-x-hidden">
-        {/* Sidebar */}
+    <div className="min-h-screen bg-[#FFFDF8] flex flex-col" style={{ overflowX: 'clip' }}>
+      <div className="flex flex-1" style={{ overflowX: 'clip' }}>
+        {/* Sidebar - Hidden on mobile, visible on desktop */}
         <aside
           className={`
           fixed left-0 top-0 h-full bg-gradient-to-b from-[#5C4A3A] to-[#4A3828] text-[#F5EDD8] transition-all duration-300 z-20 shadow-2xl
@@ -1475,12 +1484,14 @@ export function EnhancedBarberDashboard({
 
         {/* Main Content */}
         <main
-          className={`flex-1 transition-all duration-300 overflow-x-hidden ${sidebarOpen ? "md:ml-64" : "md:ml-20"} flex flex-col`}
+          className={`flex-1 transition-all duration-300 min-w-0 ${sidebarOpen ? "md:ml-64" : "md:ml-20"} flex flex-col`}
+          style={{ overflowX: 'clip' }}
         >
-          {/* Top Bar */}
+          {/* Top Bar - Desktop: sidebar toggle + title | Mobile: logo + title + hamburger */}
           <header className="bg-white border-b-2 border-[#E8DCC8] sticky top-0 z-10 shadow-sm">
             <div className="px-3 md:px-6 py-3 md:py-4 flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 md:gap-4 flex-1 min-w-0">
+                {/* Sidebar toggle - only visible on desktop */}
                 <Button
                   variant="ghost"
                   size="sm"
@@ -1493,13 +1504,92 @@ export function EnhancedBarberDashboard({
                     <Menu className="w-5 h-5" />
                   )}
                 </Button>
-                <h1 className="text-base md:text-xl lg:text-2xl text-[#5C4A3A] truncate">
-                  {
-                    menuItems.find(
-                      (item) => item.id === activeTab,
-                    )?.label
-                  }
-                </h1>
+                {/* Mobile: Hamburger Menu (left side) */}
+                <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+                  <SheetTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="md:hidden text-[#5C4A3A] hover:bg-[#FBF7EF] p-2"
+                    >
+                      <Menu className="w-5 h-5" />
+                    </Button>
+                  </SheetTrigger>
+                  <SheetContent side="left" className="w-[280px] sm:w-[320px] bg-white border-r border-[#E8DCC8]">
+                    <SheetHeader>
+                      <SheetTitle className="text-[#5C4A3A] flex items-center gap-2 text-base">
+                        <img
+                          src="https://pub-86f4b5249e5c4021bb05d46908eeb094.r2.dev/supremo-barber/supremoWebLogo.png"
+                          alt="Supremo Barber Logo"
+                          className="h-7 w-7 sm:h-8 sm:w-8"
+                        />
+                        Barber Menu
+                      </SheetTitle>
+                      <SheetDescription className="text-[#87765E] text-sm">
+                        Navigate through your dashboard
+                      </SheetDescription>
+                    </SheetHeader>
+
+                    <div className="mt-6 flex flex-col gap-2">
+                      {menuItems.map((item) => (
+                        <button
+                          key={item.id}
+                          onClick={() => {
+                            setActiveTab(item.id);
+                            setMobileMenuOpen(false);
+                          }}
+                          className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm transition-colors ${activeTab === item.id
+                            ? 'bg-[#DB9D47] text-white'
+                            : 'text-[#5C4A3A] hover:bg-[#FBF7EF]'
+                            }`}
+                        >
+                          <item.icon className="w-5 h-5" />
+                          <span>{item.label}</span>
+                        </button>
+                      ))}
+
+                      {/* Divider */}
+                      <div className="h-px bg-[#E8DCC8] my-2" />
+
+                      {/* Logout Button */}
+                      <button
+                        onClick={() => {
+                          setMobileMenuOpen(false);
+                          onLogout();
+                        }}
+                        className="flex items-center gap-3 px-4 py-3 rounded-lg text-sm text-[#E57373] hover:bg-red-50 transition-colors"
+                      >
+                        <LogOut className="w-5 h-5" />
+                        <span>Logout</span>
+                      </button>
+                    </div>
+
+                    {/* User Info at Bottom */}
+                    <div className="absolute bottom-6 left-0 right-0 px-6">
+                      <div className="bg-[#FBF7EF] border border-[#E8DCC8] rounded-lg p-3">
+                        <p className="text-xs text-[#87765E] mb-1">Logged in as</p>
+                        <p className="text-sm text-[#5C4A3A]">{user.name}</p>
+                        <p className="text-xs text-[#87765E]">Professional Barber</p>
+                      </div>
+                    </div>
+                  </SheetContent>
+                </Sheet>
+                {/* Mobile: show logo */}
+                <img
+                  src="https://pub-86f4b5249e5c4021bb05d46908eeb094.r2.dev/supremo-barber/supremoWebLogo.png"
+                  alt="Supremo Barber Logo"
+                  className="h-8 w-8 md:hidden"
+                />
+                <div className="min-w-0">
+                  <h1 className="text-base md:text-xl lg:text-2xl text-[#5C4A3A] truncate">
+                    {
+                      menuItems.find(
+                        (item) => item.id === activeTab,
+                      )?.label
+                    }
+                  </h1>
+                  <p className="text-xs text-[#87765E] md:hidden">Barber Dashboard</p>
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 <Badge
@@ -1530,22 +1620,12 @@ export function EnhancedBarberDashboard({
                     }
                   }}
                 />
-                {/* Mobile Logout Button */}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={onLogout}
-                  className="md:hidden text-[#5C4A3A] hover:bg-[#FBF7EF] hover:text-[#DB9D47]"
-                  title="Logout"
-                >
-                  <LogOut className="w-5 h-5" />
-                </Button>
               </div>
             </div>
           </header>
 
           {/* Content Area */}
-          <div className="p-3 md:p-4 lg:p-6 pb-20 md:pb-6 flex-1 min-h-0 overflow-y-auto overflow-x-hidden max-w-full">
+          <div className="p-3 md:p-4 lg:p-6 flex-1 min-h-0 overflow-y-auto overflow-x-hidden max-w-full">
             {/* DASHBOARD TAB */}
             {activeTab === "dashboard" && (
               <div className="space-y-4 md:space-y-6 max-w-full">
@@ -2756,101 +2836,12 @@ export function EnhancedBarberDashboard({
         </main>
       </div>
 
-      {/* Footer */}
+      {/* Footer - Hidden on mobile, shown on desktop */}
       <div
         className={`hidden md:block transition-all duration-300 ${sidebarOpen ? "md:ml-64" : "md:ml-20"}`}
       >
         <Footer />
       </div>
-
-      {/* Mobile Bottom Navigation */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t-2 border-[#E8DCC8] z-30 shadow-lg">
-        <div className="grid grid-cols-6 gap-0.5 py-1.5 px-0.5">
-          {/* Dashboard */}
-          <button
-            onClick={() => setActiveTab("dashboard")}
-            className={`
-              flex flex-col items-center gap-0.5 px-0.5 py-1.5 rounded-lg transition-all min-w-0
-              ${activeTab === "dashboard" ? "bg-[#DB9D47] text-white" : "text-[#87765E] hover:bg-[#FBF7EF]"}
-            `}
-          >
-            <BarChart3 className="w-4 h-4 flex-shrink-0" />
-            <span className="text-[8px] whitespace-nowrap truncate max-w-full text-center">
-              Home
-            </span>
-          </button>
-
-          {/* Appointments */}
-          <button
-            onClick={() => setActiveTab("appointments")}
-            className={`
-              flex flex-col items-center gap-0.5 px-0.5 py-1.5 rounded-lg transition-all min-w-0
-              ${activeTab === "appointments" ? "bg-[#DB9D47] text-white" : "text-[#87765E] hover:bg-[#FBF7EF]"}
-            `}
-          >
-            <Calendar className="w-4 h-4 flex-shrink-0" />
-            <span className="text-[8px] whitespace-nowrap truncate max-w-full text-center">
-              Appts
-            </span>
-          </button>
-
-          {/* Bookings */}
-          <button
-            onClick={() => setActiveTab("bookings")}
-            className={`
-              flex flex-col items-center gap-0.5 px-0.5 py-1.5 rounded-lg transition-all min-w-0
-              ${activeTab === "bookings" ? "bg-[#DB9D47] text-white" : "text-[#87765E] hover:bg-[#FBF7EF]"}
-            `}
-          >
-            <BookOpen className="w-4 h-4 flex-shrink-0" />
-            <span className="text-[8px] whitespace-nowrap truncate max-w-full text-center">
-              Bookings
-            </span>
-          </button>
-
-          {/* Earnings */}
-          <button
-            onClick={() => setActiveTab("earnings")}
-            className={`
-              flex flex-col items-center gap-0.5 px-0.5 py-1.5 rounded-lg transition-all min-w-0
-              ${activeTab === "earnings" ? "bg-[#DB9D47] text-white" : "text-[#87765E] hover:bg-[#FBF7EF]"}
-            `}
-          >
-            <FaPesoSign className="w-4 h-4 flex-shrink-0" />
-            <span className="text-[8px] whitespace-nowrap truncate max-w-full text-center">
-              Earnings
-            </span>
-          </button>
-
-          {/* Reviews */}
-          <button
-            onClick={() => setActiveTab("reviews")}
-            className={`
-              flex flex-col items-center gap-0.5 px-0.5 py-1.5 rounded-lg transition-all min-w-0
-              ${activeTab === "reviews" ? "bg-[#DB9D47] text-white" : "text-[#87765E] hover:bg-[#FBF7EF]"}
-            `}
-          >
-            <Star className="w-4 h-4 flex-shrink-0" />
-            <span className="text-[8px] whitespace-nowrap truncate max-w-full text-center">
-              Reviews
-            </span>
-          </button>
-
-          {/* Profile */}
-          <button
-            onClick={() => setActiveTab("profile")}
-            className={`
-              flex flex-col items-center gap-0.5 px-0.5 py-1.5 rounded-lg transition-all min-w-0
-              ${activeTab === "profile" ? "bg-[#DB9D47] text-white" : "text-[#87765E] hover:bg-[#FBF7EF]"}
-            `}
-          >
-            <UserIcon className="w-4 h-4 flex-shrink-0" />
-            <span className="text-[8px] whitespace-nowrap truncate max-w-full text-center">
-              Profile
-            </span>
-          </button>
-        </div>
-      </nav>
 
       {/* Appointment Details Dialog */}
       <Dialog

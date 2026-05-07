@@ -348,20 +348,20 @@ export function AnalyticsOverview({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       {/* Quick Access Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
         {/* Upcoming Bookings */}
-        <Card className="border-[#DB9D47] border-2 hover:shadow-lg transition-shadow flex flex-col">
+        <Card className="border-[#DB9D47] border-2 hover:shadow-lg transition-shadow flex flex-col overflow-hidden">
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Calendar className="w-5 h-5 text-[#DB9D47]" />
-                <CardTitle className="text-[#5C4A3A]">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <Calendar className="w-4 h-4 md:w-5 md:h-5 text-[#DB9D47] flex-shrink-0" />
+                <CardTitle className="text-[#5C4A3A] text-sm md:text-base truncate">
                   Upcoming Bookings
                 </CardTitle>
               </div>
-              <Badge className="bg-[#DB9D47] text-white">
+              <Badge className="bg-[#DB9D47] text-white text-xs flex-shrink-0">
                 {upcomingBookings.length} Upcoming
               </Badge>
             </div>
@@ -411,16 +411,16 @@ export function AnalyticsOverview({
                   {upcomingBookings.map((booking) => (
                     <div
                       key={booking.id}
-                      className="flex items-center justify-between p-3 bg-[#FBF7EF] rounded-lg border border-[#E8DCC8]"
+                      className="flex flex-col sm:flex-row sm:items-center justify-between p-2.5 sm:p-3 bg-[#FBF7EF] rounded-lg border border-[#E8DCC8] gap-1.5 sm:gap-2"
                     >
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-[#5C4A3A]">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-xs sm:text-sm font-medium text-[#5C4A3A] truncate">
                             {booking.customer}
                           </span>
                           <Badge
                             variant="outline"
-                            className={`text-xs ${booking.status === "confirmed"
+                            className={`text-[10px] sm:text-xs ${booking.status === "confirmed"
                                 ? "border-green-500 text-green-700"
                                 : booking.status === "pending"
                                   ? "border-orange-500 text-orange-700"
@@ -433,15 +433,15 @@ export function AnalyticsOverview({
                             {booking.status}
                           </Badge>
                         </div>
-                        <p className="text-xs text-[#87765E] mt-1">
+                        <p className="text-[10px] sm:text-xs text-[#87765E] mt-0.5">
                           {booking.service}
                         </p>
                       </div>
-                      <div className="text-right ml-2">
-                        <p className="text-sm text-[#DB9D47]">
+                      <div className="text-left sm:text-right flex sm:flex-col gap-2 sm:gap-0 sm:ml-2">
+                        <p className="text-xs sm:text-sm text-[#DB9D47]">
                           {booking.date}
                         </p>
-                        <p className="text-xs text-[#87765E]">
+                        <p className="text-[10px] sm:text-xs text-[#87765E]">
                           {booking.time}
                         </p>
                       </div>
@@ -470,10 +470,10 @@ export function AnalyticsOverview({
         {/* Payment Verification Shortcut */}
         <Card className="border-[#94A670] border-2 hover:shadow-lg transition-shadow flex flex-col">
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <CheckCircle className="w-5 h-5 text-[#94A670]" />
-                <CardTitle className="text-[#5C4A3A]">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <CheckCircle className="w-4 h-4 md:w-5 md:h-5 text-[#94A670] flex-shrink-0" />
+                <CardTitle className="text-[#5C4A3A] text-sm md:text-base truncate">
                   Payment Verification
                 </CardTitle>
               </div>
@@ -553,7 +553,7 @@ export function AnalyticsOverview({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer width="100%" height={window.innerWidth < 640 ? 200 : 300}>
             <AreaChart data={revenueData}>
               <CartesianGrid
                 strokeDasharray="3 3"
@@ -590,7 +590,7 @@ export function AnalyticsOverview({
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         {/* Service Distribution */}
         <Card>
           <CardHeader>
@@ -600,7 +600,7 @@ export function AnalyticsOverview({
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
+            <ResponsiveContainer width="100%" height={window.innerWidth < 640 ? 200 : 250}>
               <PieChart>
                 <Pie
                   data={serviceDistribution}
@@ -616,7 +616,7 @@ export function AnalyticsOverview({
                   ))}
                 </Pie>
                 <Tooltip formatter={(value) => `${value}%`} />
-                <Legend layout="horizontal" verticalAlign="bottom" align="center" wrapperStyle={{ fontSize: "12px", paddingTop: "20px" }} />
+                <Legend layout="horizontal" verticalAlign="bottom" align="center" wrapperStyle={{ fontSize: window.innerWidth < 640 ? "10px" : "12px", paddingTop: "12px" }} />
               </PieChart>
             </ResponsiveContainer>
           </CardContent>
@@ -631,7 +631,7 @@ export function AnalyticsOverview({
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
+            <ResponsiveContainer width="100%" height={window.innerWidth < 640 ? 200 : 250}>
               <BarChart
                 data={dailyBookings.filter(
                   (d) => d.day !== "Sun",

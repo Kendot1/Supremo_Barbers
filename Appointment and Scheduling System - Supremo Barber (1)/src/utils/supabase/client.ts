@@ -39,7 +39,6 @@ export function getSupabaseClient(): SupabaseClient {
         },
       },
     });
-    console.log('✅ Shared Supabase client initialized');
   }
   return supabaseInstance;
 }

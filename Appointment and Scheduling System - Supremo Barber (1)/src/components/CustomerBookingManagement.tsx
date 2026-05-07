@@ -617,7 +617,7 @@ export function CustomerBookingManagement({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6 px-1 sm:px-0">
       {/* Show RLS Setup Guide if database error occurred */}
       {showRlsError && (
         <div className="mb-6">
@@ -627,13 +627,13 @@ export function CustomerBookingManagement({
 
       {/* Upcoming Bookings */}
       <Card className="border-[#E8DCC8]">
-        <CardHeader>
-          <CardTitle className="text-[#5C4A3A]">Upcoming Appointments</CardTitle>
-          <CardDescription className="text-[#87765E]">
+        <CardHeader className="px-3 sm:px-6 pt-4 sm:pt-6">
+          <CardTitle className="text-[#5C4A3A] text-base sm:text-lg">Upcoming Appointments</CardTitle>
+          <CardDescription className="text-[#87765E] text-xs sm:text-sm">
             Your scheduled visits to Supremo Barber
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-3 sm:px-6">
           {upcomingBookings.length === 0 ? (
             <div className="text-center py-12">
               <Calendar className="w-12 h-12 text-[#E8DCC8] mx-auto mb-4" />
@@ -654,7 +654,7 @@ export function CustomerBookingManagement({
                   <div
                     key={booking.id}
                     id={`appointment-${booking.id}`}
-                    className={`p-5 rounded-lg transition-all duration-500 cursor-pointer ${isHighlighted
+                    className={`p-3 sm:p-5 rounded-lg transition-all duration-500 cursor-pointer ${isHighlighted
                       ? 'bg-gradient-to-br from-[#FFF3C4] via-[#FBF7EF] to-white border-3 border-[#DB9D47] shadow-xl ring-4 ring-[#DB9D47]/30 animate-pulse'
                       : 'bg-gradient-to-br from-[#FBF7EF] to-white border-2 border-[#E8DCC8] hover:shadow-lg hover:border-[#DB9D47]/50'
                       }`}
@@ -665,104 +665,154 @@ export function CustomerBookingManagement({
                   >
                     {/* Just Verified Badge */}
                     {isHighlighted && (
-                      <div className="mb-3 flex items-center gap-2 bg-gradient-to-r from-[#DB9D47] to-[#D98555] text-white px-3 py-2 rounded-full text-sm font-semibold shadow-md">
-                        <CheckCircle className="w-4 h-4" />
+                      <div className="mb-3 flex items-center gap-2 bg-gradient-to-r from-[#DB9D47] to-[#D98555] text-white px-3 py-2 rounded-full text-xs sm:text-sm font-semibold shadow-md">
+                        <CheckCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                         <span>✨ Payment Just Verified!</span>
                       </div>
                     )}
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-start gap-4 flex-1">
-                        <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-[#DB9D47] to-[#D98555] flex items-center justify-center flex-shrink-0">
-                          <Scissors className="w-6 h-6 text-white" />
+                    {/* Service Info + Status */}
+                    <div className="flex items-start gap-3 sm:gap-4 mb-3 sm:mb-4">
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-gradient-to-br from-[#DB9D47] to-[#D98555] flex items-center justify-center flex-shrink-0">
+                        <Scissors className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2 mb-1">
+                          <h3 className="text-sm sm:text-lg text-[#5C4A3A] font-medium truncate">{booking.service}</h3>
+                          <Badge variant="outline" className={`${statusConfig.color} flex-shrink-0 text-xs`}>
+                            {statusConfig.label}
+                          </Badge>
                         </div>
-                        <div className="flex-1">
-                          <h3 className="text-lg text-[#5C4A3A] mb-1">{booking.service}</h3>
-                          <div className="flex flex-wrap gap-3 text-sm text-[#87765E]">
-                            <span className="flex items-center gap-1">
-                              <User className="w-4 h-4" />
-                              {booking.barber}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Calendar className="w-4 h-4" />
-                              {parseLocalDate(booking.date).toLocaleDateString('en-PH', {
-                                timeZone: 'Asia/Manila',
-                              })}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Clock className="w-4 h-4" />
-                              {booking.time}
-                            </span>
+                        <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs sm:text-sm text-[#87765E]">
+                          <span className="flex items-center gap-1">
+                            <User className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                            {booking.barber}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Calendar className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                            {parseLocalDate(booking.date).toLocaleDateString('en-PH', {
+                              timeZone: 'Asia/Manila',
+                            })}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                            {booking.time}
+                          </span>
+                        </div>
+
+
+                        {/* Payment Status Badge */}
+                        {booking.paymentProof && booking.paymentStatus && (
+                          <div className="mt-2">
+                            <PaymentStatusBadge status={booking.paymentStatus} />
                           </div>
+                        )}
 
-
-                          {/* Payment Status Badge */}
-                          {booking.paymentProof && booking.paymentStatus && (
-                            <div className="mt-2">
-                              <PaymentStatusBadge status={booking.paymentStatus} />
-                            </div>
+                        {/* Rejection hint - compact */}
+                        {(booking.status === 'rejected' || booking.paymentStatus === 'rejected') && (
+                          <p className="text-xs text-red-500 mt-2 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" />
+                            Payment rejected — tap to view details
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    {/* Bottom: Price + Actions */}
+                    <div className="pt-3 sm:pt-4 border-t border-[#E8DCC8]">
+                      <div className="flex items-center justify-between mb-2 sm:mb-0">
+                        <p className="text-base sm:text-lg font-semibold text-[#DB9D47]">₱{booking.price}</p>
+                        {/* Desktop: inline buttons */}
+                        <div className="hidden sm:flex gap-2 flex-wrap">
+                          {(!booking.paymentProof || booking.paymentStatus === 'pending' || booking.paymentStatus === 'rejected') &&
+                            booking.paymentStatus !== 'verified' && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="border-[#94A670] text-[#94A670] hover:bg-[#94A670] hover:text-white"
+                                onClick={(e) => { e.stopPropagation(); handlePaymentProof(booking); }}
+                              >
+                                <QrCode className="w-4 h-4 mr-1" />
+                                Resubmit Payment
+                              </Button>
+                            )}
+                          {(booking.rescheduledCount ?? 0) >= 1 ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="border-gray-300 text-gray-400 cursor-not-allowed opacity-60"
+                              disabled
+                              title="This appointment has already been rescheduled once"
+                            >
+                              <Edit className="w-4 h-4 mr-1" />
+                              Rescheduled
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="border-[#DB9D47] text-[#DB9D47] hover:bg-[#DB9D47] hover:text-white"
+                              onClick={(e) => { e.stopPropagation(); handleReschedule(booking); }}
+                            >
+                              <Edit className="w-4 h-4 mr-1" />
+                              Reschedule
+                            </Button>
                           )}
-
-                          {/* Rejection hint - compact */}
-                          {(booking.status === 'rejected' || booking.paymentStatus === 'rejected') && (
-                            <p className="text-xs text-red-500 mt-2 flex items-center gap-1">
-                              <AlertCircle className="w-3 h-3" />
-                              Payment rejected — tap to view details
-                            </p>
-                          )}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-[#E57373] text-[#E57373] hover:bg-[#E57373] hover:text-white"
+                            onClick={(e) => { e.stopPropagation(); handleCancelBookingClick(booking); }}
+                          >
+                            <X className="w-4 h-4 mr-1" />
+                            Cancel
+                          </Button>
                         </div>
                       </div>
-                      <Badge variant="outline" className={statusConfig.color}>
-                        {statusConfig.label}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center justify-between pt-4 border-t border-[#E8DCC8]">
-                      <p className="text-lg text-[#DB9D47]">₱{booking.price}</p>
-                      <div className="flex gap-2 flex-wrap">
-                        {/* Payment proof submission/resubmission logic */}
+                      {/* Mobile: stacked full-width buttons */}
+                      <div className="flex sm:hidden flex-col gap-2">
                         {(!booking.paymentProof || booking.paymentStatus === 'pending' || booking.paymentStatus === 'rejected') &&
                           booking.paymentStatus !== 'verified' && (
                             <Button
                               variant="outline"
                               size="sm"
-                              className="border-[#94A670] text-[#94A670] hover:bg-[#94A670] hover:text-white"
+                              className="w-full border-[#94A670] text-[#94A670] hover:bg-[#94A670] hover:text-white text-xs h-9"
                               onClick={(e) => { e.stopPropagation(); handlePaymentProof(booking); }}
                             >
-                              <QrCode className="w-4 h-4 mr-1" />
+                              <QrCode className="w-3.5 h-3.5 mr-1.5" />
                               Resubmit Payment
                             </Button>
                           )}
-                        {/* Reschedule button - disabled if already rescheduled once */}
-                        {(booking.rescheduledCount ?? 0) >= 1 ? (
+                        <div className="flex gap-2">
+                          {(booking.rescheduledCount ?? 0) >= 1 ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex-1 border-gray-300 text-gray-400 cursor-not-allowed opacity-60 text-xs h-9"
+                              disabled
+                            >
+                              <Edit className="w-3.5 h-3.5 mr-1" />
+                              Rescheduled
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="flex-1 border-[#DB9D47] text-[#DB9D47] hover:bg-[#DB9D47] hover:text-white text-xs h-9"
+                              onClick={(e) => { e.stopPropagation(); handleReschedule(booking); }}
+                            >
+                              <Edit className="w-3.5 h-3.5 mr-1" />
+                              Reschedule
+                            </Button>
+                          )}
                           <Button
                             variant="outline"
                             size="sm"
-                            className="border-gray-300 text-gray-400 cursor-not-allowed opacity-60"
-                            disabled
-                            title="This appointment has already been rescheduled once"
+                            className="flex-1 border-[#E57373] text-[#E57373] hover:bg-[#E57373] hover:text-white text-xs h-9"
+                            onClick={(e) => { e.stopPropagation(); handleCancelBookingClick(booking); }}
                           >
-                            <Edit className="w-4 h-4 mr-1" />
-                            Rescheduled
+                            <X className="w-3.5 h-3.5 mr-1" />
+                            Cancel
                           </Button>
-                        ) : (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="border-[#DB9D47] text-[#DB9D47] hover:bg-[#DB9D47] hover:text-white"
-                            onClick={(e) => { e.stopPropagation(); handleReschedule(booking); }}
-                          >
-                            <Edit className="w-4 h-4 mr-1" />
-                            Reschedule
-                          </Button>
-                        )}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="border-[#E57373] text-[#E57373] hover:bg-[#E57373] hover:text-white"
-                          onClick={(e) => { e.stopPropagation(); handleCancelBookingClick(booking); }}
-                        >
-                          <X className="w-4 h-4 mr-1" />
-                          Cancel
-                        </Button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -775,13 +825,13 @@ export function CustomerBookingManagement({
 
       {/* Past Bookings */}
       <Card className="border-[#E8DCC8]">
-        <CardHeader>
-          <CardTitle className="text-[#5C4A3A]">Booking History</CardTitle>
-          <CardDescription className="text-[#87765E]">
+        <CardHeader className="px-3 sm:px-6 pt-4 sm:pt-6">
+          <CardTitle className="text-[#5C4A3A] text-base sm:text-lg">Booking History</CardTitle>
+          <CardDescription className="text-[#87765E] text-xs sm:text-sm">
             Your past appointments and services
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-3 sm:px-6">
           <div className="space-y-3">
             {pastBookings.map((booking) => {
               const statusConfig = getStatusConfig(booking.status);
@@ -797,48 +847,65 @@ export function CustomerBookingManagement({
               return (
                 <div
                   key={booking.id}
-                  className="p-4 rounded-lg bg-[#FBF7EF] border border-[#E8DCC8] cursor-pointer hover:shadow-md hover:border-[#DB9D47]/50 transition-all"
+                  className="p-3 sm:p-4 rounded-lg bg-[#FBF7EF] border border-[#E8DCC8] cursor-pointer hover:shadow-md hover:border-[#DB9D47]/50 transition-all"
                   onClick={() => {
                     setViewBooking(booking);
                     setIsViewDetailsOpen(true);
                   }}
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4 flex-1">
-                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#DB9D47]/50 to-[#D98555]/50 flex items-center justify-center flex-shrink-0">
-                        <Scissors className="w-5 h-5 text-[#DB9D47]" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-[#5C4A3A]">{booking.service}</p>
-                        <p className="text-sm text-[#87765E]">
-                          {parseLocalDate(booking.date).toLocaleDateString()} • {booking.time}
-                        </p>
+                  {/* Top: Service & Icon */}
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-gradient-to-br from-[#DB9D47]/50 to-[#D98555]/50 flex items-center justify-center flex-shrink-0">
+                      <Scissors className="w-4 h-4 sm:w-5 sm:h-5 text-[#DB9D47]" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm sm:text-base text-[#5C4A3A] font-medium truncate">{booking.service}</p>
+                      <p className="text-xs sm:text-sm text-[#87765E]">
+                        {parseLocalDate(booking.date).toLocaleDateString()} • {booking.time}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Cancellation Reason */}
+                  {booking.status === 'cancelled' && cancelReason && (
+                    <div className="text-xs sm:text-sm text-red-500 flex items-start gap-1.5 bg-red-50 p-2 rounded border border-red-100 mb-2">
+                      <AlertCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <span className="font-medium">Reason:</span> {cancelReason}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <p className="text-[#87765E]">₱{booking.price}</p>
-                      <Badge variant="outline" className={statusConfig.color}>
-                        {statusConfig.label}
-                      </Badge>
-                      {canReview && (
+                  )}
+
+                  {/* Bottom: Price, Status, Actions */}
+                  <div className="pt-2 border-t border-[#E8DCC8]">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm sm:text-base font-semibold text-[#DB9D47]">₱{booking.price}</p>
+                        <Badge variant="outline" className={`${statusConfig.color} text-xs`}>
+                          {statusConfig.label}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-1.5 sm:gap-2">
+                        {canReview && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-yellow-500 text-yellow-600 hover:bg-yellow-500 hover:text-white text-xs px-2 sm:px-3 h-7 sm:h-8"
+                            onClick={(e) => { e.stopPropagation(); handleOpenReviewDialog(booking); }}
+                          >
+                            <Star className="w-3 h-3 sm:w-4 sm:h-4 mr-1" />
+                            Review
+                          </Button>
+                        )}
                         <Button
                           variant="outline"
                           size="sm"
-                          className="border-yellow-500 text-yellow-600 hover:bg-yellow-500 hover:text-white"
-                          onClick={(e) => { e.stopPropagation(); handleOpenReviewDialog(booking); }}
+                          className="border-[#DB9D47] text-[#DB9D47] hover:bg-[#DB9D47] hover:text-white text-xs px-2 sm:px-3 h-7 sm:h-8"
+                          onClick={(e) => { e.stopPropagation(); handleRebook(booking); }}
                         >
-                          <Star className="w-4 h-4 mr-1" />
-                          Review
+                          Rebook
                         </Button>
-                      )}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="border-[#DB9D47] text-[#DB9D47] hover:bg-[#DB9D47] hover:text-white"
-                        onClick={(e) => { e.stopPropagation(); handleRebook(booking); }}
-                      >
-                        Rebook
-                      </Button>
+                      </div>
                     </div>
                   </div>
                 </div>

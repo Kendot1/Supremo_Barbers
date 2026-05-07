@@ -733,10 +733,10 @@ export function RevenueModule({
       {/* AI Revenue Prediction */}
       <Card className="border-[#DB9D47] border-2 bg-gradient-to-br from-[#FBF7EF] to-white">
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <Brain className="w-5 h-5 text-[#DB9D47]" />
-              <CardTitle className="text-[#5C4A3A]">
+              <CardTitle className="text-[#5C4A3A] text-sm md:text-base">
                 AI Revenue Prediction
               </CardTitle>
             </div>
@@ -744,7 +744,7 @@ export function RevenueModule({
               value={timeFilter}
               onValueChange={setTimeFilter}
             >
-              <SelectTrigger className="w-[180px] border-[#E8DCC8]">
+              <SelectTrigger className="w-full sm:w-[150px] md:w-[180px] border-[#E8DCC8] text-sm">
                 <SelectValue placeholder="Select period" />
               </SelectTrigger>
               <SelectContent>
@@ -759,19 +759,19 @@ export function RevenueModule({
             Predictive analytics based on historical data
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="p-4 rounded-lg bg-white border border-[#E8DCC8]">
-              <p className="text-sm text-[#87765E]">
+        <CardContent className="space-y-3 md:space-y-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
+            <div className="p-2.5 sm:p-3 md:p-4 rounded-lg bg-white border border-[#E8DCC8]">
+              <p className="text-xs sm:text-sm text-[#87765E]">
                 Predicted Revenue
               </p>
               {isLoadingPredictions ? (
-                <p className="text-2xl text-[#5C4A3A] mt-1">
+                <p className="text-lg md:text-2xl text-[#5C4A3A] mt-1">
                   ...
                 </p>
               ) : (
                 <>
-                  <p className="text-2xl text-[#5C4A3A] mt-1">
+                  <p className="text-lg md:text-2xl text-[#5C4A3A] mt-1 truncate">
                     ₱
                     {aiPredictions?.predictedRevenue?.toLocaleString() ||
                       "0"}
@@ -787,17 +787,17 @@ export function RevenueModule({
                 </>
               )}
             </div>
-            <div className="p-4 rounded-lg bg-white border border-[#E8DCC8]">
-              <p className="text-sm text-[#87765E]">
+            <div className="p-2.5 sm:p-3 md:p-4 rounded-lg bg-white border border-[#E8DCC8]">
+              <p className="text-xs sm:text-sm text-[#87765E]">
                 Expected Bookings
               </p>
               {isLoadingPredictions ? (
-                <p className="text-2xl text-[#5C4A3A] mt-1">
+                <p className="text-lg md:text-2xl text-[#5C4A3A] mt-1">
                   ...
                 </p>
               ) : (
                 <>
-                  <p className="text-2xl text-[#5C4A3A] mt-1">
+                  <p className="text-lg md:text-2xl text-[#5C4A3A] mt-1">
                     {aiPredictions?.expectedBookings || "0"}
                   </p>
                   <p className="text-xs text-[#87765E] mt-1">
@@ -806,8 +806,8 @@ export function RevenueModule({
                 </>
               )}
             </div>
-            <div className="p-4 rounded-lg bg-white border border-[#E8DCC8]">
-              <p className="text-sm text-[#87765E]">Peak Day</p>
+            <div className="p-2.5 sm:p-3 md:p-4 rounded-lg bg-white border border-[#E8DCC8]">
+              <p className="text-xs sm:text-sm text-[#87765E]">Peak Day</p>
               {isLoadingPredictions ? (
                 <p className="text-lg text-[#5C4A3A] mt-1">
                   ...
@@ -823,8 +823,8 @@ export function RevenueModule({
                 </>
               )}
             </div>
-            <div className="p-4 rounded-lg bg-white border border-[#E8DCC8]">
-              <p className="text-sm text-[#87765E]">Trend</p>
+            <div className="p-2.5 sm:p-3 md:p-4 rounded-lg bg-white border border-[#E8DCC8]">
+              <p className="text-xs sm:text-sm text-[#87765E]">Trend</p>
               {isLoadingPredictions ? (
                 <p className="text-lg text-[#5C4A3A] mt-1">
                   ...
@@ -849,8 +849,8 @@ export function RevenueModule({
           </div>
 
           <Alert className="border-[#DB9D47] bg-orange-50">
-            <AlertCircle className="w-4 h-4 text-[#DB9D47]" />
-            <AlertDescription className="text-sm text-[#5C4A3A]">
+            <AlertCircle className="w-3.5 h-3.5 md:w-4 md:h-4 text-[#DB9D47]" />
+            <AlertDescription className="text-xs md:text-sm text-[#5C4A3A]">
               <strong>Disclaimer:</strong> AI predictions are
               based on historical data patterns and should be
               used as guidance only. Actual results may vary
@@ -862,7 +862,7 @@ export function RevenueModule({
       </Card>
 
       {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         <Card className="border-[#E8DCC8]">
           <CardHeader>
             <CardTitle className="text-[#5C4A3A]">
@@ -887,7 +887,7 @@ export function RevenueModule({
                   color: "#DB9D47",
                 },
               }}
-              className="h-[250px]"
+              className="h-[180px] sm:h-[220px] md:h-[250px]"
             >
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={dailyRevenueData}>
@@ -930,7 +930,7 @@ export function RevenueModule({
                   color: "#D98555",
                 },
               }}
-              className="h-[250px]"
+              className="h-[180px] sm:h-[220px] md:h-[250px]"
             >
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={topServicesData}>
@@ -962,36 +962,36 @@ export function RevenueModule({
       {/* Transactions Table */}
       <Card className="border-[#E8DCC8]">
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div>
-              <CardTitle className="text-[#5C4A3A]">
+              <CardTitle className="text-[#5C4A3A] text-sm md:text-base">
                 Transaction History
               </CardTitle>
-              <CardDescription className="text-[#87765E]">
+              <CardDescription className="text-[#87765E] text-xs md:text-sm">
                 Detailed revenue breakdown by service
               </CardDescription>
             </div>
             <Button
-              className="bg-[#DB9D47] hover:bg-[#C88A35] text-white"
+              className="bg-[#DB9D47] hover:bg-[#C88A35] text-white text-xs md:text-sm px-3 md:px-4"
               onClick={handleExportRevenue}
             >
-              <Download className="w-4 h-4 mr-2" />
-              Export
+              <Download className="w-4 h-4 md:mr-2" />
+              <span className="hidden md:inline">Export</span>
             </Button>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col md:flex-row gap-4 mb-6">
+          <div className="flex flex-col md:flex-row gap-3 md:gap-4 mb-4 md:mb-6">
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-[#87765E]" />
               <Input
                 placeholder="Search transactions..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 border-[#E8DCC8]"
+                className="pl-10 border-[#E8DCC8] text-sm"
               />
             </div>
-            <div className="flex gap-3">
+            <div className="flex gap-2 md:gap-3">
               <Select
                 value={filterBarber}
                 onValueChange={setFilterBarber}
@@ -1040,13 +1040,13 @@ export function RevenueModule({
             <Table>
               <TableHeader>
                 <TableRow className="bg-[#FBF7EF]">
-                  <TableHead className="text-[#5C4A3A]">
+                  <TableHead className="text-[#5C4A3A] hidden lg:table-cell">
                     ID
                   </TableHead>
                   <TableHead className="text-[#5C4A3A]">
                     Service
                   </TableHead>
-                  <TableHead className="text-[#5C4A3A]">
+                  <TableHead className="text-[#5C4A3A] hidden md:table-cell">
                     Barber
                   </TableHead>
                   <TableHead className="text-[#5C4A3A]">
@@ -1073,26 +1073,25 @@ export function RevenueModule({
                       key={txn.id}
                       className="hover:bg-[#FBF7EF]"
                     >
-                      <TableCell className="font-mono text-xs text-[#87765E]">
+                      <TableCell className="font-mono text-xs text-[#87765E] hidden lg:table-cell">
                         {txn.id.slice(0, 8)}
                       </TableCell>
-                      <TableCell className="text-[#5C4A3A]">
+                      <TableCell className="text-[#5C4A3A] text-xs sm:text-sm">
                         {txn.serviceName}
                       </TableCell>
-                      <TableCell className="text-[#5C4A3A]">
+                      <TableCell className="text-[#5C4A3A] text-xs sm:text-sm hidden md:table-cell">
                         {txn.barber}
                       </TableCell>
-                      <TableCell className="text-[#5C4A3A]">
+                      <TableCell className="text-[#5C4A3A] text-xs sm:text-sm whitespace-nowrap">
                         {parseLocalDate(
                           txn.date,
                         ).toLocaleDateString("en-US", {
                           month: "short",
                           day: "numeric",
-                          year: "numeric",
                         })}
                       </TableCell>
                       <TableCell className="text-right">
-                        <span className="font-medium text-[#94A670]">
+                        <span className="font-medium text-[#94A670] text-xs sm:text-sm">
                           ₱{txn.price.toLocaleString()}
                         </span>
                       </TableCell>
