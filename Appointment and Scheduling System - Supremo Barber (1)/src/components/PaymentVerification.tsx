@@ -178,16 +178,9 @@ export function PaymentVerification({
     }
   };
 
-  // Fetch on mount and set up auto-refresh
+  // Fetch on mount
   useEffect(() => {
     fetchPayments();
-
-    // Auto-refresh every 30 seconds
-    const interval = setInterval(() => {
-      fetchPayments(true);
-    }, 30000);
-
-    return () => clearInterval(interval);
   }, []);
 
   // Join appointments with payment records
@@ -863,36 +856,22 @@ export function PaymentVerification({
         <CardHeader className="px-3 py-3 sm:px-6 sm:py-4">
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0">
-              <CardTitle className="text-[#5C4A3A] text-sm md:text-lg flex items-center gap-2">
+              <CardTitle className="text-[#5C4A3A] text-sm md:text-lg">
                 Payment Verification
-                {isRefreshing && (
-                  <RefreshCw className="w-4 h-4 animate-spin text-[#DB9D47]" />
-                )}
               </CardTitle>
               <CardDescription className="text-[#87765E] text-xs md:text-sm hidden sm:block">
                 Review and verify customer payment proofs from
                 database
               </CardDescription>
             </div>
-            <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+            <div className="flex items-center gap-2 flex-shrink-0">
               <Button
                 variant="outline"
-                size="sm"
-                onClick={() => fetchPayments(true)}
-                disabled={isRefreshing}
-                className="border-[#DB9D47] text-[#DB9D47] hover:bg-[#DB9D47] hover:text-white h-7 sm:h-8 px-1.5 sm:px-2"
-              >
-                <RefreshCw
-                  className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isRefreshing ? "animate-spin" : ""}`}
-                />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
                 onClick={handleExportPayments}
-                className="border-[#DB9D47] text-[#DB9D47] hover:bg-[#DB9D47] hover:text-white h-7 sm:h-8 px-1.5 sm:px-2"
+                className="border-[#DB9D47] text-[#DB9D47] hover:bg-[#DB9D47] hover:text-white text-xs md:text-sm px-3 md:px-4"
               >
-                <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                <Download className="w-4 h-4 mr-1.5" />
+                <span>Export Report</span>
               </Button>
             </div>
           </div>

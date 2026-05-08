@@ -542,121 +542,205 @@ export function AnalyticsOverview({
         </Card>
       </div>
 
-      {/* Revenue & Customer Trends */}
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            Revenue & Customer Growth Trends
-          </CardTitle>
-          <CardDescription>
-            Monthly performance overview
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ResponsiveContainer width="100%" height={window.innerWidth < 640 ? 200 : 300}>
-            <AreaChart data={revenueData}>
-              <CartesianGrid
-                strokeDasharray="3 3"
-                stroke="#e2e8f0"
-              />
-              <XAxis dataKey="month" stroke="#64748b" />
-              <YAxis stroke="#64748b" />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "#fff",
-                  border: "1px solid #e2e8f0",
-                  borderRadius: "8px",
-                }}
-              />
-              <Legend />
-              <Area
-                type="monotone"
-                dataKey="revenue"
-                stroke="#3b82f6"
-                fill="#3b82f6"
-                fillOpacity={0.2}
-                name="Revenue (₱)"
-              />
-              <Area
-                type="monotone"
-                dataKey="customers"
-                stroke="#10b981"
-                fill="#10b981"
-                fillOpacity={0.2}
-                name="Customers"
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
+      {/* Revenue & Customer Trends - Side by Side */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+        {/* Revenue Trend */}
+        <Card className="border-[#E8DCC8]">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-[#5C4A3A] text-sm md:text-base">
+              Revenue Trend
+            </CardTitle>
+            <CardDescription className="text-[#87765E] text-xs md:text-sm">
+              Monthly revenue overview
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[220px] sm:h-[260px] md:h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={revenueData}>
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke="#E8DCC8"
+                  />
+                  <XAxis
+                    dataKey="month"
+                    stroke="#87765E"
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(value: string) => value.split(" ")[0]}
+                  />
+                  <YAxis
+                    stroke="#87765E"
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(value: number) => `₱${value.toLocaleString()}`}
+                    width={65}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "#fff",
+                      border: "1px solid #E8DCC8",
+                      borderRadius: "8px",
+                      boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)",
+                    }}
+                    formatter={(value: number) => [`₱${value.toLocaleString()}`, "Revenue"]}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="revenue"
+                    stroke="#DB9D47"
+                    fill="#DB9D47"
+                    fillOpacity={0.15}
+                    strokeWidth={2}
+                    name="Revenue"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Customer Growth */}
+        <Card className="border-[#E8DCC8]">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-[#5C4A3A] text-sm md:text-base">
+              Customer Growth
+            </CardTitle>
+            <CardDescription className="text-[#87765E] text-xs md:text-sm">
+              Monthly unique customers
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[220px] sm:h-[260px] md:h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={revenueData}>
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke="#E8DCC8"
+                  />
+                  <XAxis
+                    dataKey="month"
+                    stroke="#87765E"
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(value: string) => value.split(" ")[0]}
+                  />
+                  <YAxis
+                    stroke="#87765E"
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                    allowDecimals={false}
+                    width={35}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "#fff",
+                      border: "1px solid #E8DCC8",
+                      borderRadius: "8px",
+                      boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)",
+                    }}
+                    formatter={(value: number) => [value, "Customers"]}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="customers"
+                    stroke="#94A670"
+                    fill="#94A670"
+                    fillOpacity={0.15}
+                    strokeWidth={2}
+                    name="Customers"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         {/* Service Distribution */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Service Distribution</CardTitle>
-            <CardDescription>
+        <Card className="border-[#E8DCC8]">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-[#5C4A3A] text-sm md:text-base">Service Distribution</CardTitle>
+            <CardDescription className="text-[#87765E] text-xs md:text-sm">
               Popular services breakdown
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={window.innerWidth < 640 ? 200 : 250}>
-              <PieChart>
-                <Pie
-                  data={serviceDistribution}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {serviceDistribution.map((entry) => (
-                    <Cell key={entry.id} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value) => `${value}%`} />
-                <Legend layout="horizontal" verticalAlign="bottom" align="center" wrapperStyle={{ fontSize: window.innerWidth < 640 ? "10px" : "12px", paddingTop: "12px" }} />
-              </PieChart>
-            </ResponsiveContainer>
+            <div className="h-[220px] sm:h-[260px] md:h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={serviceDistribution}
+                    cx="50%"
+                    cy="45%"
+                    labelLine={false}
+                    outerRadius="70%"
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {serviceDistribution.map((entry) => (
+                      <Cell key={entry.id} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    formatter={(value) => `${value}%`}
+                    contentStyle={{
+                      backgroundColor: "#fff",
+                      border: "1px solid #E8DCC8",
+                      borderRadius: "8px",
+                      boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)",
+                    }}
+                  />
+                  <Legend layout="horizontal" verticalAlign="bottom" align="center" wrapperStyle={{ fontSize: "11px", paddingTop: "8px" }} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
           </CardContent>
         </Card>
 
         {/* Daily Bookings */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Weekly Booking Pattern</CardTitle>
-            <CardDescription>
+        <Card className="border-[#E8DCC8]">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-[#5C4A3A] text-sm md:text-base">Weekly Booking Pattern</CardTitle>
+            <CardDescription className="text-[#87765E] text-xs md:text-sm">
               Average bookings per day
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={window.innerWidth < 640 ? 200 : 250}>
-              <BarChart
-                data={dailyBookings.filter(
-                  (d) => d.day !== "Sun",
-                )}
-              >
-                <CartesianGrid
-                  strokeDasharray="3 3"
-                  stroke="#e2e8f0"
-                />
-                <XAxis dataKey="day" stroke="#64748b" />
-                <YAxis stroke="#64748b" />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "#fff",
-                    border: "1px solid #e2e8f0",
-                    borderRadius: "8px",
-                  }}
-                />
-                <Bar
-                  dataKey="bookings"
-                  fill="#8b5cf6"
-                  radius={[8, 8, 0, 0]}
-                />
-              </BarChart>
-            </ResponsiveContainer>
+            <div className="h-[220px] sm:h-[260px] md:h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={dailyBookings.filter(
+                    (d) => d.day !== "Sun",
+                  )}
+                >
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke="#E8DCC8"
+                  />
+                  <XAxis dataKey="day" stroke="#87765E" fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#87765E" fontSize={12} tickLine={false} axisLine={false} />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: "#fff",
+                      border: "1px solid #E8DCC8",
+                      borderRadius: "8px",
+                      boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)",
+                    }}
+                  />
+                  <Bar
+                    dataKey="bookings"
+                    fill="#D98555"
+                    radius={[6, 6, 0, 0]}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </CardContent>
         </Card>
       </div>

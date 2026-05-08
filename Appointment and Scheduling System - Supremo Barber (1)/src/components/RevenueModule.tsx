@@ -30,7 +30,7 @@ import {
   Calendar,
   Search,
   AlertCircle,
-  Brain,
+
   Filter,
   Download,
   Loader2,
@@ -93,9 +93,7 @@ export function RevenueModule({
   const [filterBarber, setFilterBarber] = useState("all");
   const [filterPriceRange, setFilterPriceRange] =
     useState("all");
-  const [aiPredictions, setAiPredictions] = useState<any>(null);
-  const [isLoadingPredictions, setIsLoadingPredictions] =
-    useState(true);
+
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -132,147 +130,7 @@ export function RevenueModule({
     fetchData();
   }, []);
 
-  // Fetch AI predictions from backend
-  useEffect(() => {
-    const fetchPredictions = async () => {
-      try {
-        setIsLoadingPredictions(true);
-        const data = await API.analytics.getRevenue({
-          period: timeFilter as any,
-        });
 
-        // Extract prediction data from backend
-        if (data && data.predictions) {
-          setAiPredictions(data.predictions);
-        } else {
-          // Generate predictions from current data if backend doesn't provide them
-          generateLocalPredictions();
-        }
-      } catch (error) {
-        // Backend not available - generate local predictions
-        generateLocalPredictions();
-      } finally {
-        setIsLoadingPredictions(false);
-      }
-    };
-
-    if (!isLoadingData) {
-      fetchPredictions();
-    }
-  }, [timeFilter, appointments, isLoadingData]);
-
-  // Generate predictions based on local data
-  const generateLocalPredictions = () => {
-    const completedAppointments = appointments.filter(
-      (a) => a.status === "completed",
-    );
-
-    if (completedAppointments.length === 0) {
-      setAiPredictions({
-        predictedRevenue: 0,
-        expectedBookings: 0,
-        peakDay: "N/A",
-        trend: "No Data",
-        growthRate: 0,
-      });
-      return;
-    }
-
-    // Calculate historical averages
-    const totalRevenue = completedAppointments.reduce(
-      (sum, a) => sum + (a.price || 0),
-      0,
-    );
-    const avgRevenue =
-      totalRevenue / completedAppointments.length;
-
-    // Find peak day
-    const dayCount = new Map<number, number>();
-    completedAppointments.forEach((a) => {
-      const dateStr = getAppointmentDate(a);
-      const day = new Date(dateStr).getDay();
-      dayCount.set(day, (dayCount.get(day) || 0) + 1);
-    });
-    const peakDayIndex =
-      Array.from(dayCount.entries()).sort(
-        (a, b) => b[1] - a[1],
-      )[0]?.[0] || 0;
-    const dayNames = [
-      "Sunday",
-      "Monday",
-      "Tuesday",
-      "Wednesday",
-      "Thursday",
-      "Friday",
-      "Saturday",
-    ];
-
-    // Calculate growth rate (simplified - compare first half vs second half)
-    const midPoint = Math.floor(
-      completedAppointments.length / 2,
-    );
-    const firstHalfRevenue = completedAppointments
-      .slice(0, midPoint)
-      .reduce((sum, a) => sum + (a.price || 0), 0);
-    const secondHalfRevenue = completedAppointments
-      .slice(midPoint)
-      .reduce((sum, a) => sum + (a.price || 0), 0);
-    const growthRate =
-      midPoint > 0 && firstHalfRevenue > 0
-        ? ((secondHalfRevenue / midPoint -
-          firstHalfRevenue / midPoint) /
-          (firstHalfRevenue / midPoint)) *
-        100
-        : 0;
-
-    // Predict based on time filter
-    let multiplier = 1;
-    let expectedBookings = completedAppointments.length;
-
-    switch (timeFilter) {
-      case "day":
-        multiplier = 1.05; // 5% optimistic increase
-        expectedBookings = Math.round(
-          (completedAppointments.length / 30) * 1.05,
-        );
-        break;
-      case "week":
-        multiplier = 1.08;
-        expectedBookings = Math.round(
-          (completedAppointments.length / 4) * 1.08,
-        );
-        break;
-      case "month":
-        multiplier = 1.12;
-        expectedBookings = Math.round(
-          completedAppointments.length * 1.12,
-        );
-        break;
-      case "year":
-        multiplier = 1.15;
-        expectedBookings = Math.round(
-          completedAppointments.length * 12 * 1.15,
-        );
-        break;
-    }
-
-    const predictedRevenue = Math.round(
-      totalRevenue * multiplier,
-    );
-
-    setAiPredictions({
-      predictedRevenue,
-      expectedBookings,
-      peakDay: dayNames[peakDayIndex],
-      trend:
-        growthRate > 0
-          ? "Upward"
-          : growthRate < 0
-            ? "Downward"
-            : "Stable",
-      growthRate: Math.abs(growthRate),
-    });
-  };
 
   // Helper function to get barber name by ID
   const getBarberName = (barberId: string): string => {
@@ -655,10 +513,7 @@ export function RevenueModule({
         <Card className="border-[#E8DCC8]">
           <CardContent className="pt-4 md:pt-6 p-3 md:p-6">
             <div className="flex items-center justify-between mb-1 md:mb-2">
-              <p className="w-4 h-4 md:w-5 md:h-5 text-[#DB9D47]">
-                ₱
-              </p>
-              .
+              <FaPesoSign className="w-4 h-4 md:w-5 md:h-5 text-[#DB9D47]" />
               <span
                 className={`text-xs md:text-sm ${analytics.dailyGrowth >= 0 ? "text-[#94A670]" : "text-red-600"}`}
               >
@@ -666,7 +521,7 @@ export function RevenueModule({
                 {analytics.dailyGrowth}%
               </span>
             </div>
-            <div className="text-lg md:text-2xl text-[#5C4A3A] mb-0.5 md:mb-1">
+            <div className="text-lg md:text-2xl font-semibold text-[#5C4A3A] mb-0.5 md:mb-1">
               ₱{analytics.dailyRevenue.toLocaleString()}
             </div>
             <p className="text-xs md:text-sm text-[#87765E]">
@@ -686,7 +541,7 @@ export function RevenueModule({
                 {analytics.monthlyGrowth}%
               </span>
             </div>
-            <div className="text-lg md:text-2xl text-[#5C4A3A] mb-0.5 md:mb-1">
+            <div className="text-lg md:text-2xl font-semibold text-[#5C4A3A] mb-0.5 md:mb-1">
               ₱{analytics.monthlyRevenue.toLocaleString()}
             </div>
             <p className="text-xs md:text-sm text-[#87765E]">
@@ -700,7 +555,7 @@ export function RevenueModule({
             <div className="flex items-center justify-between mb-1 md:mb-2">
               <Award className="w-4 h-4 md:w-5 md:h-5 text-[#D98555]" />
             </div>
-            <div className="text-sm md:text-lg text-[#5C4A3A] mb-0.5 md:mb-1 truncate">
+            <div className="text-sm md:text-lg font-semibold text-[#5C4A3A] mb-0.5 md:mb-1 truncate">
               {analytics.topService}
             </div>
             <p className="text-xs md:text-sm text-[#87765E]">
@@ -720,7 +575,7 @@ export function RevenueModule({
                 {analytics.transactionGrowth}%
               </span>
             </div>
-            <div className="text-lg md:text-2xl text-[#5C4A3A] mb-0.5 md:mb-1">
+            <div className="text-lg md:text-2xl font-semibold text-[#5C4A3A] mb-0.5 md:mb-1">
               {analytics.totalTransactions}
             </div>
             <p className="text-xs md:text-sm text-[#87765E]">
@@ -730,145 +585,33 @@ export function RevenueModule({
         </Card>
       </div>
 
-      {/* AI Revenue Prediction */}
-      <Card className="border-[#DB9D47] border-2 bg-gradient-to-br from-[#FBF7EF] to-white">
-        <CardHeader>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <Brain className="w-5 h-5 text-[#DB9D47]" />
-              <CardTitle className="text-[#5C4A3A] text-sm md:text-base">
-                AI Revenue Prediction
-              </CardTitle>
-            </div>
-            <Select
-              value={timeFilter}
-              onValueChange={setTimeFilter}
-            >
-              <SelectTrigger className="w-full sm:w-[150px] md:w-[180px] border-[#E8DCC8] text-sm">
-                <SelectValue placeholder="Select period" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="day">Daily</SelectItem>
-                <SelectItem value="week">Weekly</SelectItem>
-                <SelectItem value="month">Monthly</SelectItem>
-                <SelectItem value="year">Yearly</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <CardDescription className="text-[#87765E]">
-            Predictive analytics based on historical data
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3 md:space-y-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
-            <div className="p-2.5 sm:p-3 md:p-4 rounded-lg bg-white border border-[#E8DCC8]">
-              <p className="text-xs sm:text-sm text-[#87765E]">
-                Predicted Revenue
-              </p>
-              {isLoadingPredictions ? (
-                <p className="text-lg md:text-2xl text-[#5C4A3A] mt-1">
-                  ...
-                </p>
-              ) : (
-                <>
-                  <p className="text-lg md:text-2xl text-[#5C4A3A] mt-1 truncate">
-                    ₱
-                    {aiPredictions?.predictedRevenue?.toLocaleString() ||
-                      "0"}
-                  </p>
-                  <p
-                    className={`text-xs mt-1 ${aiPredictions?.growthRate >= 0 ? "text-green-600" : "text-red-600"}`}
-                  >
-                    {aiPredictions?.growthRate >= 0 ? "+" : ""}
-                    {aiPredictions?.growthRate?.toFixed(1) ||
-                      "0"}
-                    % growth
-                  </p>
-                </>
-              )}
-            </div>
-            <div className="p-2.5 sm:p-3 md:p-4 rounded-lg bg-white border border-[#E8DCC8]">
-              <p className="text-xs sm:text-sm text-[#87765E]">
-                Expected Bookings
-              </p>
-              {isLoadingPredictions ? (
-                <p className="text-lg md:text-2xl text-[#5C4A3A] mt-1">
-                  ...
-                </p>
-              ) : (
-                <>
-                  <p className="text-lg md:text-2xl text-[#5C4A3A] mt-1">
-                    {aiPredictions?.expectedBookings || "0"}
-                  </p>
-                  <p className="text-xs text-[#87765E] mt-1">
-                    Projected bookings
-                  </p>
-                </>
-              )}
-            </div>
-            <div className="p-2.5 sm:p-3 md:p-4 rounded-lg bg-white border border-[#E8DCC8]">
-              <p className="text-xs sm:text-sm text-[#87765E]">Peak Day</p>
-              {isLoadingPredictions ? (
-                <p className="text-lg text-[#5C4A3A] mt-1">
-                  ...
-                </p>
-              ) : (
-                <>
-                  <p className="text-lg text-[#5C4A3A] mt-1">
-                    {aiPredictions?.peakDay || "N/A"}
-                  </p>
-                  <p className="text-xs text-[#87765E] mt-1">
-                    Highest demand
-                  </p>
-                </>
-              )}
-            </div>
-            <div className="p-2.5 sm:p-3 md:p-4 rounded-lg bg-white border border-[#E8DCC8]">
-              <p className="text-xs sm:text-sm text-[#87765E]">Trend</p>
-              {isLoadingPredictions ? (
-                <p className="text-lg text-[#5C4A3A] mt-1">
-                  ...
-                </p>
-              ) : (
-                <>
-                  <p className="text-lg text-[#5C4A3A] mt-1">
-                    {aiPredictions?.trend || "No Data"}
-                  </p>
-                  <p
-                    className={`text-xs mt-1 ${aiPredictions?.trend === "Upward" ? "text-green-600" : aiPredictions?.trend === "Downward" ? "text-red-600" : "text-[#87765E]"}`}
-                  >
-                    {aiPredictions?.trend === "Upward"
-                      ? "Positive outlook"
-                      : aiPredictions?.trend === "Downward"
-                        ? "Needs attention"
-                        : "Stable outlook"}
-                  </p>
-                </>
-              )}
-            </div>
-          </div>
-
-          <Alert className="border-[#DB9D47] bg-orange-50">
-            <AlertCircle className="w-3.5 h-3.5 md:w-4 md:h-4 text-[#DB9D47]" />
-            <AlertDescription className="text-xs md:text-sm text-[#5C4A3A]">
-              <strong>Disclaimer:</strong> AI predictions are
-              based on historical data patterns and should be
-              used as guidance only. Actual results may vary
-              based on market conditions, seasonality, and
-              external factors.
-            </AlertDescription>
-          </Alert>
-        </CardContent>
-      </Card>
+      {/* Time Period Filter */}
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm md:text-base font-semibold text-[#5C4A3A]">Analytics Overview</h3>
+        <Select
+          value={timeFilter}
+          onValueChange={setTimeFilter}
+        >
+          <SelectTrigger className="w-[130px] md:w-[160px] border-[#E8DCC8] text-sm">
+            <SelectValue placeholder="Select period" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="day">Daily</SelectItem>
+            <SelectItem value="week">Weekly</SelectItem>
+            <SelectItem value="month">Monthly</SelectItem>
+            <SelectItem value="year">Yearly</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         <Card className="border-[#E8DCC8]">
-          <CardHeader>
-            <CardTitle className="text-[#5C4A3A]">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-[#5C4A3A] text-sm md:text-base">
               Revenue Trend
             </CardTitle>
-            <CardDescription className="text-[#87765E]">
+            <CardDescription className="text-[#87765E] text-xs md:text-sm">
               {timeFilter === "day"
                 ? "Hourly"
                 : timeFilter === "week"
@@ -887,7 +630,7 @@ export function RevenueModule({
                   color: "#DB9D47",
                 },
               }}
-              className="h-[180px] sm:h-[220px] md:h-[250px]"
+              className="h-[220px] sm:h-[260px] md:h-[300px] w-full"
             >
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={dailyRevenueData}>
@@ -895,8 +638,8 @@ export function RevenueModule({
                     strokeDasharray="3 3"
                     stroke="#E8DCC8"
                   />
-                  <XAxis dataKey="day" stroke="#87765E" />
-                  <YAxis stroke="#87765E" />
+                  <XAxis dataKey="day" stroke="#87765E" fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#87765E" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value: number) => `₱${value}`} />
                   <ChartTooltip
                     content={<ChartTooltipContent />}
                   />
@@ -914,11 +657,11 @@ export function RevenueModule({
         </Card>
 
         <Card className="border-[#E8DCC8]">
-          <CardHeader>
-            <CardTitle className="text-[#5C4A3A]">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-[#5C4A3A] text-sm md:text-base">
               Top Services by Revenue
             </CardTitle>
-            <CardDescription className="text-[#87765E]">
+            <CardDescription className="text-[#87765E] text-xs md:text-sm">
               Best performing services
             </CardDescription>
           </CardHeader>
@@ -930,7 +673,7 @@ export function RevenueModule({
                   color: "#D98555",
                 },
               }}
-              className="h-[180px] sm:h-[220px] md:h-[250px]"
+              className="h-[220px] sm:h-[260px] md:h-[300px]"
             >
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={topServicesData}>
@@ -941,9 +684,13 @@ export function RevenueModule({
                   <XAxis
                     dataKey="service"
                     stroke="#87765E"
-                    fontSize={12}
+                    fontSize={11}
+                    tickLine={false}
+                    axisLine={false}
+                    interval={0}
+                    tick={{ fontSize: 11 }}
                   />
-                  <YAxis stroke="#87765E" />
+                  <YAxis stroke="#87765E" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value: number) => `₱${value}`} />
                   <ChartTooltip
                     content={<ChartTooltipContent />}
                   />

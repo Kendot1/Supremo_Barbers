@@ -380,13 +380,13 @@ export function ChatBooking({
     }
   };
 
-  const handleCreateBooking = async () => {
+  const handleCreateBooking = async (isAdminAutoVerify = false) => {
     if (
       !selectedService ||
       !selectedBarber ||
       !selectedDate ||
       !selectedTime ||
-      !paymentProof
+      (!isAdminAutoVerify && !paymentProof)
     ) {
       toast.error("Please complete all fields");
       return;
@@ -412,9 +412,9 @@ export function ChatBooking({
         total_amount: selectedService.price,
         down_payment: downPayment,
         remaining_amount: remainingAmount,
-        status: "pending",
-        payment_status: "pending",
-        notes: "Booked via AI Chat",
+        status: isAdminAutoVerify ? "verified" : "pending",
+        payment_status: isAdminAutoVerify ? "paid" : "pending",
+        notes: isAdminAutoVerify ? "Booked by Admin" : "Booked via AI Chat",
 
         // Legacy fields for backward compatibility (frontend display)
         userId: selectedCustomer?.id || currentUser?.id,
@@ -426,8 +426,8 @@ export function ChatBooking({
         canCancel: true,
         customerName:
           selectedCustomer?.name || currentUser?.name,
-        paymentProof: paymentProof,
-        paymentStatus: "pending",
+        paymentProof: isAdminAutoVerify ? "https://pub-86f4b5249e5c4021bb05d46908eeb094.r2.dev/supremo-barber/supremoWebLogo.png" : paymentProof,
+        paymentStatus: isAdminAutoVerify ? "verified" : "pending",
         downPaymentPaid: true,
         remainingBalance: remainingAmount,
         rescheduledCount: 0,
@@ -485,10 +485,10 @@ export function ChatBooking({
         customer_id: selectedCustomer?.id || currentUser?.id,
         amount: downPayment,
         payment_type: "down_payment",
-        payment_method: "gcash",
-        payment_proof_url: paymentProof,
-        status: "pending",
-        notes: "Down payment via AI Chat booking",
+        payment_method: isAdminAutoVerify ? "cash" : "gcash",
+        payment_proof_url: isAdminAutoVerify ? "https://pub-86f4b5249e5c4021bb05d46908eeb094.r2.dev/supremo-barber/supremoWebLogo.png" : paymentProof,
+        status: isAdminAutoVerify ? "verified" : "pending",
+        notes: isAdminAutoVerify ? "Payment verified by Admin" : "Down payment via AI Chat booking",
       };
 
 
@@ -796,10 +796,16 @@ export function ChatBooking({
             {/* Continue Button */}
             {selectedDate && selectedTime && !isSunday && (
               <Button
-                onClick={() => setStep("payment")}
+                onClick={() => {
+                  if (currentUser?.role === "admin") {
+                    handleCreateBooking(true);
+                  } else {
+                    setStep("payment");
+                  }
+                }}
                 className="w-full bg-[#DB9D47] hover:bg-[#C88D3F] text-white"
               >
-                Continue to Payment
+                {currentUser?.role === "admin" ? "Confirm Booking" : "Continue to Payment"}
               </Button>
             )}
           </div>
@@ -926,16 +932,14 @@ export function ChatBooking({
                 Booking Successful!
               </h3>
               <p className="text-sm text-gray-600 mt-2">
-                Your appointment has been created and sent to{" "}
-                <span className="font-semibold text-[#DB9D47]">
-                  Payment Verification
-                </span>
-                .
+                Your appointment has been created {currentUser?.role === "admin" ? "and verified" : "and sent to payment verification"}.
               </p>
-              <p className="text-xs text-gray-500 mt-2">
-                Admin will review your payment proof and approve
-                your booking shortly.
-              </p>
+              {currentUser?.role !== "admin" && (
+                <p className="text-xs text-gray-500 mt-2">
+                  Admin will review your payment proof and approve
+                  your booking shortly.
+                </p>
+              )}
             </div>
             <Button
               onClick={() => onComplete({})}

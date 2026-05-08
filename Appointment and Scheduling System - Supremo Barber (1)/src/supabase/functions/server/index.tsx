@@ -1955,6 +1955,70 @@ app.post(
           textContent = `Successful Login After Failed Attempts\n\nHi ${name},\n\nSomeone successfully logged into your Supremo Barber account after previous failed attempts.\n\nUsername: ${details.username}\nTime: ${timestamp}\n\nIf this was you: Great! Your failed login attempts have been cleared.\nIf this wasn't you: Your account may be compromised. Please change your password immediately.`;
           break;
 
+        case "welcome_barber":
+          subject = "✂️ Welcome to Supremo Barbers – Your Account Credentials";
+          htmlContent = `
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <style>
+              body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; }
+              .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+              .header { background: linear-gradient(135deg, #DB9D47 0%, #C88A3C 100%); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+              .content { background: #ffffff; padding: 30px; border: 1px solid #e0e0e0; border-top: none; }
+              .credentials-box { background: #FBF7EF; border: 2px solid #DB9D47; border-radius: 8px; padding: 20px; margin: 20px 0; }
+              .credential-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #E8DCC8; }
+              .credential-row:last-child { border-bottom: none; }
+              .credential-label { font-weight: 600; color: #87765E; }
+              .credential-value { font-family: 'Courier New', monospace; color: #5C4A3A; font-weight: bold; font-size: 16px; }
+              .info-box { background: #e7f3ff; border-left: 4px solid #2196F3; padding: 15px; margin: 20px 0; border-radius: 4px; }
+              .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; background: #6E5A48; color: white; border-radius: 0 0 8px 8px; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="header">
+                <h1 style="margin: 0; font-size: 24px;">✂️ Welcome to Supremo Barber!</h1>
+              </div>
+              <div class="content">
+                <p>Hi <strong>${name}</strong>,</p>
+                <p>Your barber account has been created by the admin. Below are your login credentials:</p>
+
+                <div class="credentials-box">
+                  <div class="credential-row">
+                    <span class="credential-label">Username:</span>
+                    <span class="credential-value">${details.username}</span>
+                  </div>
+                  <div class="credential-row">
+                    <span class="credential-label">Password:</span>
+                    <span class="credential-value">${details.password}</span>
+                  </div>
+                </div>
+
+                <div class="info-box">
+                  <strong>🔒 Important:</strong>
+                  <ul style="margin: 10px 0 0 0; padding-left: 20px;">
+                    <li>Please change your password after your first login.</li>
+                    <li>Do not share your credentials with anyone.</li>
+                    <li>Contact the admin if you have any issues logging in.</li>
+                  </ul>
+                </div>
+
+                <p style="color: #666; font-size: 14px; margin-top: 30px;">
+                  Welcome to the team! We look forward to working with you.
+                </p>
+              </div>
+              <div class="footer">
+                <p style="margin: 0 0 5px 0;"><strong>Supremo Barber Management System</strong></p>
+                <p style="margin: 0; opacity: 0.9;">Premium Grooming Services</p>
+              </div>
+            </div>
+          </body>
+          </html>
+          `;
+          textContent = `Welcome to Supremo Barber!\n\nHi ${name},\n\nYour barber account has been created.\n\nUsername: ${details.username}\nPassword: ${details.password}\n\nPlease change your password after your first login.\nDo not share your credentials with anyone.`;
+          break;
+
         default:
           return c.json(
             {
@@ -6148,9 +6212,9 @@ app.get("/make-server-70e1fc66/api/reviews", async (c) => {
 
     const supabase = getAdminClient();
     const rating = c.req.query("rating");
-    const barberId = c.req.query("barberId");
-    const customerId = c.req.query("customerId");
-    const showOnLanding = c.req.query("showOnLanding");
+    const barberId = c.req.query("barberId") || c.req.query("barber_id");
+    const customerId = c.req.query("customerId") || c.req.query("customer_id");
+    const showOnLanding = c.req.query("showOnLanding") || c.req.query("show_on_landing");
 
     let query = supabase
       .from("reviews")

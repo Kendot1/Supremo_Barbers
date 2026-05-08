@@ -970,7 +970,7 @@ const API = {
       }
 
       try {
-        const data = await apiCall<any[]>(`/reviews?barber_id=${barberId}`, undefined, false);
+        const data = await apiCall<any[]>(`/reviews?barberId=${barberId}`, undefined, false);
 
         if (!data) {
           console.warn('⚠️ API: Received null/undefined data for barber reviews');

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import API from "../services/api.service";
+import { projectId, publicAnonKey } from "../utils/supabase/info";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -11,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { Calendar } from "./ui/calendar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Scissors, Star, Award, TrendingUp, Search, Edit, Trash2, Calendar as CalendarIcon, Filter, Download, UserCog, Key, Eye, EyeOff } from "lucide-react";
+import { Tooltip, TooltipTrigger, TooltipContent } from "./ui/tooltip";
 import { toast } from "sonner";
 import type { Appointment } from "../App";
 import { exportToCSV } from "./utils/exportUtils";
@@ -23,11 +25,11 @@ interface Barber {
   id: string;
   name: string;
   specialty: string;
-  schedule: string;
   totalBookings: number;
   rating: number;
   status: "active" | "on-leave" | "inactive";
   email?: string;
+  phone?: string;
   password?: string;
 }
 
@@ -36,27 +38,14 @@ interface BarberModuleProps {
 }
 
 export function BarberModule({ appointments }: BarberModuleProps) {
-  // Schedule options
-  const scheduleOptions = [
-    "Mon-Fri, 9AM-6PM",
-    "Mon-Sat, 9AM-6PM",
-    "Mon-Sat, 10AM-7PM",
-    "Mon-Sun, 9AM-6PM",
-    "Tue-Sat, 9AM-6PM",
-    "Tue-Sun, 10AM-7PM",
-    "Wed-Sun, 9AM-6PM",
-    "Mon-Fri, 8AM-5PM",
-    "Mon-Sat, 8AM-8PM",
-    "Flexible Schedule"
-  ];
-
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isResetPasswordDialogOpen, setIsResetPasswordDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
-  const [newBarber, setNewBarber] = useState({ name: "", specialty: "", schedule: "" });
+  const [newBarber, setNewBarber] = useState({ name: "", email: "", phone: "", specialty: "" });
+  const [addFormErrors, setAddFormErrors] = useState<{ name?: string; email?: string; phone?: string; specialty?: string }>({});
   const [expandedBarberId, setExpandedBarberId] = useState<string | null>(null);
   const [editingBarber, setEditingBarber] = useState<Barber | null>(null);
   const [resetPasswordBarber, setResetPasswordBarber] = useState<Barber | null>(null);
@@ -95,21 +84,19 @@ export function BarberModule({ appointments }: BarberModuleProps) {
             ? barber.specialties[0]
             : 'Barber Specialist';
 
-          // Extract schedule from available_hours object
-          const schedule = barber.available_hours?.schedule || 'Mon-Sat, 9AM-6PM';
 
           // Calculate average rating from reviews or use default
           const rating = barber.rating || 5.0;
 
           return {
-            id: barber.user_id, // Use user_id as the barber ID for consistency
+            id: barber.user_id,
             name: barber.name,
             email: barber.email,
+            phone: barber.phone,
             specialty: specialty,
-            schedule: schedule,
             totalBookings: barberAppointments.length,
             rating: rating,
-            status: 'active', // Default to active, can be updated based on user status
+            status: 'active',
           };
         });
 
@@ -143,7 +130,7 @@ export function BarberModule({ appointments }: BarberModuleProps) {
       (barber.id?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
       (barber.name?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
       (barber.specialty?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
-      (barber.schedule?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
+      (barber.email?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
       (barber.totalBookings?.toString() || '').includes(searchQuery) ||
       (barber.rating?.toString() || '').includes(searchQuery);
     const matchesStatus = filterStatus === "all" || barber.status === filterStatus;
@@ -164,54 +151,80 @@ export function BarberModule({ appointments }: BarberModuleProps) {
     }
   };
 
-  // Generate email from name
-  const generateEmail = (name: string, existingBarbers: Barber[]) => {
-    if (!name.trim()) return "";
+  // Generate simple credentials from barber name
+  const generateCredentials = () => {
+    const rawFirst = newBarber.name.trim().split(/\s+/)[0]?.toLowerCase() || 'barber';
+    const firstName = rawFirst.replace(/[^a-z0-9_-]/g, ''); // Only allowed chars
+    const idNumber = String(barbers.length + 1).padStart(3, '0');
+    const username = `${firstName}_barber${idNumber}`;
+    const password = `Supremo${idNumber}`;
+    return { username, password, idNumber };
+  };
 
-    const nameParts = name.trim().split(" ");
-    const surname = nameParts[nameParts.length - 1].toLowerCase();
+  // Validate a single field
+  const validateField = (field: string, value: string): string => {
+    switch (field) {
+      case 'name':
+        if (!value.trim()) return 'Full name is required';
+        if (value.trim().length < 2) return 'Name must be at least 2 characters';
+        return '';
+      case 'email': {
+        if (!value.trim()) return 'Email is required';
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(value)) return 'Please enter a valid email';
+        return '';
+      }
+      case 'phone':
+        if (!value.trim()) return 'Phone number is required';
+        if (!/^\+?[0-9\s]{7,15}$/.test(value.replace(/[\s]/g, ''))) return 'Enter a valid phone number (digits only)';
+        return '';
+      case 'specialty':
+        if (!value.trim()) return 'Specialty is required';
+        return '';
+      default:
+        return '';
+    }
+  };
 
-    // Count existing barbers with same surname
-    const surnameCount = existingBarbers.filter(b => {
-      const bSurname = b.name.split(" ").pop()?.toLowerCase();
-      return bSurname === surname;
-    }).length;
+  const handleFieldChange = (field: keyof typeof newBarber, value: string) => {
+    setNewBarber(prev => ({ ...prev, [field]: value }));
+    // Clear error on change (validate on blur)
+    if (addFormErrors[field]) {
+      setAddFormErrors(prev => ({ ...prev, [field]: '' }));
+    }
+  };
 
-    const idNumber = String(surnameCount + 1).padStart(2, '0');
-    return `${surname}${idNumber}@barbershop.com`;
+  const handleFieldBlur = (field: keyof typeof newBarber) => {
+    const error = validateField(field, newBarber[field]);
+    setAddFormErrors(prev => ({ ...prev, [field]: error }));
   };
 
   const handleAddBarber = async () => {
-    if (!newBarber.name || !newBarber.specialty || !newBarber.schedule) {
-      toast.error("Please fill in all required fields");
+    // Validate all fields
+    const errors: typeof addFormErrors = {
+      name: validateField('name', newBarber.name),
+      email: validateField('email', newBarber.email),
+      phone: validateField('phone', newBarber.phone),
+      specialty: validateField('specialty', newBarber.specialty),
+    };
+    setAddFormErrors(errors);
+
+    if (Object.values(errors).some(e => e)) {
+      toast.error('Please fix the errors above');
       return;
     }
 
-    const email = generateEmail(newBarber.name, barbers);
-    const defaultPassword = "SupremoBarber2024";
-
-    // Generate username from barber name (firstname + lastname initial)
-    const generateUsername = (name: string): string => {
-      const parts = name.trim().toLowerCase().split(' ');
-      if (parts.length === 1) {
-        return parts[0]; // Single name (e.g., "john" -> "john")
-      }
-      const firstName = parts[0];
-      const lastNameInitial = parts[parts.length - 1].charAt(0);
-      return `${firstName}${lastNameInitial}`; // e.g., "John Doe" -> "johnd"
-    };
-
-    const username = generateUsername(newBarber.name);
+    const { username, password } = generateCredentials();
 
     try {
       // Step 1: Create user account with role 'barber'
       const userResponse = await API.auth.register({
         name: newBarber.name,
-        email,
-        username, // Add username field
-        password: defaultPassword,
-        phone: '',
-        role: 'barber', // Barber role
+        email: newBarber.email,
+        username,
+        password,
+        phone: newBarber.phone,
+        role: 'barber',
       });
 
       // Step 2: Create barber profile linked to the user
@@ -219,13 +232,51 @@ export function BarberModule({ appointments }: BarberModuleProps) {
         user_id: userResponse.user.id,
         specialties: [newBarber.specialty],
         rating: 5.0,
-        available_hours: {
-          schedule: newBarber.schedule,
-        },
+        available_hours: {},
       });
 
-      toast.success(`Barber ${newBarber.name} added successfully! Email: ${email}, Password: ${defaultPassword}`, { duration: 6000 });
-      setNewBarber({ name: "", specialty: "", schedule: "" });
+      // Step 3: Send in-app notification with credentials
+      try {
+        await API.notifications.create({
+          userId: userResponse.user.id,
+          userRole: 'barber',
+          title: '🎉 Welcome to Supremo Barbers!',
+          message: `Your barber account has been created.\n\nUsername: ${username}\nPassword: ${password}\n\nPlease change your password after your first login.`,
+          type: 'system',
+          isRead: false,
+        });
+      } catch (notifError) {
+        console.warn('Could not send in-app notification:', notifError);
+      }
+
+      // Step 4: Send credentials email to barber
+      try {
+        const SUPABASE_URL = `https://${projectId}.supabase.co`;
+        fetch(`${SUPABASE_URL}/functions/v1/make-server-70e1fc66/api/email/send-security-alert`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${publicAnonKey}`,
+            'apikey': publicAnonKey,
+          },
+          body: JSON.stringify({
+            to: newBarber.email,
+            name: newBarber.name,
+            type: 'welcome_barber',
+            details: { username, password, timestamp: new Date().toISOString() },
+          }),
+        }).catch((err) => console.warn('Email send failed:', err));
+      } catch {}
+
+      toast.success(
+        `Barber ${newBarber.name} added successfully!`,
+        {
+          description: `Username: ${username} | Password: ${password}\nCredentials sent to barber's notification inbox.`,
+          duration: 15000,
+        }
+      );
+      setNewBarber({ name: "", email: "", phone: "", specialty: "" });
+      setAddFormErrors({});
       setIsAddDialogOpen(false);
 
       // Refetch barbers
@@ -235,14 +286,13 @@ export function BarberModule({ appointments }: BarberModuleProps) {
         const specialty = Array.isArray(user.specialties) && user.specialties.length > 0
           ? user.specialties[0]
           : 'Barber Specialist';
-        const schedule = user.available_hours?.schedule || 'Mon-Sat, 9AM-6PM';
 
         return {
           id: user.user_id,
           name: user.name,
           email: user.email,
+          phone: user.phone,
           specialty: specialty,
-          schedule: schedule,
           totalBookings: barberAppointments.length,
           rating: user.rating || 5.0,
           status: 'active',
@@ -253,7 +303,7 @@ export function BarberModule({ appointments }: BarberModuleProps) {
       console.error('Error adding barber:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to add barber';
       if (errorMessage.includes('already been registered') || errorMessage.includes('already exists')) {
-        toast.error('A user with this email already exists. Please use a different name.');
+        toast.error('A user with this email already exists. Please use a different email.');
       } else {
         toast.error(errorMessage);
       }
@@ -285,7 +335,7 @@ export function BarberModule({ appointments }: BarberModuleProps) {
   const handleSaveEdit = async () => {
     if (!editingBarber) return;
 
-    if (!editingBarber.name || !editingBarber.specialty || !editingBarber.schedule) {
+    if (!editingBarber.name || !editingBarber.specialty) {
       toast.error("Please fill in all required fields");
       return;
     }
@@ -304,9 +354,7 @@ export function BarberModule({ appointments }: BarberModuleProps) {
       if (barberRecord) {
         await API.barbers.update(barberRecord.id, {
           specialties: [editingBarber.specialty],
-          available_hours: {
-            schedule: editingBarber.schedule,
-          },
+          available_hours: {},
         });
       }
 
@@ -321,14 +369,13 @@ export function BarberModule({ appointments }: BarberModuleProps) {
         const specialty = Array.isArray(user.specialties) && user.specialties.length > 0
           ? user.specialties[0]
           : 'Barber Specialist';
-        const schedule = user.available_hours?.schedule || 'Mon-Sat, 9AM-6PM';
 
         return {
           id: user.user_id,
           name: user.name,
           email: user.email,
+          phone: user.phone,
           specialty: specialty,
-          schedule: schedule,
           totalBookings: barberAppointments.length,
           rating: user.rating || 5.0,
           status: 'active',
@@ -365,7 +412,7 @@ export function BarberModule({ appointments }: BarberModuleProps) {
         // Also delete user account
         await API.users.delete(passwordConfirmation.barberId);
 
-        toast.success(`Barber ${passwordConfirmation.barberName} removed from database!`);
+        toast.success(`Deleted Successfully!`);
 
         // Refetch barbers
         const users = await API.barbers.getAll();
@@ -374,14 +421,13 @@ export function BarberModule({ appointments }: BarberModuleProps) {
           const specialty = Array.isArray(user.specialties) && user.specialties.length > 0
             ? user.specialties[0]
             : 'Barber Specialist';
-          const schedule = user.available_hours?.schedule || 'Mon-Sat, 9AM-6PM';
 
           return {
             id: user.user_id,
             name: user.name,
             email: user.email,
+            phone: user.phone,
             specialty: specialty,
-            schedule: schedule,
             totalBookings: barberAppointments.length,
             rating: user.rating || 5.0,
             status: 'active',
@@ -447,7 +493,7 @@ export function BarberModule({ appointments }: BarberModuleProps) {
       'Barber ID': barber.id,
       'Name': barber.name,
       'Specialty': barber.specialty,
-      'Schedule': barber.schedule,
+      'Email': barber.email || 'N/A',
       'Total Bookings': barber.totalBookings.toString(),
       'Rating': barber.rating.toFixed(1),
       'Status': barber.status.charAt(0).toUpperCase() + barber.status.slice(1).replace('-', ' '),
@@ -518,90 +564,102 @@ export function BarberModule({ appointments }: BarberModuleProps) {
             <div>
               <CardTitle className="text-[#5C4A3A] text-base md:text-lg">Barber Management</CardTitle>
               <CardDescription className="text-[#87765E] text-xs md:text-sm">
-                Manage barbers, schedules, and availability
+                Manage barbers and availability
               </CardDescription>
             </div>
             <div className="flex gap-2 w-full md:w-auto">
-              <Button
-                onClick={handleExportBarbers}
-                variant="outline"
-                className="border-[#DB9D47] text-[#DB9D47] hover:bg-[#FBF7EF] text-xs md:text-sm px-2 md:px-4"
-              >
-                <Download className="w-4 h-4 md:mr-2" />
-                <span className="hidden md:inline">Export Report</span>
-              </Button>
               <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
                 <DialogTrigger asChild>
                   <Button className="bg-[#DB9D47] hover:bg-[#C88A35] text-white text-xs md:text-sm px-2 md:px-4">
-                    <UserCog className="w-4 h-4 md:mr-2" />
-                    <span className="hidden sm:inline">Add Barber</span>
+                    <UserCog className="w-4 h-4 mr-1.5" />
+                    <span>Add Barber</span>
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="sm:max-w-[500px]">
+                <DialogContent className="sm:max-w-[500px] max-h-[85vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>Add New Barber</DialogTitle>
                     <DialogDescription>
-                      Add a new barber to the team. Email and password will be auto-generated.
+                      Add a new barber to the team. Username and password are auto-generated.
                     </DialogDescription>
                   </DialogHeader>
                   <div className="grid gap-4 py-4">
                     <div className="grid gap-2">
-                      <Label htmlFor="barber-name">Full Name</Label>
+                      <Label htmlFor="barber-name">Full Name *</Label>
                       <Input
                         id="barber-name"
                         placeholder="Carlos Mendoza"
                         value={newBarber.name}
-                        onChange={(e) => setNewBarber(prev => ({ ...prev, name: e.target.value }))}
+                        onChange={(e) => handleFieldChange('name', e.target.value)}
+                        onBlur={() => handleFieldBlur('name')}
+                        className={`border-[#E8DCC8] ${addFormErrors.name ? 'border-red-400 focus-visible:ring-red-400' : ''}`}
                       />
+                      {addFormErrors.name && <p className="text-xs text-red-500">{addFormErrors.name}</p>}
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="grid gap-2">
+                        <Label htmlFor="barber-email">Email *</Label>
+                        <Input
+                          id="barber-email"
+                          type="email"
+                          placeholder="carlos@email.com"
+                          value={newBarber.email}
+                          onChange={(e) => handleFieldChange('email', e.target.value)}
+                          onBlur={() => handleFieldBlur('email')}
+                          className={`border-[#E8DCC8] ${addFormErrors.email ? 'border-red-400 focus-visible:ring-red-400' : ''}`}
+                        />
+                        {addFormErrors.email && <p className="text-xs text-red-500">{addFormErrors.email}</p>}
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="barber-phone">Phone Number *</Label>
+                        <Input
+                          id="barber-phone"
+                          type="tel"
+                          inputMode="numeric"
+                          placeholder="09123456789"
+                          value={newBarber.phone}
+                          onChange={(e) => {
+                            // Only allow digits and leading +
+                            const filtered = e.target.value.replace(/[^0-9+]/g, '');
+                            handleFieldChange('phone', filtered);
+                          }}
+                          onBlur={() => handleFieldBlur('phone')}
+                          className={`border-[#E8DCC8] ${addFormErrors.phone ? 'border-red-400 focus-visible:ring-red-400' : ''}`}
+                        />
+                        {addFormErrors.phone && <p className="text-xs text-red-500">{addFormErrors.phone}</p>}
+                      </div>
                     </div>
                     <div className="grid gap-2">
-                      <Label htmlFor="specialty">Specialty</Label>
+                      <Label htmlFor="specialty">Specialty *</Label>
                       <Input
                         id="specialty"
                         placeholder="Fade Specialist"
                         value={newBarber.specialty}
-                        onChange={(e) => setNewBarber(prev => ({ ...prev, specialty: e.target.value }))}
+                        onChange={(e) => handleFieldChange('specialty', e.target.value)}
+                        onBlur={() => handleFieldBlur('specialty')}
+                        className={`border-[#E8DCC8] ${addFormErrors.specialty ? 'border-red-400 focus-visible:ring-red-400' : ''}`}
                       />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="schedule">Schedule</Label>
-                      <Select
-                        value={newBarber.schedule}
-                        onValueChange={(value) => setNewBarber(prev => ({ ...prev, schedule: value }))}
-                      >
-                        <SelectTrigger className="border-[#E8DCC8]">
-                          <SelectValue placeholder="Select work schedule" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {scheduleOptions.map((schedule) => (
-                            <SelectItem key={schedule} value={schedule}>
-                              {schedule}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      {addFormErrors.specialty && <p className="text-xs text-red-500">{addFormErrors.specialty}</p>}
                     </div>
 
-                    {/* Auto-generated Email Preview */}
-                    {newBarber.name && (
-                      <div className="grid gap-2 p-3 bg-[#FBF7EF] rounded-lg border border-[#E8DCC8]">
-                        <Label className="text-xs text-[#87765E]">Auto-Generated Credentials</Label>
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-[#87765E]">Email:</span>
-                            <span className="text-sm text-[#5C4A3A] font-mono">
-                              {generateEmail(newBarber.name, barbers)}
-                            </span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-[#87765E]">Password:</span>
-                            <span className="text-sm text-[#5C4A3A] font-mono">
-                              SupremoBarber2024
-                            </span>
-                          </div>
+                    {/* Auto-generated Credentials Preview */}
+                    <div className="grid gap-2 p-3 bg-[#FBF7EF] rounded-lg border border-[#E8DCC8]">
+                      <Label className="text-xs text-[#87765E]">Auto-Generated Login Credentials</Label>
+                      <p className="text-[10px] text-[#87765E] italic">Based on name and barber ID #{String(barbers.length + 1).padStart(3, '0')}</p>
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-[#87765E] w-16">Username:</span>
+                          <span className="text-sm text-[#5C4A3A] font-mono bg-white px-2 py-0.5 rounded border border-[#E8DCC8]">
+                            {generateCredentials().username}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-[#87765E] w-16">Password:</span>
+                          <span className="text-sm text-[#5C4A3A] font-mono bg-white px-2 py-0.5 rounded border border-[#E8DCC8]">
+                            {generateCredentials().password}
+                          </span>
                         </div>
                       </div>
-                    )}
+                    </div>
                   </div>
                   <div className="flex justify-end gap-3">
                     <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
@@ -616,6 +674,14 @@ export function BarberModule({ appointments }: BarberModuleProps) {
                   </div>
                 </DialogContent>
               </Dialog>
+              <Button
+                onClick={handleExportBarbers}
+                variant="outline"
+                className="border-[#DB9D47] text-[#DB9D47] hover:bg-[#FBF7EF] text-xs md:text-sm px-2 md:px-4"
+              >
+                <Download className="w-4 h-4 mr-1.5" />
+                <span>Export Report</span>
+              </Button>
             </div>
           </div>
         </CardHeader>
@@ -669,7 +735,6 @@ export function BarberModule({ appointments }: BarberModuleProps) {
                       <TableHead className="text-[#5C4A3A]">Name</TableHead>
                       <TableHead className="text-[#5C4A3A] hidden xl:table-cell">Email</TableHead>
                       <TableHead className="text-[#5C4A3A] hidden sm:table-cell">Specialty</TableHead>
-                      <TableHead className="text-[#5C4A3A] hidden md:table-cell">Schedule</TableHead>
                       <TableHead className="text-[#5C4A3A] text-center hidden lg:table-cell">Bookings</TableHead>
                       <TableHead className="text-[#5C4A3A] text-center">Rating</TableHead>
                       <TableHead className="text-[#5C4A3A] hidden md:table-cell">Status</TableHead>
@@ -689,7 +754,6 @@ export function BarberModule({ appointments }: BarberModuleProps) {
                           <span className="font-mono text-xs">{barber.email || 'N/A'}</span>
                         </TableCell>
                         <TableCell className="text-[#87765E] hidden sm:table-cell">{barber.specialty}</TableCell>
-                        <TableCell className="text-[#87765E] hidden md:table-cell">{barber.schedule}</TableCell>
                         <TableCell className="text-center text-[#5C4A3A] hidden lg:table-cell">
                           {barber.totalBookings}
                         </TableCell>
@@ -706,31 +770,54 @@ export function BarberModule({ appointments }: BarberModuleProps) {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center justify-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-[#8B7355] hover:text-[#6B5345] hover:bg-[#FBF7EF] h-8 w-8 p-0"
-                              onClick={() => handleResetPassword(barber.id, barber.name)}
-                              title="Reset Password"
-                            >
-                              <Key className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-[#DB9D47] hover:text-[#C88A35] hover:bg-[#FBF7EF] h-8 w-8 p-0"
-                              onClick={() => handleEditBarber(barber.id)}
-                            >
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-[#E57373] hover:text-[#D32F2F] hover:bg-[#FBF7EF] h-8 w-8 p-0"
-                              onClick={() => handleDeleteBarber(barber.id, barber.name)}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-[#8B7355] hover:text-[#6B5345] hover:bg-[#FBF7EF] h-8 w-8 sm:w-auto p-0 sm:px-2"
+                                  onClick={() => handleResetPassword(barber.id, barber.name)}
+                                >
+                                  <Key className="w-4 h-4 sm:mr-1" />
+                                  <span className="hidden sm:inline text-xs">Reset</span>
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Reset barber password</p>
+                              </TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-[#DB9D47] hover:text-[#C88A35] hover:bg-[#FBF7EF] h-8 w-8 sm:w-auto p-0 sm:px-2"
+                                  onClick={() => handleEditBarber(barber.id)}
+                                >
+                                  <Edit className="w-4 h-4 sm:mr-1" />
+                                  <span className="hidden sm:inline text-xs">Edit</span>
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Edit barber details</p>
+                              </TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-[#E57373] hover:text-[#D32F2F] hover:bg-[#FBF7EF] h-8 w-8 sm:w-auto p-0 sm:px-2"
+                                  onClick={() => handleDeleteBarber(barber.id, barber.name)}
+                                >
+                                  <Trash2 className="w-4 h-4 sm:mr-1" />
+                                  <span className="hidden sm:inline text-xs">Delete</span>
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>Remove barber permanently</p>
+                              </TooltipContent>
+                            </Tooltip>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -788,84 +875,84 @@ export function BarberModule({ appointments }: BarberModuleProps) {
                               a.date === (selectedDate ? `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}` : '') &&
                               (a.status === 'pending' || a.status === 'confirmed')
                             ).sort((a, b) => {
-                               const matchA = (a.time || '').match(/(\d+):(\d+)\s*(AM|PM)/i);
-                               const matchB = (b.time || '').match(/(\d+):(\d+)\s*(AM|PM)/i);
-                               const timeA = matchA ? (parseInt(matchA[1]) % 12 + (matchA[3].toUpperCase() === 'PM' ? 12 : 0)) * 60 + parseInt(matchA[2]) : 0;
-                               const timeB = matchB ? (parseInt(matchB[1]) % 12 + (matchB[3].toUpperCase() === 'PM' ? 12 : 0)) * 60 + parseInt(matchB[2]) : 0;
-                               return timeA - timeB;
+                              const matchA = (a.time || '').match(/(\d+):(\d+)\s*(AM|PM)/i);
+                              const matchB = (b.time || '').match(/(\d+):(\d+)\s*(AM|PM)/i);
+                              const timeA = matchA ? (parseInt(matchA[1]) % 12 + (matchA[3].toUpperCase() === 'PM' ? 12 : 0)) * 60 + parseInt(matchA[2]) : 0;
+                              const timeB = matchB ? (parseInt(matchB[1]) % 12 + (matchB[3].toUpperCase() === 'PM' ? 12 : 0)) * 60 + parseInt(matchB[2]) : 0;
+                              return timeA - timeB;
                             });
 
                             const isExpanded = expandedBarberId === barber.id;
 
                             return (
-                            <div
-                              key={barber.id}
-                              onClick={() => setExpandedBarberId(isExpanded ? null : barber.id)}
-                              className={`flex flex-col p-4 rounded-lg bg-[#FBF7EF] border cursor-pointer transition-all duration-200 hover:shadow-md ${isExpanded ? 'border-[#DB9D47] shadow-sm' : 'border-[#E8DCC8]'}`}
-                            >
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-4">
-                                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#DB9D47] to-[#D98555] flex items-center justify-center text-white shadow-inner">
-                                    {barber.name
-                                      .split(" ")
-                                      .map((n) => n[0])
-                                      .join("")}
+                              <div
+                                key={barber.id}
+                                onClick={() => setExpandedBarberId(isExpanded ? null : barber.id)}
+                                className={`flex flex-col p-4 rounded-lg bg-[#FBF7EF] border cursor-pointer transition-all duration-200 hover:shadow-md ${isExpanded ? 'border-[#DB9D47] shadow-sm' : 'border-[#E8DCC8]'}`}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#DB9D47] to-[#D98555] flex items-center justify-center text-white shadow-inner">
+                                      {barber.name
+                                        .split(" ")
+                                        .map((n) => n[0])
+                                        .join("")}
+                                    </div>
+                                    <div>
+                                      <p className="text-[#5C4A3A] font-medium group-hover:text-[#DB9D47] transition-colors">{barber.name}</p>
+                                      <p className="text-sm text-[#87765E]">{barber.specialty}</p>
+                                    </div>
                                   </div>
-                                  <div>
-                                    <p className="text-[#5C4A3A] font-medium group-hover:text-[#DB9D47] transition-colors">{barber.name}</p>
-                                    <p className="text-sm text-[#87765E]">{barber.specialty}</p>
+                                  <div className="text-right flex flex-col items-end">
+                                    <Badge variant="outline" className={`mt-1 font-medium ${barberBookings.length > 0 ? 'bg-orange-50 text-[#DB9D47] border-[#DB9D47]/30' : 'bg-gray-50 text-gray-400 border-gray-200'}`}>
+                                      {barberBookings.length} {barberBookings.length === 1 ? 'booking' : 'bookings'}
+                                    </Badge>
                                   </div>
                                 </div>
-                                <div className="text-right flex flex-col items-end">
-                                  <p className="text-[#5C4A3A] text-sm hidden sm:block">{barber.schedule}</p>
-                                  <Badge variant="outline" className={`mt-1 font-medium ${barberBookings.length > 0 ? 'bg-orange-50 text-[#DB9D47] border-[#DB9D47]/30' : 'bg-gray-50 text-gray-400 border-gray-200'}`}>
-                                    {barberBookings.length} {barberBookings.length === 1 ? 'booking' : 'bookings'}
-                                  </Badge>
-                                </div>
-                              </div>
 
-                              {isExpanded && (
-                                <div className="mt-4 pt-4 border-t border-[#E8DCC8]/60 animate-in slide-in-from-top-2 fade-in duration-200">
-                                  {/* Barber Contact/Info Details */}
-                                  <div className="grid grid-cols-2 gap-4 mb-4">
-                                    <div className="bg-white p-3 border border-[#E8DCC8] rounded-md">
+                                {isExpanded && (
+                                  <div className="mt-4 pt-4 border-t border-[#E8DCC8]/60 animate-in slide-in-from-top-2 fade-in duration-200">
+                                    {/* Barber Contact/Info Details */}
+                                    <div className="grid grid-cols-2 gap-4 mb-4">
+                                      <div className="bg-white p-3 border border-[#E8DCC8] rounded-md">
                                         <p className="text-xs text-[#87765E] uppercase tracking-wide mb-1">Email Contact</p>
                                         <p className="text-sm text-[#5C4A3A] font-medium truncate">{barber.email || 'No email provided'}</p>
-                                    </div>
-                                    <div className="bg-white p-3 border border-[#E8DCC8] rounded-md">
+                                      </div>
+                                      <div className="bg-white p-3 border border-[#E8DCC8] rounded-md">
                                         <p className="text-xs text-[#87765E] uppercase tracking-wide mb-1">Current Rating</p>
                                         <div className="flex items-center gap-1">
                                           <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
                                           <span className="text-sm text-[#5C4A3A] font-medium">{barber.rating.toFixed(1)}</span>
                                         </div>
-                                    </div>
-                                  </div>
-
-                                  {/* Bookings Timeline */}
-                                  {barberBookings.length > 0 ? (
-                                    <>
-                                      <p className="text-xs font-semibold text-[#87765E] uppercase tracking-wider mb-3">Today's Booked Slots</p>
-                                      <div className="flex flex-wrap gap-2">
-                                        {barberBookings.map((booking, idx) => (
-                                          <div key={idx} className="flex items-center bg-white border border-[#E8DCC8] rounded-md px-3 py-1.5 space-x-2 shadow-sm transition-transform hover:scale-105">
-                                            <div className="w-2 h-2 rounded-full bg-[#DB9D47] animate-pulse"></div>
-                                            <span className="text-sm text-[#5C4A3A] font-medium">{booking.time}</span>
-                                            <span className="text-xs text-[#87765E] bg-gray-50 px-1.5 py-0.5 rounded">({booking.duration}m)</span>
-                                          </div>
-                                        ))}
                                       </div>
-                                    </>
-                                  ) : (
-                                    <div className="flex flex-col items-center justify-center py-6 bg-white border border-[#E8DCC8] border-dashed rounded-md">
-                                      <CalendarIcon className="w-8 h-8 text-gray-300 mb-2" />
-                                      <p className="text-sm font-medium text-[#87765E]">No bookings for this date.</p>
-                                      <p className="text-xs text-gray-400">This barber is completely free today.</p>
                                     </div>
-                                  )}
-                                </div>
-                              )}
-                            </div>
-                          )})}
+
+                                    {/* Bookings Timeline */}
+                                    {barberBookings.length > 0 ? (
+                                      <>
+                                        <p className="text-xs font-semibold text-[#87765E] uppercase tracking-wider mb-3">Today's Booked Slots</p>
+                                        <div className="flex flex-wrap gap-2">
+                                          {barberBookings.map((booking, idx) => (
+                                            <div key={idx} className="flex items-center bg-white border border-[#E8DCC8] rounded-md px-3 py-1.5 space-x-2 shadow-sm transition-transform hover:scale-105">
+                                              <div className="w-2 h-2 rounded-full bg-[#DB9D47] animate-pulse"></div>
+                                              <span className="text-sm text-[#5C4A3A] font-medium">{booking.time}</span>
+                                              <span className="text-xs text-[#87765E] bg-gray-50 px-1.5 py-0.5 rounded">({booking.duration}m)</span>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </>
+                                    ) : (
+                                      <div className="flex flex-col items-center justify-center py-6 bg-white border border-[#E8DCC8] border-dashed rounded-md">
+                                        <CalendarIcon className="w-8 h-8 text-gray-300 mb-2" />
+                                        <p className="text-sm font-medium text-[#87765E]">No bookings for this date.</p>
+                                        <p className="text-xs text-gray-400">This barber is completely free today.</p>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          })}
                       </div>
                     </CardContent>
                   </Card>
@@ -905,24 +992,6 @@ export function BarberModule({ appointments }: BarberModuleProps) {
                     value={editingBarber.specialty}
                     onChange={(e) => setEditingBarber({ ...editingBarber, specialty: e.target.value })}
                   />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="edit-schedule">Schedule</Label>
-                  <Select
-                    value={editingBarber.schedule}
-                    onValueChange={(value) => setEditingBarber({ ...editingBarber, schedule: value })}
-                  >
-                    <SelectTrigger className="border-[#E8DCC8]">
-                      <SelectValue placeholder="Select work schedule" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {scheduleOptions.map((schedule) => (
-                        <SelectItem key={schedule} value={schedule}>
-                          {schedule}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
                 </div>
               </div>
               <div className="flex justify-end gap-3">

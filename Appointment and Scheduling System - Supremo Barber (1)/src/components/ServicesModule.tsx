@@ -50,6 +50,7 @@ import {
   TrendingUp,
   Download,
 } from "lucide-react";
+import { Tooltip, TooltipTrigger, TooltipContent } from "./ui/tooltip";
 import { FaPesoSign } from "react-icons/fa6";
 import { toast } from "sonner";
 import { Alert, AlertDescription } from "./ui/alert";
@@ -779,30 +780,46 @@ export function ServicesModule({ user, onBookService }: ServicesModuleProps) {
                       </TableCell>
 
                       <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() =>
-                              handleOpenDialog(service)
-                            }
-                            className="text-[#DB9D47] hover:text-[#C88A35] hover:bg-orange-50"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() =>
-                              setDeleteConfirmation({
-                                isOpen: true,
-                                service,
-                              })
-                            }
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
+                        <div className="flex items-center justify-end gap-1">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() =>
+                                  handleOpenDialog(service)
+                                }
+                                className="text-[#DB9D47] hover:text-[#C88A35] hover:bg-orange-50 h-8 w-8 lg:w-auto p-0 lg:px-2"
+                              >
+                                <Edit className="w-4 h-4 lg:mr-1" />
+                                <span className="hidden lg:inline text-xs">Edit</span>
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Edit service details</p>
+                            </TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() =>
+                                  setDeleteConfirmation({
+                                    isOpen: true,
+                                    service,
+                                  })
+                                }
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50 h-8 w-8 lg:w-auto p-0 lg:px-2"
+                              >
+                                <Trash2 className="w-4 h-4 lg:mr-1" />
+                                <span className="hidden lg:inline text-xs">Delete</span>
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>Delete this service permanently</p>
+                            </TooltipContent>
+                          </Tooltip>
                         </div>
                       </TableCell>
                     </TableRow>

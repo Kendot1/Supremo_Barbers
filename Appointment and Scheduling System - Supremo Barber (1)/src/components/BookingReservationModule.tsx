@@ -9,7 +9,11 @@ import { Label } from "./ui/label";
 import { Textarea } from "./ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Alert, AlertDescription } from "./ui/alert";
-import { Calendar, Search, Edit, X, CheckCircle2, Clock, AlertCircle, Info, Download, Eye, User, Scissors, CreditCard, MessageSquare, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { Calendar, Search, Edit, X, CheckCircle2, Clock, AlertCircle, Info, Download, Eye, User, Scissors, CreditCard, MessageSquare, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Plus, Loader2, UserCog, Check, ChevronsUpDown } from "lucide-react";
+
+import { Tooltip, TooltipTrigger, TooltipContent } from "./ui/tooltip";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { Command, CommandInput, CommandList, CommandEmpty, CommandGroup, CommandItem } from "./ui/command";
 import { toast } from "sonner";
 import type { Appointment, User as UserType } from "../App";
 import { exportToCSV, formatDateForExport, formatCurrencyForExport } from "./utils/exportUtils";
@@ -94,6 +98,23 @@ export function BookingReservationModule({ appointments, onUpdateAppointments, o
     setCurrentPage(1);
   }, [searchQuery, filterStatus, filterBarber]);
 
+  // Add Booking state
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [availableCustomers, setAvailableCustomers] = useState<any[]>([]);
+  const [addFormData, setAddFormData] = useState({
+    customer_id: "",
+    service_id: "",
+    barber_id: "",
+    date: "",
+    time: "",
+  });
+  const [isAddingBooking, setIsAddingBooking] = useState(false);
+
+  // Popover open states for searchable combobox dropdowns
+  const [customerPopoverOpen, setCustomerPopoverOpen] = useState(false);
+  const [servicePopoverOpen, setServicePopoverOpen] = useState(false);
+  const [barberPopoverOpen, setBarberPopoverOpen] = useState(false);
+
   // Data from API for dropdowns
   const [availableServices, setAvailableServices] = useState<any[]>([]);
   const [availableBarbers, setAvailableBarbers] = useState<any[]>([]);
@@ -112,19 +133,20 @@ export function BookingReservationModule({ appointments, onUpdateAppointments, o
     cancelReason?: string;
   } | null>(null);
 
-  // Fetch services and barbers from database on mount
+  // Fetch services, barbers, and customers from database on mount
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [services, barbers] = await Promise.all([
+        const [services, barbers, customers] = await Promise.all([
           API.services.getAll(),
           API.barbers.getAll(),
+          API.users.getAll({ role: 'customer' }),
         ]);
         setAvailableServices(services || []);
         setAvailableBarbers(barbers || []);
-
+        setAvailableCustomers((customers || []).filter((u: any) => u.role === 'customer'));
       } catch (error) {
-        console.error('❌ Failed to load services/barbers:', error);
+        console.error('❌ Failed to load data:', error);
       }
     };
     fetchData();
@@ -278,17 +300,17 @@ export function BookingReservationModule({ appointments, onUpdateAppointments, o
         // Down payment is fixed at 50% of the ORIGINAL price
         const downPaymentPaid = selectedBooking.price * 0.5;
         const newRemainingBalance = formData.price - downPaymentPaid;
-        
+
         let noteMsg = "";
         if (newRemainingBalance < 0) {
-           noteMsg = `Previous amount was ₱${selectedBooking.price}, new service is ₱${formData.price}. With your fixed down payment of ₱${downPaymentPaid}, there's an excess/refund of ₱${Math.abs(newRemainingBalance)}.`;
+          noteMsg = `Previous amount was ₱${selectedBooking.price}, new service is ₱${formData.price}. With your fixed down payment of ₱${downPaymentPaid}, there's an excess/refund of ₱${Math.abs(newRemainingBalance)}.`;
         } else {
-           noteMsg = `Previous amount was ₱${selectedBooking.price}, new service is ₱${formData.price}. With your fixed down payment of ₱${downPaymentPaid}, your new remaining balance is: ₱${newRemainingBalance}.`;
+          noteMsg = `Previous amount was ₱${selectedBooking.price}, new service is ₱${formData.price}. With your fixed down payment of ₱${downPaymentPaid}, your new remaining balance is: ₱${newRemainingBalance}.`;
         }
-        
+
         priceChangeMessage = `Price adjustment: ${noteMsg}`;
-        
-        dbUpdate.notes = (selectedBooking as any).notes 
+
+        dbUpdate.notes = (selectedBooking as any).notes
           ? `${(selectedBooking as any).notes} | ${priceChangeMessage}`
           : priceChangeMessage;
       }
@@ -318,47 +340,47 @@ export function BookingReservationModule({ appointments, onUpdateAppointments, o
         try {
           const customerId = selectedBooking.userId || (selectedBooking as any).customer_id || (selectedBooking as any).customerId;
           if (customerId) {
-             await logAppointmentStatusUpdate(
-               adminUser?.id || 'admin',
-               'admin',
-               adminUser?.name || 'Administrator',
-               adminUser?.email || 'admin@admin.com',
-               selectedBooking.id,
-               selectedBooking.status,
-               formData.status,
-               {
-                 customerId: customerId,
-                 customerName: selectedBooking.customerName || 'Customer',
-                 barberId: selectedBooking.barber_id || formData.barber_id || 'unknown',
-                 service: formData.service,
-                 date: formData.date,
-                 time: formData.time
-               }
-             );
+            await logAppointmentStatusUpdate(
+              adminUser?.id || 'admin',
+              'admin',
+              adminUser?.name || 'Administrator',
+              adminUser?.email || 'admin@admin.com',
+              selectedBooking.id,
+              selectedBooking.status,
+              formData.status,
+              {
+                customerId: customerId,
+                customerName: selectedBooking.customerName || 'Customer',
+                barberId: selectedBooking.barber_id || formData.barber_id || 'unknown',
+                service: formData.service,
+                date: formData.date,
+                time: formData.time
+              }
+            );
           }
         } catch (e) { console.error("Error logging status update:", e); }
       } else if (
-        formData.date !== selectedBooking.date || 
-        formData.time !== selectedBooking.time || 
-        formData.barber !== selectedBooking.barber || 
+        formData.date !== selectedBooking.date ||
+        formData.time !== selectedBooking.time ||
+        formData.barber !== selectedBooking.barber ||
         formData.service !== selectedBooking.service
       ) {
-         try {
-            const customerId = selectedBooking.userId || (selectedBooking as any).customer_id || (selectedBooking as any).customerId;
-            if (customerId) {
-              await createNotification({
-                userId: customerId,
-                userRole: 'customer',
-                type: 'appointment_updated',
-                title: 'Appointment Updated',
-                message: `Your appointment details have been updated by the admin to ${formData.service} with ${formData.barber} on ${new Date(formData.date).toLocaleDateString()} at ${formData.time}.`,
-                relatedId: selectedBooking.id,
-                relatedType: 'appointment',
-                actionUrl: `/appointments`,
-                actionLabel: 'View Appointment'
-              });
-            }
-         } catch (e) { console.error("Error sending update notif:", e); }
+        try {
+          const customerId = selectedBooking.userId || (selectedBooking as any).customer_id || (selectedBooking as any).customerId;
+          if (customerId) {
+            await createNotification({
+              userId: customerId,
+              userRole: 'customer',
+              type: 'appointment_updated',
+              title: 'Appointment Updated',
+              message: `Your appointment details have been updated by the admin to ${formData.service} with ${formData.barber} on ${new Date(formData.date).toLocaleDateString()} at ${formData.time}.`,
+              relatedId: selectedBooking.id,
+              relatedType: 'appointment',
+              actionUrl: `/appointments`,
+              actionLabel: 'View Appointment'
+            });
+          }
+        } catch (e) { console.error("Error sending update notif:", e); }
       }
 
       // Then update local state for immediate UI reflection
@@ -516,6 +538,158 @@ export function BookingReservationModule({ appointments, onUpdateAppointments, o
     }
   };
 
+  // ========== ADD BOOKING (Admin Auto-Verify) ==========
+
+  // Helper to convert time string to minutes since midnight (handles AM/PM format)
+  const timeToMinutes = (timeStr: string): number => {
+    const [time, period] = timeStr.split(" ");
+    const [hours, minutes] = time.split(":").map(Number);
+    let totalHours = hours;
+    if (period === "PM" && hours !== 12) totalHours += 12;
+    else if (period === "AM" && hours === 12) totalHours = 0;
+    return totalHours * 60 + minutes;
+  };
+
+  // Check if a time slot is taken for a given barber & date
+  const isAddTimeSlotTaken = (time: string): boolean => {
+    if (!addFormData.barber_id || !addFormData.date || !addFormData.service_id) return false;
+
+    const selectedBarber = availableBarbers.find((b: any) => b.id === addFormData.barber_id);
+    const selectedService = availableServices.find((s: any) => s.id === addFormData.service_id);
+    if (!selectedBarber || !selectedService) return false;
+
+    const dateString = addFormData.date;
+    const newBookingStart = timeToMinutes(time);
+    const newBookingEnd = newBookingStart + (selectedService.duration || 30);
+
+    return appointments.some((apt) => {
+      const isActiveAppointment = apt.status === 'pending' || apt.status === 'confirmed' || apt.status === 'upcoming' || apt.status === 'verified';
+      const aptBarber = apt.barber || apt.barber_name || '';
+      const aptDate = apt.date || apt.appointment_date || '';
+      if (aptBarber !== selectedBarber.name || aptDate !== dateString || !isActiveAppointment) return false;
+
+      const existingStart = timeToMinutes(apt.time || apt.appointment_time || '');
+      const existingService = availableServices.find((s: any) => s.name === (apt.service || apt.service_name));
+      const existingEnd = existingStart + (existingService?.duration || 30);
+
+      return newBookingStart < existingEnd && newBookingEnd > existingStart;
+    });
+  };
+
+  const handleAddBooking = async () => {
+    if (!addFormData.customer_id || !addFormData.service_id || !addFormData.barber_id || !addFormData.date || !addFormData.time) {
+      toast.error("Please complete all fields");
+      return;
+    }
+
+    // Sunday check
+    const dateObj = new Date(addFormData.date + 'T00:00:00');
+    if (dateObj.getDay() === 0) {
+      toast.error("Sorry, we're closed on Sundays!");
+      return;
+    }
+
+    setIsAddingBooking(true);
+    try {
+      const selectedService = availableServices.find((s: any) => s.id === addFormData.service_id);
+      const selectedBarber = availableBarbers.find((b: any) => b.id === addFormData.barber_id);
+      const selectedCustomer = availableCustomers.find((c: any) => c.id === addFormData.customer_id);
+
+      if (!selectedService || !selectedBarber || !selectedCustomer) {
+        toast.error("Invalid selection. Please try again.");
+        setIsAddingBooking(false);
+        return;
+      }
+
+      const formattedDate = addFormData.date;
+      const downPayment = selectedService.price * 0.5;
+      const remainingAmount = selectedService.price * 0.5;
+
+      // Create appointment with auto-verified status (admin creation)
+      const newAppointment: any = {
+        customer_id: selectedCustomer.id,
+        barber_id: selectedBarber.id,
+        service_id: selectedService.id,
+        appointment_date: formattedDate,
+        appointment_time: addFormData.time,
+        total_amount: selectedService.price,
+        down_payment: downPayment,
+        remaining_amount: remainingAmount,
+        status: "verified",
+        payment_status: "paid",
+        notes: "Booked by Admin",
+        // Legacy fields for backward compatibility
+        userId: selectedCustomer.id,
+        service: selectedService.name,
+        barber: selectedBarber.name,
+        date: formattedDate,
+        time: addFormData.time,
+        price: selectedService.price,
+        canCancel: true,
+        customerName: selectedCustomer.name,
+        paymentProof: "https://pub-86f4b5249e5c4021bb05d46908eeb094.r2.dev/supremo-barber/supremoWebLogo.png",
+        paymentStatus: "verified",
+        downPaymentPaid: true,
+        remainingBalance: remainingAmount,
+        rescheduledCount: 0,
+        barberId: selectedBarber.id,
+        serviceId: selectedService.id,
+      };
+
+      // Create appointment via API
+      const createdAppointment = await API.appointments.create(newAppointment);
+
+      // Create auto-verified payment record
+      const paymentData = {
+        appointment_id: createdAppointment?.id,
+        customer_id: selectedCustomer.id,
+        amount: downPayment,
+        payment_type: "down_payment",
+        payment_method: "cash",
+        payment_proof_url: "https://pub-86f4b5249e5c4021bb05d46908eeb094.r2.dev/supremo-barber/supremoWebLogo.png",
+        status: "verified",
+        notes: "Payment verified by Admin",
+      };
+
+      try {
+        await API.payments.create(paymentData);
+      } catch (payErr) {
+        console.error('⚠️ Payment record creation failed (booking was still created):', payErr);
+      }
+
+      // Send notification to customer
+      try {
+        await createNotification({
+          userId: selectedCustomer.id,
+          userRole: 'customer',
+          type: 'appointment_created',
+          title: 'Booking Confirmed',
+          message: `Your appointment for ${selectedService.name} with ${selectedBarber.name} on ${new Date(formattedDate + 'T00:00:00').toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} at ${addFormData.time} has been booked and verified by the admin.`,
+          relatedId: createdAppointment?.id,
+          relatedType: 'appointment',
+          actionUrl: '/appointments',
+          actionLabel: 'View Booking',
+        });
+      } catch (notifErr) {
+        console.error('⚠️ Notification failed:', notifErr);
+      }
+
+      toast.success("Booking created and auto-verified!");
+      setIsAddDialogOpen(false);
+      setAddFormData({ customer_id: "", service_id: "", barber_id: "", date: "", time: "" });
+
+      // Refresh appointments to reflect the new booking
+      if (onRefreshAppointments) {
+        await onRefreshAppointments();
+      }
+    } catch (error) {
+      console.error('❌ Failed to create booking:', error);
+      toast.error(`Failed to create booking: ${(error as any).message || 'Please try again'}`);
+    } finally {
+      setIsAddingBooking(false);
+    }
+  };
+
   const handleExportBookings = () => {
     if (filteredBookings.length === 0) {
       toast.error("No bookings to export");
@@ -604,13 +778,26 @@ export function BookingReservationModule({ appointments, onUpdateAppointments, o
                 Manage reservations, update schedules, and handle cancellations
               </CardDescription>
             </div>
-            <Button
-              onClick={handleExportBookings}
-              className="bg-[#DB9D47] hover:bg-[#C48D3D] text-white text-xs md:text-sm px-3 md:px-4"
-            >
-              <Download className="w-4 h-4 md:mr-2" />
-              <span className="hidden md:inline">Export Report</span>
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={() => {
+                  setAddFormData({ customer_id: "", service_id: "", barber_id: "", date: "", time: "" });
+                  setIsAddDialogOpen(true);
+                }}
+                className="bg-[#DB9D47] hover:bg-[#C48D3D] text-white text-xs md:text-sm px-3 md:px-4"
+              >
+                <Plus className="w-4 h-4 mr-1.5" />
+                <span>Add Booking</span>
+              </Button>
+              <Button
+                onClick={handleExportBookings}
+                variant="outline"
+                className="border-[#DB9D47] text-[#DB9D47] hover:bg-[#DB9D47] hover:text-white text-xs md:text-sm px-3 md:px-4"
+              >
+                <Download className="w-4 h-4 mr-1.5" />
+                <span>Export Report</span>
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -618,7 +805,7 @@ export function BookingReservationModule({ appointments, onUpdateAppointments, o
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-[#87765E]" />
               <Input
-                placeholder="Search bookings..."
+                placeholder="Select bookings..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10 border-[#E8DCC8] text-sm"
@@ -690,38 +877,59 @@ export function BookingReservationModule({ appointments, onUpdateAppointments, o
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center justify-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-[#5C4A3A] hover:text-[#DB9D47] hover:bg-[#FBF7EF] h-8 w-8 p-0"
-                            onClick={() => {
-                              setViewBooking(booking);
-                              setIsViewDialogOpen(true);
-                            }}
-                            title="View booking details"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-[#DB9D47] hover:text-[#C88A35] hover:bg-[#FBF7EF] disabled:opacity-30 disabled:cursor-not-allowed h-8 w-8 p-0"
-                            onClick={() => handleEditBooking(booking)}
-                            disabled={booking.status === "cancelled" || booking.status === "rejected" || booking.status === "completed"}
-                            title={booking.status === "cancelled" || booking.status === "rejected" ? "Cancelled/rejected bookings cannot be edited" : "Edit booking"}
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-[#E57373] hover:text-[#D32F2F] hover:bg-[#FBF7EF] disabled:opacity-30 disabled:cursor-not-allowed h-8 w-8 p-0"
-                            onClick={() => handleCancelBooking(booking.id)}
-                            disabled={booking.status === "cancelled" || booking.status === "rejected" || booking.status === "completed"}
-                            title={booking.status === "cancelled" || booking.status === "rejected" || booking.status === "completed" ? "This booking cannot be cancelled" : "Cancel booking"}
-                          >
-                            <X className="w-4 h-4" />
-                          </Button>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-[#5C4A3A] hover:text-[#DB9D47] hover:bg-[#FBF7EF] h-8 w-8 sm:w-auto p-0 sm:px-2"
+                                onClick={() => {
+                                  setViewBooking(booking);
+                                  setIsViewDialogOpen(true);
+                                }}
+                              >
+                                <Eye className="w-4 h-4 sm:mr-1" />
+                                <span className="hidden sm:inline text-xs">View</span>
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>View booking details</p>
+                            </TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-[#DB9D47] hover:text-[#C88A35] hover:bg-[#FBF7EF] disabled:opacity-30 disabled:cursor-not-allowed h-8 w-8 sm:w-auto p-0 sm:px-2"
+                                onClick={() => handleEditBooking(booking)}
+                                disabled={booking.status === "cancelled" || booking.status === "rejected" || booking.status === "completed"}
+                              >
+                                <Edit className="w-4 h-4 sm:mr-1" />
+                                <span className="hidden sm:inline text-xs">Edit</span>
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>{booking.status === "cancelled" || booking.status === "rejected" ? "Cancelled/rejected bookings cannot be edited" : "Edit booking details"}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-[#E57373] hover:text-[#D32F2F] hover:bg-[#FBF7EF] disabled:opacity-30 disabled:cursor-not-allowed h-8 w-8 sm:w-auto p-0 sm:px-2"
+                                onClick={() => handleCancelBooking(booking.id)}
+                                disabled={booking.status === "cancelled" || booking.status === "rejected" || booking.status === "completed"}
+                              >
+                                <X className="w-4 h-4 sm:mr-1" />
+                                <span className="hidden sm:inline text-xs">Cancel</span>
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p>{booking.status === "cancelled" || booking.status === "rejected" || booking.status === "completed" ? "This booking cannot be cancelled" : "Cancel this booking"}</p>
+                            </TooltipContent>
+                          </Tooltip>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -777,18 +985,17 @@ export function BookingReservationModule({ appointments, onUpdateAppointments, o
                   >
                     <ChevronLeft className="w-4 h-4" />
                   </Button>
-                  
+
                   {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                     <Button
                       key={page}
                       variant="outline"
                       size="sm"
                       onClick={() => setCurrentPage(page)}
-                      className={`w-8 h-8 rounded-md p-0 hidden sm:inline-flex ${
-                        currentPage === page
-                          ? "bg-[#DB9D47] text-white hover:bg-[#DB9D47] border-none"
-                          : "border-[#E8DCC8] text-[#87765E] hover:bg-[#FBF7EF] hover:text-[#5C4A3A]"
-                      }`}
+                      className={`w-8 h-8 rounded-md p-0 hidden sm:inline-flex ${currentPage === page
+                        ? "bg-[#DB9D47] text-white hover:bg-[#DB9D47] border-none"
+                        : "border-[#E8DCC8] text-[#87765E] hover:bg-[#FBF7EF] hover:text-[#5C4A3A]"
+                        }`}
                     >
                       {page}
                     </Button>
@@ -1009,7 +1216,7 @@ export function BookingReservationModule({ appointments, onUpdateAppointments, o
                         {editFormData.price - (selectedBooking.price * 0.5) < 0 ? 'Excess / Refund Amount' : 'New Remaining Balance'}
                       </span>
                       <span className="text-lg font-bold text-[#D98555]">
-                         ₱{Math.abs(editFormData.price - (selectedBooking.price * 0.5)).toLocaleString()}
+                        ₱{Math.abs(editFormData.price - (selectedBooking.price * 0.5)).toLocaleString()}
                       </span>
                     </div>
                   </>
@@ -1226,24 +1433,24 @@ export function BookingReservationModule({ appointments, onUpdateAppointments, o
                     <p className="text-[#5C4A3A] font-medium">₱{(() => {
                       let rem = null;
                       if (viewBooking.notes) {
-                         const remMatches = [...viewBooking.notes.matchAll(/remaining balance is: ₱([\d,]+)/g)];
-                         if (remMatches.length > 0) rem = parseInt(remMatches[remMatches.length - 1][1].replace(/,/g, ''), 10);
-                         else {
-                            const excessMatches = [...viewBooking.notes.matchAll(/excess\/refund Amount of ₱([\d,]+)/gi)].concat([...viewBooking.notes.matchAll(/excess\/refund of ₱([\d,]+)/gi)]);
-                            if (excessMatches.length > 0) rem = `-${parseInt(excessMatches[excessMatches.length - 1][1].replace(/,/g, ''), 10)}`;
-                         }
+                        const remMatches = [...viewBooking.notes.matchAll(/remaining balance is: ₱([\d,]+)/g)];
+                        if (remMatches.length > 0) rem = parseInt(remMatches[remMatches.length - 1][1].replace(/,/g, ''), 10);
+                        else {
+                          const excessMatches = [...viewBooking.notes.matchAll(/excess\/refund Amount of ₱([\d,]+)/gi)].concat([...viewBooking.notes.matchAll(/excess\/refund of ₱([\d,]+)/gi)]);
+                          if (excessMatches.length > 0) rem = `-${parseInt(excessMatches[excessMatches.length - 1][1].replace(/,/g, ''), 10)}`;
+                        }
                       }
                       return viewBooking.remainingBalance || viewBooking.remaining_amount || rem !== null ? rem : (() => {
-                         let dp = null;
-                         if (viewBooking.notes) {
-                           const dpMatches = [...viewBooking.notes.matchAll(/fixed down payment of ₱(\d+)/g)];
-                           if (dpMatches.length > 0) dp = parseInt(dpMatches[dpMatches.length - 1][1], 10);
-                           else {
-                             const prevMatches = [...viewBooking.notes.matchAll(/Previous amount was ₱([\d,]+)/g)];
-                             if (prevMatches.length > 0) dp = parseInt(prevMatches[0][1].replace(/,/g, ''), 10) * 0.5;
-                           }
-                         }
-                         return viewBooking.price - (dp || Math.round(viewBooking.price * 0.5));
+                        let dp = null;
+                        if (viewBooking.notes) {
+                          const dpMatches = [...viewBooking.notes.matchAll(/fixed down payment of ₱(\d+)/g)];
+                          if (dpMatches.length > 0) dp = parseInt(dpMatches[dpMatches.length - 1][1], 10);
+                          else {
+                            const prevMatches = [...viewBooking.notes.matchAll(/Previous amount was ₱([\d,]+)/g)];
+                            if (prevMatches.length > 0) dp = parseInt(prevMatches[0][1].replace(/,/g, ''), 10) * 0.5;
+                          }
+                        }
+                        return viewBooking.price - (dp || Math.round(viewBooking.price * 0.5));
                       })();
                     })()}</p>
                   </div>
@@ -1313,6 +1520,335 @@ export function BookingReservationModule({ appointments, onUpdateAppointments, o
           <div className="flex justify-end">
             <Button variant="outline" onClick={() => setIsViewDialogOpen(false)} className="border-[#E8DCC8]">
               Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Booking Dialog */}
+      <Dialog open={isAddDialogOpen} onOpenChange={(open) => {
+        setIsAddDialogOpen(open);
+        if (!open) setAddFormData({ customer_id: "", service_id: "", barber_id: "", date: "", time: "" });
+      }}>
+        <DialogContent className="sm:max-w-[550px] max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-[#5C4A3A] flex items-center gap-2">
+              <Plus className="w-5 h-5 text-[#DB9D47]" />
+              Add Booking
+            </DialogTitle>
+            <DialogDescription className="text-[#87765E]">
+              Create a new booking. Payment will be automatically verified.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            {/* Customer Selection — Searchable Combobox */}
+            <div className="grid gap-2">
+              <Label className="text-[#5C4A3A] font-medium flex items-center gap-1.5">
+                <User className="w-3.5 h-3.5 text-[#DB9D47]" />
+                Customer
+              </Label>
+              <Popover open={customerPopoverOpen} onOpenChange={setCustomerPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={customerPopoverOpen}
+                    className="w-full justify-between border-[#E8DCC8] font-normal text-sm h-10"
+                  >
+                    {addFormData.customer_id
+                      ? (() => {
+                        const c = availableCustomers.find((c: any) => c.id === addFormData.customer_id);
+                        return c ? <span className="flex items-center gap-2 truncate"><User className="w-3.5 h-3.5 text-[#DB9D47] flex-shrink-0" />{c.name} <span className="text-xs text-[#87765E]">({c.email})</span></span> : "Select customer";
+                      })()
+                      : <span className="text-muted-foreground">Select customer...</span>}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search by name or email..." />
+                    <CommandList>
+                      <CommandEmpty>No customer found.</CommandEmpty>
+                      <CommandGroup>
+                        {availableCustomers.map((customer: any) => (
+                          <CommandItem
+                            key={customer.id}
+                            value={`${customer.name} ${customer.email}`}
+                            onSelect={() => {
+                              setAddFormData(prev => ({ ...prev, customer_id: customer.id }));
+                              setCustomerPopoverOpen(false);
+                            }}
+                            className="cursor-pointer"
+                          >
+                            <Check className={`mr-2 h-4 w-4 ${addFormData.customer_id === customer.id ? 'opacity-100 text-[#DB9D47]' : 'opacity-0'}`} />
+                            <User className="w-3.5 h-3.5 text-[#87765E] mr-1.5" />
+                            <span>{customer.name}</span>
+                            <span className="text-xs text-[#87765E] ml-auto">{customer.email}</span>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {/* Service Selection — Searchable Combobox */}
+            <div className="grid gap-2">
+              <Label className="text-[#5C4A3A] font-medium flex items-center gap-1.5">
+                <Scissors className="w-3.5 h-3.5 text-[#DB9D47]" />
+                Service
+              </Label>
+              {(() => {
+                const activeStatuses = ['pending', 'verified', 'upcoming'];
+                const customerId = addFormData.customer_id;
+                const customerActiveBookings = customerId ? appointments.filter(apt => {
+                  const aptCustomerId = apt.userId || apt.customer_id || apt.customerId;
+                  return aptCustomerId === customerId && activeStatuses.includes(apt.status);
+                }) : [];
+                const bookedServiceIds = new Set(customerActiveBookings.map(apt => apt.service_id || apt.serviceId || '').filter(Boolean));
+                const bookedServiceNames = new Set(customerActiveBookings.map(apt => (apt.service || apt.service_name || '').toLowerCase()).filter(Boolean));
+
+                return (
+                  <Popover open={servicePopoverOpen} onOpenChange={setServicePopoverOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={servicePopoverOpen}
+                        className="w-full justify-between border-[#E8DCC8] font-normal text-sm h-10"
+                      >
+                        {addFormData.service_id
+                          ? (() => {
+                            const s = availableServices.find((s: any) => s.id === addFormData.service_id);
+                            return s ? <span className="flex items-center gap-2 truncate"><Scissors className="w-3.5 h-3.5 text-[#DB9D47] flex-shrink-0" />{s.name} <span className="text-xs text-[#DB9D47] font-medium">₱{s.price}</span></span> : "Select service";
+                          })()
+                          : <span className="text-muted-foreground">Select service...</span>}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Select service..." />
+                        <CommandList>
+                          <CommandEmpty>No service found.</CommandEmpty>
+                          <CommandGroup>
+                            {availableServices.map((service: any) => {
+                              const isBooked = bookedServiceIds.has(service.id) || bookedServiceNames.has((service.name || '').toLowerCase());
+                              return (
+                                <CommandItem
+                                  key={service.id}
+                                  value={`${service.name} ${service.description || ''}`}
+                                  onSelect={() => {
+                                    if (!isBooked) {
+                                      setAddFormData(prev => ({ ...prev, service_id: service.id, time: "" }));
+                                      setServicePopoverOpen(false);
+                                    }
+                                  }}
+                                  disabled={isBooked}
+                                  className={`cursor-pointer ${isBooked ? 'opacity-40' : ''}`}
+                                >
+                                  <Check className={`mr-2 h-4 w-4 ${addFormData.service_id === service.id ? 'opacity-100 text-[#DB9D47]' : 'opacity-0'}`} />
+                                  <Scissors className="w-3.5 h-3.5 text-[#87765E] mr-1.5" />
+                                  <div className="flex-1 min-w-0">
+                                    <span>{service.name}{isBooked ? ' (Active Booking)' : ''}</span>
+                                  </div>
+                                  <span className="text-xs text-[#DB9D47] font-medium ml-auto whitespace-nowrap">₱{service.price} • {service.duration}min</span>
+                                </CommandItem>
+                              );
+                            })}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                );
+              })()}
+            </div>
+
+            {/* Barber Selection — Searchable Combobox */}
+            <div className="grid gap-2">
+              <Label className="text-[#5C4A3A] font-medium flex items-center gap-1.5">
+                <UserCog className="w-3.5 h-3.5 text-[#DB9D47]" />
+                Barber
+              </Label>
+              <Popover open={barberPopoverOpen} onOpenChange={setBarberPopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={barberPopoverOpen}
+                    className="w-full justify-between border-[#E8DCC8] font-normal text-sm h-10"
+                  >
+                    {addFormData.barber_id
+                      ? (() => {
+                        const b = availableBarbers.find((b: any) => b.id === addFormData.barber_id);
+                        return b ? <span className="flex items-center gap-2 truncate"><UserCog className="w-3.5 h-3.5 text-[#DB9D47] flex-shrink-0" />{b.name}</span> : "Select barber";
+                      })()
+                      : <span className="text-muted-foreground">Select barber...</span>}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Select barber..." />
+                    <CommandList>
+                      <CommandEmpty>No barber found.</CommandEmpty>
+                      <CommandGroup>
+                        {availableBarbers.map((barber: any) => (
+                          <CommandItem
+                            key={barber.id}
+                            value={barber.name}
+                            onSelect={() => {
+                              setAddFormData(prev => ({ ...prev, barber_id: barber.id, time: "" }));
+                              setBarberPopoverOpen(false);
+                            }}
+                            className="cursor-pointer"
+                          >
+                            <Check className={`mr-2 h-4 w-4 ${addFormData.barber_id === barber.id ? 'opacity-100 text-[#DB9D47]' : 'opacity-0'}`} />
+                            <UserCog className="w-3.5 h-3.5 text-[#87765E] mr-1.5" />
+                            <span>{barber.name}</span>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {/* Date Selection */}
+            <div className="grid gap-2">
+              <Label className="text-[#5C4A3A] font-medium flex items-center gap-1.5">
+                <Calendar className="w-3.5 h-3.5 text-[#DB9D47]" />
+                Date
+              </Label>
+              <Input
+                type="date"
+                value={addFormData.date}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (!val) return;
+                  const d = new Date(val + 'T00:00:00');
+                  if (d.getDay() === 0) {
+                    toast.error("Sorry, we're closed on Sundays!");
+                    setAddFormData(prev => ({ ...prev, date: "", time: "" }));
+                    return;
+                  }
+                  setAddFormData(prev => ({ ...prev, date: val, time: "" }));
+                }}
+                min={new Date().toISOString().split('T')[0]}
+                max={(() => { const d = new Date(); d.setDate(d.getDate() + 30); return d.toISOString().split('T')[0]; })()}
+                className="border-[#E8DCC8]"
+              />
+              <p className="text-xs text-[#87765E]">Sundays are closed. Bookings up to 30 days ahead.</p>
+            </div>
+
+            {/* Time Selection */}
+            {addFormData.date && addFormData.barber_id && addFormData.service_id && (
+              <div className="grid gap-2">
+                <Label className="text-[#5C4A3A] font-medium flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-[#DB9D47]" />
+                  Time Slot
+                </Label>
+                <div className="grid grid-cols-4 gap-2 max-h-48 overflow-y-auto p-1">
+                  {TIME_SLOTS.map((time) => {
+                    const isTaken = isAddTimeSlotTaken(time);
+                    return (
+                      <Button
+                        key={time}
+                        type="button"
+                        onClick={() => {
+                          if (!isTaken) setAddFormData(prev => ({ ...prev, time }));
+                          else toast.error("This time slot is already booked!");
+                        }}
+                        variant={addFormData.time === time ? "default" : "outline"}
+                        className={`text-xs py-2 flex flex-col gap-0.5 ${addFormData.time === time
+                          ? "bg-[#DB9D47] hover:bg-[#C88D3F] text-white"
+                          : isTaken
+                            ? "opacity-40 cursor-not-allowed bg-gray-100 border-red-300"
+                            : "hover:bg-[#FBF7EF] hover:border-[#DB9D47] border-[#E8DCC8]"
+                          }`}
+                        disabled={isTaken}
+                      >
+                        <span>{time}</span>
+                        {isTaken && <span className="text-[9px] text-red-600 font-semibold">BOOKED</span>}
+                      </Button>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-[#87765E]">Gray/disabled slots are already booked for this barber.</p>
+              </div>
+            )}
+
+            {/* Booking Summary */}
+            {addFormData.customer_id && addFormData.service_id && addFormData.barber_id && addFormData.date && addFormData.time && (
+              <div className="p-3 rounded-lg bg-[#FBF7EF] border border-[#E8DCC8] space-y-2">
+                <h4 className="text-sm font-semibold text-[#5C4A3A] flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-[#94A670]" />
+                  Booking Summary
+                </h4>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                  <span className="text-[#87765E]">Customer:</span>
+                  <span className="text-[#5C4A3A] font-medium">{availableCustomers.find((c: any) => c.id === addFormData.customer_id)?.name}</span>
+                  <span className="text-[#87765E]">Service:</span>
+                  <span className="text-[#5C4A3A] font-medium">{availableServices.find((s: any) => s.id === addFormData.service_id)?.name}</span>
+                  <span className="text-[#87765E]">Barber:</span>
+                  <span className="text-[#5C4A3A] font-medium">{availableBarbers.find((b: any) => b.id === addFormData.barber_id)?.name}</span>
+                  <span className="text-[#87765E]">Date & Time:</span>
+                  <span className="text-[#5C4A3A] font-medium">
+                    {new Date(addFormData.date + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} at {addFormData.time}
+                  </span>
+                </div>
+                <div className="border-t border-[#E8DCC8] pt-2 mt-2 space-y-1">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-[#87765E]">Total Amount</span>
+                    <span className="text-[#5C4A3A] font-bold">₱{availableServices.find((s: any) => s.id === addFormData.service_id)?.price?.toLocaleString()}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-[#87765E]">Down Payment (50%)</span>
+                    <span className="text-green-600 font-medium">₱{((availableServices.find((s: any) => s.id === addFormData.service_id)?.price || 0) * 0.5).toLocaleString()}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-[#87765E]">Remaining Balance</span>
+                    <span className="text-[#D98555] font-medium">₱{((availableServices.find((s: any) => s.id === addFormData.service_id)?.price || 0) * 0.5).toLocaleString()}</span>
+                  </div>
+                </div>
+                <div className="bg-green-50 border border-green-200 rounded-lg p-2 mt-2">
+                  <p className="text-xs text-green-700">
+                    <strong>Auto-Verified:</strong> Payment will be automatically marked as verified since this booking is created by an admin.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="flex justify-end gap-3">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsAddDialogOpen(false);
+                setAddFormData({ customer_id: "", service_id: "", barber_id: "", date: "", time: "" });
+              }}
+              className="border-[#E8DCC8]"
+            >
+              Cancel
+            </Button>
+            <Button
+              className="bg-[#DB9D47] hover:bg-[#C88A35] text-white"
+              onClick={handleAddBooking}
+              disabled={!addFormData.customer_id || !addFormData.service_id || !addFormData.barber_id || !addFormData.date || !addFormData.time || isAddingBooking}
+            >
+              {isAddingBooking ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="w-4 h-4 mr-2" />
+                  Confirm Booking
+                </>
+              )}
             </Button>
           </div>
         </DialogContent>

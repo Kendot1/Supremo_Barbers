@@ -249,33 +249,8 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
         setEmail(response.user.email);
       }
 
-      // Check if user is a barber - skip OTP for barbers
-      if (response.user.role === 'barber') {
-        // Barbers login directly without OTP
-        // Store auth data in localStorage
-        localStorage.setItem('authToken', response.token);
-        localStorage.setItem('currentUser', JSON.stringify(response.user));
-        localStorage.setItem('loginTime', Date.now().toString());
-
-        // Save to Remember Me if enabled (save username, not email)
-        if (rememberMe) {
-          localStorage.setItem('rememberedUsername', username);
-          localStorage.setItem('rememberedPassword', password);
-        }
-
-        // Register device in background (fire-and-forget)
-        const deviceInfo = parseUserAgent(navigator.userAgent);
-        API.users.registerDevice(response.user.id, {
-          ...deviceInfo,
-          userAgent: navigator.userAgent,
-          isTrusted: false,
-        }).catch(() => {});
-
-        // Show success message and trigger login immediately
-        toast.success(`Welcome back, ${response.user.name}!`);
-        onLogin(response.user);
-        return;
-      }
+      // Barbers and admins always require 2FA (OTP verification)
+      // Only customers get trusted-device bypass below
 
       // --- TRUSTED DEVICE CHECK (customers only) ---
       // Customers who previously completed 2FA on this device skip it next time.

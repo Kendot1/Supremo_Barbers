@@ -15,6 +15,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue
 } from './ui/select';
 import { UserPlus, Search, Edit, Trash2, CheckCircle2, XCircle, Loader2, Users, UserCheck, UserPlus as UserPlusIcon, Download } from 'lucide-react';
+import { Tooltip, TooltipTrigger, TooltipContent } from './ui/tooltip';
 import { toast } from 'sonner';
 import { PasswordConfirmationDialog } from './PasswordConfirmationDialog';
 import API from '../services/api.service';
@@ -322,76 +323,85 @@ export function UserManagement() {
               <CardTitle className="text-sm md:text-base">Customer Management</CardTitle>
               <CardDescription className="text-xs md:text-sm hidden sm:block">Manage customer accounts</CardDescription>
             </div>
-            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-              <DialogTrigger asChild>
-                <Button className="cursor-pointer transition-transform duration-200 hover:scale-105 active:scale-95 shadow-md text-xs sm:text-sm px-2.5 sm:px-4 h-8 sm:h-9 flex-shrink-0">
-                  <UserPlus className="w-4 h-4 mr-1.5 sm:mr-2" />
-                  <span>Add</span><span className="hidden sm:inline">&nbsp;User</span>
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Add New Customer</DialogTitle>
-                  <DialogDescription>Create a new customer account</DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Full Name</Label>
-                    <Input
-                      id="name"
-                      value={newUser.name}
-                      onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
-                      placeholder="John Doe"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="username">Username</Label>
-                    <Input
-                      id="username"
-                      value={newUser.username}
-                      onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
-                      placeholder="johndoe123"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      value={newUser.email}
-                      onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                      placeholder="john@example.com"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="password">Password</Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      value={newUser.password}
-                      onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                      placeholder="••••••••"
-                      autoComplete="new-password"
-                    />
-                  </div>
-                </div>
-                <DialogFooter className="mt-6 gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => setIsAddDialogOpen(false)}
-                    className="cursor-pointer transition-transform duration-200 hover:scale-105 active:scale-95"
-                  >
-                    Cancel
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button className="bg-[#DB9D47] hover:bg-[#C88A35] text-white text-xs md:text-sm px-2 md:px-4">
+                    <UserPlus className="w-4 h-4 mr-1.5" />
+                    <span>Add User</span>
                   </Button>
-                  <Button
-                    onClick={handleAddUser}
-                    className="cursor-pointer transition-transform duration-200 hover:scale-105 active:scale-95 shadow-md bg-[#DB9D47] hover:bg-[#C88D3F] text-white"
-                  >
-                    Add Customer
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Add New Customer</DialogTitle>
+                    <DialogDescription>Create a new customer account</DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="name">Full Name</Label>
+                      <Input
+                        id="name"
+                        value={newUser.name}
+                        onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+                        placeholder="John Doe"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="username">Username</Label>
+                      <Input
+                        id="username"
+                        value={newUser.username}
+                        onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
+                        placeholder="johndoe123"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        value={newUser.email}
+                        onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                        placeholder="john@example.com"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="password">Password</Label>
+                      <Input
+                        id="password"
+                        type="password"
+                        value={newUser.password}
+                        onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                        placeholder="••••••••"
+                        autoComplete="new-password"
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter className="mt-6 gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => setIsAddDialogOpen(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleAddUser}
+                      className="bg-[#DB9D47] hover:bg-[#C88D3F] text-white"
+                    >
+                      Add Customer
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+              <Button
+                onClick={handleExportToCSV}
+                variant="outline"
+                className="border-[#DB9D47] text-[#DB9D47] hover:bg-[#FBF7EF] text-xs md:text-sm px-2 md:px-4"
+              >
+                <Download className="w-4 h-4 mr-1.5" />
+                <span>Export Report</span>
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-3 md:space-y-4 px-3 sm:px-6">
@@ -406,15 +416,6 @@ export function UserManagement() {
                 className="pl-9 text-sm"
               />
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleExportToCSV}
-              className="flex-shrink-0 px-2.5 sm:px-3"
-            >
-              <Download className="w-4 h-4 sm:mr-2" />
-              <span className="hidden sm:inline">Export CSV</span>
-            </Button>
           </div>
 
           {/* Users Table */}
@@ -466,28 +467,41 @@ export function UserManagement() {
                     <TableCell className="hidden md:table-cell text-xs sm:text-sm">{user.joinDate}</TableCell>
                     <TableCell className="text-right py-2.5 sm:py-3">
                       <div className="flex items-center justify-end gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className={`h-7 w-7 sm:h-8 sm:w-auto p-0 sm:px-2 ${user.isActive ? 'text-red-600 hover:text-red-700 hover:bg-red-50' : 'text-green-600 hover:text-green-700 hover:bg-green-50'}`}
-                          onClick={() => handleToggleStatus(user.id)}
-                          title={user.isActive ? 'Deactivate' : 'Activate'}
-                        >
-                          {user.isActive ? (
-                            <><XCircle className="w-3.5 h-3.5 sm:mr-1" /><span className="hidden sm:inline text-xs">Deactivate</span></>
-                          ) : (
-                            <><CheckCircle2 className="w-3.5 h-3.5 sm:mr-1" /><span className="hidden sm:inline text-xs">Activate</span></>
-                          )}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 w-7 sm:h-8 sm:w-8 p-0"
-                          onClick={() => handleDeleteUser(user.id)}
-                          title="Delete user"
-                        >
-                          <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-600" />
-                        </Button>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className={`h-7 w-7 sm:h-8 sm:w-auto p-0 sm:px-2 ${user.isActive ? 'text-red-600 hover:text-red-700 hover:bg-red-50' : 'text-green-600 hover:text-green-700 hover:bg-green-50'}`}
+                              onClick={() => handleToggleStatus(user.id)}
+                            >
+                              {user.isActive ? (
+                                <><XCircle className="w-3.5 h-3.5 sm:mr-1" /><span className="hidden sm:inline text-xs">Deactivate</span></>
+                              ) : (
+                                <><CheckCircle2 className="w-3.5 h-3.5 sm:mr-1" /><span className="hidden sm:inline text-xs">Activate</span></>
+                              )}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{user.isActive ? 'Deactivate this account' : 'Activate this account'}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 sm:h-8 sm:w-auto p-0 sm:px-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+                              onClick={() => handleDeleteUser(user.id)}
+                            >
+                              <Trash2 className="w-3.5 h-3.5 sm:mr-1" />
+                              <span className="hidden sm:inline text-xs">Delete</span>
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Delete this user permanently</p>
+                          </TooltipContent>
+                        </Tooltip>
                       </div>
                     </TableCell>
                   </TableRow>

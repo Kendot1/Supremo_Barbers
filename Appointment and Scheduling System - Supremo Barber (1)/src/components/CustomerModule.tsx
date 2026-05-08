@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Label } from "./ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { Users, UserPlus, TrendingUp, Calendar, Search, Edit, Trash2, Filter, Download, Ban, CheckCircle2 } from "lucide-react";
+import { Tooltip, TooltipTrigger, TooltipContent } from "./ui/tooltip";
 import { toast } from "sonner";
 import { exportToCSV, formatDateForExport } from "./utils/exportUtils";
 import { PasswordConfirmationDialog } from "./PasswordConfirmationDialog";
@@ -374,19 +375,11 @@ export function CustomerModule() {
               </CardDescription>
             </div>
             <div className="flex gap-2 w-full md:w-auto">
-              <Button
-                onClick={handleExportCustomers}
-                variant="outline"
-                className="border-[#DB9D47] text-[#DB9D47] hover:bg-[#FBF7EF] text-xs md:text-sm px-2 md:px-4"
-              >
-                <Download className="w-4 h-4 md:mr-2" />
-                <span className="hidden md:inline">Export Report</span>
-              </Button>
               <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
                 <DialogTrigger asChild>
                   <Button className="bg-[#DB9D47] hover:bg-[#C88A35] text-white text-xs md:text-sm px-2 md:px-4">
-                    <UserPlus className="w-4 h-4 md:mr-2" />
-                    <span className="hidden sm:inline">Add Customer</span>
+                    <UserPlus className="w-4 h-4 mr-1.5" />
+                    <span>Add Customer</span>
                   </Button>
                 </DialogTrigger>
                 <DialogContent className="sm:max-w-[500px]">
@@ -439,6 +432,14 @@ export function CustomerModule() {
                   </div>
                 </DialogContent>
               </Dialog>
+              <Button
+                onClick={handleExportCustomers}
+                variant="outline"
+                className="border-[#DB9D47] text-[#DB9D47] hover:bg-[#FBF7EF] text-xs md:text-sm px-2 md:px-4"
+              >
+                <Download className="w-4 h-4 mr-1.5" />
+                <span>Export Report</span>
+              </Button>
             </div>
           </div>
         </CardHeader>
@@ -499,41 +500,61 @@ export function CustomerModule() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center justify-center gap-1">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-[#DB9D47] hover:text-[#C88A35] hover:bg-[#FBF7EF] h-8 w-8 p-0"
-                          onClick={() => handleEditCustomer(customer.id)}
-                          title="Edit Customer"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className={
-                            customer.status === 'active'
-                              ? "text-[#F59E0B] hover:text-[#D97706] hover:bg-[#FBF7EF] h-8 w-8 p-0"
-                              : "text-[#94A670] hover:text-[#7A8E5A] hover:bg-[#FBF7EF] h-8 w-8 p-0"
-                          }
-                          onClick={() => handleSuspendCustomer(customer.id, customer.name)}
-                          title={customer.status === 'active' ? 'Suspend Account' : 'Reactivate Account'}
-                        >
-                          {customer.status === 'active' ? (
-                            <Ban className="w-4 h-4" />
-                          ) : (
-                            <CheckCircle2 className="w-4 h-4" />
-                          )}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-[#E57373] hover:text-[#D32F2F] hover:bg-[#FBF7EF] h-8 w-8 p-0"
-                          onClick={() => handleDeleteCustomer(customer.id, customer.name)}
-                          title="Delete Customer Permanently"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-[#DB9D47] hover:text-[#C88A35] hover:bg-[#FBF7EF] h-8 w-8 sm:w-auto p-0 sm:px-2"
+                              onClick={() => handleEditCustomer(customer.id)}
+                            >
+                              <Edit className="w-4 h-4 sm:mr-1" />
+                              <span className="hidden sm:inline text-xs">Edit</span>
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Edit customer details</p>
+                          </TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className={`h-8 w-8 sm:w-auto p-0 sm:px-2 ${
+                                customer.status === 'active'
+                                  ? "text-[#F59E0B] hover:text-[#D97706] hover:bg-[#FBF7EF]"
+                                  : "text-[#94A670] hover:text-[#7A8E5A] hover:bg-[#FBF7EF]"
+                              }`}
+                              onClick={() => handleSuspendCustomer(customer.id, customer.name)}
+                            >
+                              {customer.status === 'active' ? (
+                                <><Ban className="w-4 h-4 sm:mr-1" /><span className="hidden sm:inline text-xs">Suspend</span></>
+                              ) : (
+                                <><CheckCircle2 className="w-4 h-4 sm:mr-1" /><span className="hidden sm:inline text-xs">Activate</span></>
+                              )}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>{customer.status === 'active' ? 'Suspend this account' : 'Reactivate this account'}</p>
+                          </TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-[#E57373] hover:text-[#D32F2F] hover:bg-[#FBF7EF] h-8 w-8 sm:w-auto p-0 sm:px-2"
+                              onClick={() => handleDeleteCustomer(customer.id, customer.name)}
+                            >
+                              <Trash2 className="w-4 h-4 sm:mr-1" />
+                              <span className="hidden sm:inline text-xs">Delete</span>
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Delete customer permanently</p>
+                          </TooltipContent>
+                        </Tooltip>
                       </div>
                     </TableCell>
                   </TableRow>
