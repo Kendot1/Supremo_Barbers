@@ -23,6 +23,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "./ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "./ui/dialog";
 import { Alert, AlertDescription } from "./ui/alert";
 import {
   TrendingUp,
@@ -97,6 +104,7 @@ export function RevenueModule({
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [selectedTransaction, setSelectedTransaction] = useState<any | null>(null);
 
   // Database state
   const [appointments, setAppointments] = useState<
@@ -673,7 +681,7 @@ export function RevenueModule({
                   color: "#D98555",
                 },
               }}
-              className="h-[220px] sm:h-[260px] md:h-[300px]"
+              className="h-[220px] sm:h-[260px] md:h-[300px] w-full"
             >
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={topServicesData}>
@@ -818,7 +826,12 @@ export function RevenueModule({
                   currentTransactions.map((txn) => (
                     <TableRow
                       key={txn.id}
-                      className="hover:bg-[#FBF7EF]"
+                      className="hover:bg-[#FBF7EF] cursor-pointer"
+                      onClick={(e) => {
+                        if (!(e.target as HTMLElement).closest('button, a')) {
+                          setSelectedTransaction(txn);
+                        }
+                      }}
                     >
                       <TableCell className="font-mono text-xs text-[#87765E] hidden lg:table-cell">
                         {txn.id.slice(0, 8)}
@@ -873,6 +886,59 @@ export function RevenueModule({
           />
         </CardContent>
       </Card>
+
+      {/* Transaction Details Dialog (Mobile View) */}
+      <Dialog open={!!selectedTransaction} onOpenChange={(open) => !open && setSelectedTransaction(null)}>
+        <DialogContent className="sm:max-w-md bg-[#FBF7EF] border-[#E8DCC8]">
+          <DialogHeader>
+            <DialogTitle className="text-[#5C4A3A]">Transaction Details</DialogTitle>
+            <DialogDescription className="text-[#87765E]">
+              Complete information for this transaction.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedTransaction && (
+            <div className="space-y-4 py-4">
+              <div className="grid grid-cols-3 gap-2 border-b border-[#E8DCC8] pb-3">
+                <span className="text-[#87765E] text-sm">Transaction ID</span>
+                <span className="col-span-2 text-[#5C4A3A] font-mono text-sm font-medium">{selectedTransaction.id}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 border-b border-[#E8DCC8] pb-3">
+                <span className="text-[#87765E] text-sm">Service</span>
+                <span className="col-span-2 text-[#5C4A3A] text-sm font-medium">{selectedTransaction.serviceName}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 border-b border-[#E8DCC8] pb-3">
+                <span className="text-[#87765E] text-sm">Barber</span>
+                <span className="col-span-2 text-[#5C4A3A] text-sm font-medium">{selectedTransaction.barber}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 border-b border-[#E8DCC8] pb-3">
+                <span className="text-[#87765E] text-sm">Date</span>
+                <span className="col-span-2 text-[#5C4A3A] text-sm font-medium">
+                  {parseLocalDate(selectedTransaction.date).toLocaleDateString("en-US", {
+                    weekday: 'short',
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric',
+                  })}
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 pt-1">
+                <span className="text-[#87765E] text-sm font-semibold">Total Price</span>
+                <span className="col-span-2 text-[#94A670] text-lg font-bold">₱{selectedTransaction.price.toLocaleString()}</span>
+              </div>
+            </div>
+          )}
+          
+          <div className="mt-2 flex justify-end">
+            <Button 
+              className="bg-[#DB9D47] hover:bg-[#C88A35] text-white" 
+              onClick={() => setSelectedTransaction(null)}
+            >
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

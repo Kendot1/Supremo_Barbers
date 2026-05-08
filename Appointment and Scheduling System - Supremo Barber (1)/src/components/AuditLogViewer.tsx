@@ -23,6 +23,13 @@ import {
   TableRow,
 } from './ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from './ui/dialog';
 import { toast } from 'sonner';
 import API from '../services/api.service';
 
@@ -57,6 +64,7 @@ export function AuditLogViewer() {
   const [filteredLogs, setFilteredLogs] = useState<AuditLog[]>([]);
   const [statistics, setStatistics] = useState<AuditLogStatistics | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
 
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
@@ -380,12 +388,12 @@ export function AuditLogViewer() {
               <Table>
                 <TableHeader className="sticky top-0 bg-[#FBF7EF] z-10">
                   <TableRow>
-                    <TableHead className="min-w-[160px]">Timestamp</TableHead>
+                    <TableHead className="min-w-[160px] hidden lg:table-cell">Timestamp</TableHead>
                     <TableHead className="min-w-[150px]">User</TableHead>
-                    <TableHead className="min-w-[100px]">Role</TableHead>
+                    <TableHead className="min-w-[100px] hidden md:table-cell">Role</TableHead>
                     <TableHead className="min-w-[150px]">Action</TableHead>
-                    <TableHead className="min-w-[120px]">Entity</TableHead>
-                    <TableHead className="min-w-[300px]">Description</TableHead>
+                    <TableHead className="min-w-[120px] hidden sm:table-cell">Entity</TableHead>
+                    <TableHead className="min-w-[300px] hidden xl:table-cell">Description</TableHead>
                     <TableHead className="min-w-[100px]">Status</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -404,8 +412,16 @@ export function AuditLogViewer() {
                     </TableRow>
                   ) : (
                     filteredLogs.map((log) => (
-                      <TableRow key={log.id} className="hover:bg-[#FBF7EF]/50">
-                        <TableCell className="text-sm text-[#5C4A3A]">
+                      <TableRow 
+                        key={log.id} 
+                        className="hover:bg-[#FBF7EF]/50 cursor-pointer"
+                        onClick={(e) => {
+                          if (!(e.target as HTMLElement).closest('button, a')) {
+                            setSelectedLog(log);
+                          }
+                        }}
+                      >
+                        <TableCell className="text-sm text-[#5C4A3A] hidden lg:table-cell">
                           {new Date(log.createdAt).toLocaleString()}
                         </TableCell>
                         <TableCell className="text-sm">
@@ -414,25 +430,25 @@ export function AuditLogViewer() {
                               {log.userName || log.userId}
                             </div>
                             {log.userEmail && (
-                              <div className="text-xs text-[#87765E]">{log.userEmail}</div>
+                              <div className="text-xs text-[#87765E] hidden sm:block">{log.userEmail}</div>
                             )}
                           </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="hidden md:table-cell">
                           <span className={`px-2 py-1 rounded text-xs font-medium ${getRoleColor(log.userRole)}`}>
                             {log.userRole}
                           </span>
                         </TableCell>
-                        <TableCell className="text-sm text-[#5C4A3A]">
+                        <TableCell className="text-sm text-[#5C4A3A] truncate max-w-[120px] md:max-w-none">
                           {log.action.replace(/_/g, ' ')}
                         </TableCell>
-                        <TableCell className="text-sm text-[#87765E]">
+                        <TableCell className="text-sm text-[#87765E] hidden sm:table-cell">
                           <div>
-                            <div>{log.entityType}</div>
+                            <div className="truncate max-w-[120px]">{log.entityType}</div>
                             <div className="text-xs truncate max-w-[100px]">{log.entityId}</div>
                           </div>
                         </TableCell>
-                        <TableCell className="text-sm text-[#5C4A3A]">
+                        <TableCell className="text-sm text-[#5C4A3A] hidden xl:table-cell truncate max-w-[200px]">
                           {log.description || 
                            (log.metadata?.reason ? `Reason: ${log.metadata.reason}` : 
                             log.metadata ? JSON.stringify(log.metadata) : 
@@ -440,7 +456,7 @@ export function AuditLogViewer() {
                             (log as any).details ? JSON.stringify((log as any).details) : '-')}
                         </TableCell>
                         <TableCell>
-                          <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(log.status)}`}>
+                          <span className={`px-2 py-1 rounded text-[10px] sm:text-xs font-medium ${getStatusColor(log.status)}`}>
                             {log.status}
                           </span>
                         </TableCell>
@@ -453,6 +469,80 @@ export function AuditLogViewer() {
           </div>
         </CardContent>
       </Card>
+
+      {/* View Audit Log Dialog (Mobile View) */}
+      <Dialog open={!!selectedLog} onOpenChange={(open) => !open && setSelectedLog(null)}>
+        <DialogContent className="sm:max-w-md bg-[#FBF7EF] border-[#E8DCC8] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-[#5C4A3A]">Audit Log Details</DialogTitle>
+            <DialogDescription className="text-[#87765E]">
+              Complete information for this audit log.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedLog && (
+            <div className="space-y-4 py-4">
+              <div className="grid grid-cols-3 gap-2 border-b border-[#E8DCC8] pb-3">
+                <span className="text-[#87765E] text-sm">Timestamp</span>
+                <span className="col-span-2 text-[#5C4A3A] text-sm">{new Date(selectedLog.createdAt).toLocaleString()}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 border-b border-[#E8DCC8] pb-3">
+                <span className="text-[#87765E] text-sm">User</span>
+                <span className="col-span-2 text-[#5C4A3A] font-medium text-sm">
+                  {selectedLog.userName || selectedLog.userId}
+                  {selectedLog.userEmail && <div className="text-xs text-[#87765E]">{selectedLog.userEmail}</div>}
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 border-b border-[#E8DCC8] pb-3">
+                <span className="text-[#87765E] text-sm">Role</span>
+                <span className="col-span-2">
+                  <span className={`px-2 py-1 rounded text-xs font-medium ${getRoleColor(selectedLog.userRole)}`}>
+                    {selectedLog.userRole}
+                  </span>
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 border-b border-[#E8DCC8] pb-3">
+                <span className="text-[#87765E] text-sm">Action</span>
+                <span className="col-span-2 text-[#5C4A3A] text-sm">{selectedLog.action.replace(/_/g, ' ')}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 border-b border-[#E8DCC8] pb-3">
+                <span className="text-[#87765E] text-sm">Entity</span>
+                <span className="col-span-2 text-[#5C4A3A] text-sm">
+                  <div>{selectedLog.entityType}</div>
+                  <div className="text-xs text-[#87765E] break-all">{selectedLog.entityId}</div>
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 border-b border-[#E8DCC8] pb-3">
+                <span className="text-[#87765E] text-sm">Status</span>
+                <span className="col-span-2">
+                  <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(selectedLog.status)}`}>
+                    {selectedLog.status}
+                  </span>
+                </span>
+              </div>
+              <div className="grid gap-2 pt-1">
+                <span className="text-[#87765E] text-sm">Description / Details</span>
+                <span className="col-span-2 text-[#5C4A3A] text-sm p-3 bg-white/50 rounded-md border border-[#E8DCC8] break-words">
+                  {selectedLog.description || 
+                   (selectedLog.metadata?.reason ? `Reason: ${selectedLog.metadata.reason}` : 
+                    selectedLog.metadata ? JSON.stringify(selectedLog.metadata, null, 2) : 
+                    (selectedLog as any).details?.reason ? `Reason: ${(selectedLog as any).details.reason}` :
+                    (selectedLog as any).details ? JSON.stringify((selectedLog as any).details, null, 2) : '-')}
+                </span>
+              </div>
+            </div>
+          )}
+          
+          <div className="mt-2 flex justify-end">
+            <Button 
+              className="bg-[#DB9D47] hover:bg-[#C88A35] text-white" 
+              onClick={() => setSelectedLog(null)}
+            >
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

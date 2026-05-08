@@ -994,7 +994,15 @@ export function PaymentVerification({
                 <TableBody>
                   {currentPayments.map(
                     (appointment) => (
-                      <TableRow key={appointment.id}>
+                      <TableRow 
+                        key={appointment.id}
+                        className="hover:bg-[#FBF7EF] cursor-pointer"
+                        onClick={(e) => {
+                          if (!(e.target as HTMLElement).closest('button, a')) {
+                            handleViewProof(appointment);
+                          }
+                        }}
+                      >
                         <TableCell>
                           <div className="flex items-center gap-1 md:gap-2">
                             <User className="w-3 h-3 md:w-4 md:h-4 text-[#87765E] hidden sm:block" />

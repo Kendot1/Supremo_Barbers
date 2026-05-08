@@ -830,7 +830,6 @@ export function BookingReservationModule({ appointments, onUpdateAppointments, o
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
                   <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="confirmed">Confirmed</SelectItem>
                   <SelectItem value="upcoming">Upcoming</SelectItem>
                   <SelectItem value="completed">Completed</SelectItem>
                   <SelectItem value="cancelled">Cancelled</SelectItem>
@@ -859,7 +858,16 @@ export function BookingReservationModule({ appointments, onUpdateAppointments, o
                   const statusConfig = getStatusConfig(booking.status);
                   const StatusIcon = statusConfig.icon;
                   return (
-                    <TableRow key={booking.id} className="hover:bg-[#FBF7EF]">
+                    <TableRow 
+                      key={booking.id} 
+                      className="hover:bg-[#FBF7EF] cursor-pointer"
+                      onClick={(e) => {
+                        if (!(e.target as HTMLElement).closest('button, a')) {
+                          setViewBooking(booking);
+                          setIsViewDialogOpen(true);
+                        }
+                      }}
+                    >
                       <TableCell className="text-[#5C4A3A] text-[10px] md:text-xs max-w-[60px] md:max-w-none truncate">{booking.id}</TableCell>
                       <TableCell className="text-[#5C4A3A] text-xs hidden lg:table-cell">{booking.customerName || booking.userId}</TableCell>
                       <TableCell className="text-[#87765E] text-xs hidden md:table-cell">{booking.barber}</TableCell>
@@ -1187,7 +1195,6 @@ export function BookingReservationModule({ appointments, onUpdateAppointments, o
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="confirmed">Confirmed</SelectItem>
                     <SelectItem value="verified">Verified</SelectItem>
                     <SelectItem value="completed">Completed</SelectItem>
                     <SelectItem value="cancelled">Cancelled</SelectItem>

@@ -41,6 +41,7 @@ export function BarberModule({ appointments }: BarberModuleProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [viewingBarber, setViewingBarber] = useState<any | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isResetPasswordDialogOpen, setIsResetPasswordDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
@@ -743,7 +744,15 @@ export function BarberModule({ appointments }: BarberModuleProps) {
                   </TableHeader>
                   <TableBody>
                     {currentBarbers.map((barber) => (
-                      <TableRow key={barber.id} className="hover:bg-[#FBF7EF]">
+                      <TableRow 
+                        key={barber.id} 
+                        className="hover:bg-[#FBF7EF] cursor-pointer"
+                        onClick={(e) => {
+                          if (!(e.target as HTMLElement).closest('button, a')) {
+                            setViewingBarber(barber);
+                          }
+                        }}
+                      >
                         <TableCell className="text-[#5C4A3A]">
                           <div>
                             {barber.name}
@@ -1108,6 +1117,67 @@ export function BarberModule({ appointments }: BarberModuleProps) {
         }
         actionType={passwordConfirmation.action || 'action'}
       />
+
+      {/* View Barber Details Dialog (Mobile View) */}
+      <Dialog open={!!viewingBarber} onOpenChange={(open) => !open && setViewingBarber(null)}>
+        <DialogContent className="sm:max-w-md bg-[#FBF7EF] border-[#E8DCC8]">
+          <DialogHeader>
+            <DialogTitle className="text-[#5C4A3A]">Barber Details</DialogTitle>
+            <DialogDescription className="text-[#87765E]">
+              Complete information for this barber.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {viewingBarber && (
+            <div className="space-y-4 py-4">
+              <div className="grid grid-cols-3 gap-2 border-b border-[#E8DCC8] pb-3">
+                <span className="text-[#87765E] text-sm">Full Name</span>
+                <span className="col-span-2 text-[#5C4A3A] font-medium text-sm">{viewingBarber.name}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 border-b border-[#E8DCC8] pb-3">
+                <span className="text-[#87765E] text-sm">Email</span>
+                <span className="col-span-2 text-[#5C4A3A] text-sm break-all">{viewingBarber.email || 'N/A'}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 border-b border-[#E8DCC8] pb-3">
+                <span className="text-[#87765E] text-sm">Phone</span>
+                <span className="col-span-2 text-[#5C4A3A] text-sm">{viewingBarber.phone || 'N/A'}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 border-b border-[#E8DCC8] pb-3">
+                <span className="text-[#87765E] text-sm">Specialty</span>
+                <span className="col-span-2 text-[#5C4A3A] text-sm">{viewingBarber.specialty}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 border-b border-[#E8DCC8] pb-3">
+                <span className="text-[#87765E] text-sm">Status</span>
+                <span className="col-span-2">
+                  <Badge variant="outline" className={getStatusColor(viewingBarber.status)}>
+                    {viewingBarber.status}
+                  </Badge>
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 pt-1">
+                <span className="text-[#87765E] text-sm">Total Bookings</span>
+                <span className="col-span-2 text-[#5C4A3A] font-medium text-sm">{viewingBarber.totalBookings}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 pt-1">
+                <span className="text-[#87765E] text-sm">Rating</span>
+                <span className="col-span-2 text-[#5C4A3A] font-medium text-sm flex items-center">
+                  <Star className="w-4 h-4 fill-yellow-400 text-yellow-400 mr-1" />
+                  {viewingBarber.rating}
+                </span>
+              </div>
+            </div>
+          )}
+          
+          <div className="mt-2 flex justify-end">
+            <Button 
+              className="bg-[#DB9D47] hover:bg-[#C88A35] text-white" 
+              onClick={() => setViewingBarber(null)}
+            >
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

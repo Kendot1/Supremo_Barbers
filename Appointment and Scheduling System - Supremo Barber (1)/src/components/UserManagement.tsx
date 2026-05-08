@@ -58,6 +58,7 @@ export function UserManagement() {
   });
   const [currentPage, setCurrentPage] = useState(1);
   const [usersPerPage, setUsersPerPage] = useState(10);
+  const [viewingUser, setViewingUser] = useState<UserData | null>(null);
 
   // Fetch users from database on mount
   useEffect(() => {
@@ -445,7 +446,15 @@ export function UserManagement() {
                     </TableCell>
                   </TableRow>
                 ) : currentUsers.map((user) => (
-                  <TableRow key={user.id}>
+                  <TableRow 
+                    key={user.id}
+                    className="hover:bg-[#FBF7EF] cursor-pointer"
+                    onClick={(e) => {
+                      if (!(e.target as HTMLElement).closest('button, a')) {
+                        setViewingUser(user);
+                      }
+                    }}
+                  >
                     <TableCell className="text-xs sm:text-sm py-2.5 sm:py-3">
                       <div>
                         {user.name}
@@ -547,6 +556,60 @@ export function UserManagement() {
           }
           actionType={passwordConfirmation.action || 'action'}
         />
+
+        {/* View User Details Dialog (Mobile View) */}
+        <Dialog open={!!viewingUser} onOpenChange={(open) => !open && setViewingUser(null)}>
+          <DialogContent className="sm:max-w-md bg-[#FBF7EF] border-[#E8DCC8]">
+            <DialogHeader>
+              <DialogTitle className="text-[#5C4A3A]">User Details</DialogTitle>
+              <DialogDescription className="text-[#87765E]">
+                Complete information for this user.
+              </DialogDescription>
+            </DialogHeader>
+            
+            {viewingUser && (
+              <div className="space-y-4 py-4">
+                <div className="grid grid-cols-3 gap-2 border-b border-[#E8DCC8] pb-3">
+                  <span className="text-[#87765E] text-sm">Full Name</span>
+                  <span className="col-span-2 text-[#5C4A3A] font-medium text-sm">{viewingUser.name}</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 border-b border-[#E8DCC8] pb-3">
+                  <span className="text-[#87765E] text-sm">Email</span>
+                  <span className="col-span-2 text-[#5C4A3A] text-sm break-all">{viewingUser.email}</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 border-b border-[#E8DCC8] pb-3">
+                  <span className="text-[#87765E] text-sm">Role</span>
+                  <span className="col-span-2">
+                    <Badge variant="outline" className="bg-[#E8DCC8] text-[#5C4A3A]">
+                      {viewingUser.role}
+                    </Badge>
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 border-b border-[#E8DCC8] pb-3">
+                  <span className="text-[#87765E] text-sm">Status</span>
+                  <span className="col-span-2">
+                    <Badge variant="outline" className={viewingUser.isActive ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"}>
+                      {viewingUser.isActive ? 'Active' : 'Inactive'}
+                    </Badge>
+                  </span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 pt-1">
+                  <span className="text-[#87765E] text-sm">Join Date</span>
+                  <span className="col-span-2 text-[#5C4A3A] text-sm">{viewingUser.joinDate}</span>
+                </div>
+              </div>
+            )}
+            
+            <div className="mt-2 flex justify-end">
+              <Button 
+                className="bg-[#DB9D47] hover:bg-[#C88A35] text-white" 
+                onClick={() => setViewingUser(null)}
+              >
+                Close
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </Card>
     </>
   );

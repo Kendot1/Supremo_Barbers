@@ -28,6 +28,7 @@ export function CustomerModule() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [viewingCustomer, setViewingCustomer] = useState<any | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [newCustomer, setNewCustomer] = useState({ name: "", email: "", contact: "" });
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
@@ -483,7 +484,15 @@ export function CustomerModule() {
               </TableHeader>
               <TableBody>
                 {filteredCustomers.map((customer) => (
-                  <TableRow key={customer.id} className="hover:bg-[#FBF7EF]">
+                  <TableRow
+                    key={customer.id}
+                    className="hover:bg-[#FBF7EF] cursor-pointer"
+                    onClick={(e) => {
+                      if (!(e.target as HTMLElement).closest('button, a')) {
+                        setViewingCustomer(customer);
+                      }
+                    }}
+                  >
                     <TableCell className="text-[#5C4A3A]">
                       <div>
                         {customer.name}
@@ -666,6 +675,59 @@ export function CustomerModule() {
         }
         actionType={passwordConfirmation.action || 'action'}
       />
+      {/* View Customer Details Dialog (Mobile View) */}
+      <Dialog open={!!viewingCustomer} onOpenChange={(open) => !open && setViewingCustomer(null)}>
+        <DialogContent className="sm:max-w-md bg-[#FBF7EF] border-[#E8DCC8]">
+          <DialogHeader>
+            <DialogTitle className="text-[#5C4A3A]">Customer Details</DialogTitle>
+            <DialogDescription className="text-[#87765E]">
+              Complete information for this customer.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {viewingCustomer && (
+            <div className="space-y-4 py-4">
+              <div className="grid grid-cols-3 gap-2 border-b border-[#E8DCC8] pb-3">
+                <span className="text-[#87765E] text-sm">Full Name</span>
+                <span className="col-span-2 text-[#5C4A3A] font-medium text-sm">{viewingCustomer.name}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 border-b border-[#E8DCC8] pb-3">
+                <span className="text-[#87765E] text-sm">Email</span>
+                <span className="col-span-2 text-[#5C4A3A] text-sm">{viewingCustomer.email}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 border-b border-[#E8DCC8] pb-3">
+                <span className="text-[#87765E] text-sm">Contact</span>
+                <span className="col-span-2 text-[#5C4A3A] text-sm">{viewingCustomer.contact}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 border-b border-[#E8DCC8] pb-3">
+                <span className="text-[#87765E] text-sm">Joined Date</span>
+                <span className="col-span-2 text-[#5C4A3A] text-sm">{viewingCustomer.joinedDate}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 border-b border-[#E8DCC8] pb-3">
+                <span className="text-[#87765E] text-sm">Status</span>
+                <span className="col-span-2">
+                  <Badge variant="outline" className={viewingCustomer.status === 'active' ? "bg-green-50 text-green-700 border-green-200" : "bg-red-50 text-red-700 border-red-200"}>
+                    {viewingCustomer.status}
+                  </Badge>
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-2 pt-1">
+                <span className="text-[#87765E] text-sm">Total Bookings</span>
+                <span className="col-span-2 text-[#5C4A3A] font-medium text-sm">{viewingCustomer.totalBookings}</span>
+              </div>
+            </div>
+          )}
+          
+          <div className="mt-2 flex justify-end gap-2">
+            <Button 
+              className="bg-[#DB9D47] hover:bg-[#C88A35] text-white w-full sm:w-auto" 
+              onClick={() => setViewingCustomer(null)}
+            >
+              Close
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

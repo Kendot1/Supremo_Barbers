@@ -434,7 +434,7 @@ export function ReviewsManagement({
               <TableHeader>
                 <TableRow className="bg-[#FBF7EF]">
                   <TableHead className="text-[#5C4A3A] text-xs md:text-sm">Customer</TableHead>
-                  <TableHead className="text-[#5C4A3A] text-xs md:text-sm">Rating</TableHead>
+                  <TableHead className="text-[#5C4A3A] text-xs md:text-sm hidden sm:table-cell">Rating</TableHead>
                   <TableHead className="text-[#5C4A3A] text-xs md:text-sm hidden lg:table-cell">Service</TableHead>
                   <TableHead className="text-[#5C4A3A] text-xs md:text-sm hidden md:table-cell">Barber</TableHead>
                   <TableHead className="text-[#5C4A3A] text-xs md:text-sm hidden sm:table-cell">Date</TableHead>
@@ -452,7 +452,15 @@ export function ReviewsManagement({
                   </TableRow>
                 ) : (
                   currentReviews.map((review) => (
-                    <TableRow key={review.id} className="hover:bg-[#FBF7EF]">
+                    <TableRow 
+                      key={review.id} 
+                      className="hover:bg-[#FBF7EF] cursor-pointer"
+                      onClick={(e) => {
+                        if (!(e.target as HTMLElement).closest('button, a')) {
+                          handleViewReview(review);
+                        }
+                      }}
+                    >
                       <TableCell>
                         <div className="flex items-center gap-2 md:gap-3">
                           <Avatar className="w-7 h-7 md:w-8 md:h-8">
@@ -464,7 +472,7 @@ export function ReviewsManagement({
                           <span className="text-[#5C4A3A] text-xs md:text-sm truncate max-w-[100px] md:max-w-none">{review.customerName}</span>
                         </div>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden sm:table-cell">
                         <div className="flex gap-0.5">
                           {[1, 2, 3, 4, 5].map((star) => (
                             <Star
@@ -512,7 +520,7 @@ export function ReviewsManagement({
                             size="sm"
                             variant="outline"
                             onClick={() => handleViewReview(review)}
-                            className="border-[#DB9D47] text-[#DB9D47] hover:bg-[#DB9D47] hover:text-white h-7 md:h-8 px-2 md:px-3 text-xs"
+                            className="border-[#DB9D47] text-[#DB9D47] hover:bg-[#DB9D47] hover:text-white h-7 md:h-8 px-2 md:px-3 text-xs hidden sm:inline-flex"
                           >
                             View
                           </Button>
