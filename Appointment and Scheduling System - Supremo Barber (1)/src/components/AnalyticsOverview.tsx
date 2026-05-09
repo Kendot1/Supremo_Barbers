@@ -100,62 +100,75 @@ export function AnalyticsOverview({
 
   // Calculate analytics from real appointment data
   const analytics = useMemo(() => {
-    // Revenue data by month (last 10 months)
-    const monthNames = [
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "May",
-      "Jun",
-      "Jul",
-      "Aug",
-      "Sep",
-      "Oct",
-      "Nov",
-      "Dec",
-    ];
-    const revenueByMonth = new Map<
-      string,
+    // Revenue data by day (last 30 days)
+    const revenueByDay = new Map<
+      number,
       {
+        dateLabel: string;
         revenue: number;
         customers: Set<string>;
         bookings: number;
+        sortDate: number;
       }
     >();
 
+    // Pre-fill the last 30 days to ensure continuous chart
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      revenueByDay.set(d.getTime(), {
+        dateLabel: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        revenue: 0,
+        customers: new Set(),
+        bookings: 0,
+        sortDate: d.getTime(),
+      });
+    }
+
     appointments.forEach((apt) => {
-      const date = new Date(apt.date);
-      // Include year to make months unique (e.g., "Jan 2025", "Jan 2026")
-      const monthKey = `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
-
-      if (!revenueByMonth.has(monthKey)) {
-        revenueByMonth.set(monthKey, {
-          revenue: 0,
-          customers: new Set(),
-          bookings: 0,
-        });
+      const dateStr = apt.date || apt.appointment_date;
+      if (!dateStr || typeof dateStr !== 'string') return;
+      
+      // Parse YYYY-MM-DD explicitly to avoid timezone issues
+      let aptDate: Date;
+      if (dateStr.includes('-')) {
+        const [year, month, day] = dateStr.split("-").map(Number);
+        aptDate = new Date(year, month - 1, day);
+      } else {
+        aptDate = new Date(dateStr);
       }
-
-      const data = revenueByMonth.get(monthKey)!;
-      if (apt.status === "completed") {
-        data.revenue += apt.price || 0;
+      aptDate.setHours(0, 0, 0, 0);
+      
+      const aptTime = aptDate.getTime();
+      
+      if (revenueByDay.has(aptTime)) {
+        const data = revenueByDay.get(aptTime)!;
+        if (apt.status === "completed") {
+          data.revenue += Number(apt.total_amount || apt.price || 0);
+        }
+        const customerId = apt.customer_id || apt.customerId || apt.userId;
+        if (customerId) {
+          data.customers.add(customerId);
+        }
+        data.bookings += 1;
       }
-      if (apt.userId) {
-        data.customers.add(apt.userId);
-      }
-      data.bookings += 1;
     });
 
     const revenueData = Array.from(
-      revenueByMonth.entries(),
-    ).map(([month, data], index) => ({
-      month,
-      revenue: data.revenue,
-      customers: data.customers.size,
-      bookings: data.bookings,
-      id: `month-${month}-${index}`, // Add unique ID for React keys
-    }));
+      revenueByDay.values(),
+    ).map((data, index) => {
+      return {
+        date: data.dateLabel,
+        revenue: data.revenue,
+        customers: data.customers.size,
+        bookings: data.bookings,
+        id: `day-${data.sortDate}-${index}`,
+        _sortDate: data.sortDate
+      };
+    }).sort((a, b) => a._sortDate - b._sortDate);
 
     // Service distribution
     const serviceCount = new Map<string, number>();
@@ -218,8 +231,6 @@ export function AnalyticsOverview({
     }).length;
 
     // Get upcoming bookings - appointments in the future that aren't completed/cancelled
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
 
     const upcomingBookings = appointments
       .filter((apt) => {
@@ -250,9 +261,9 @@ export function AnalyticsOverview({
           customer:
             apt.customer_name ||
             apt.customerName ||
-            apt.customer ||
-            (apt.userId
-              ? `Customer #${apt.userId.slice(0, 8)}`
+            (typeof apt.customer === 'object' ? apt.customer?.name : apt.customer) ||
+            (apt.customer_id || apt.customerId || apt.userId
+              ? `Customer #${String(apt.customer_id || apt.customerId || apt.userId).slice(0, 8)}`
               : "Unknown Customer"),
           service:
             apt.service_name ||
@@ -286,9 +297,9 @@ export function AnalyticsOverview({
           customer:
             apt.customer_name ||
             apt.customerName ||
-            apt.customer ||
-            (apt.userId
-              ? `Customer #${apt.userId.slice(0, 8)}`
+            (typeof apt.customer === 'object' ? apt.customer?.name : apt.customer) ||
+            (apt.customer_id || apt.customerId || apt.userId
+              ? `Customer #${String(apt.customer_id || apt.customerId || apt.userId).slice(0, 8)}`
               : "Unknown Customer"),
           service:
             apt.service_name ||
@@ -551,7 +562,7 @@ export function AnalyticsOverview({
               Revenue Trend
             </CardTitle>
             <CardDescription className="text-[#87765E] text-xs md:text-sm">
-              Monthly revenue overview
+              Daily revenue overview (Last 30 Days)
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -563,12 +574,14 @@ export function AnalyticsOverview({
                     stroke="#E8DCC8"
                   />
                   <XAxis
-                    dataKey="month"
+                    dataKey="date"
                     stroke="#87765E"
                     fontSize={11}
                     tickLine={false}
                     axisLine={false}
-                    tickFormatter={(value: string) => value.split(" ")[0]}
+                    tick={{ dy: 10 }}
+                    interval="preserveStartEnd"
+                    minTickGap={30}
                   />
                   <YAxis
                     stroke="#87765E"
@@ -609,7 +622,7 @@ export function AnalyticsOverview({
               Customer Growth
             </CardTitle>
             <CardDescription className="text-[#87765E] text-xs md:text-sm">
-              Monthly unique customers
+              Daily unique customers (Last 30 Days)
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -621,12 +634,14 @@ export function AnalyticsOverview({
                     stroke="#E8DCC8"
                   />
                   <XAxis
-                    dataKey="month"
+                    dataKey="date"
                     stroke="#87765E"
                     fontSize={11}
                     tickLine={false}
                     axisLine={false}
-                    tickFormatter={(value: string) => value.split(" ")[0]}
+                    tick={{ dy: 10 }}
+                    interval="preserveStartEnd"
+                    minTickGap={30}
                   />
                   <YAxis
                     stroke="#87765E"

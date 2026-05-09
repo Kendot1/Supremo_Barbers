@@ -298,8 +298,9 @@ export function BookingReservationModule({ appointments, onUpdateAppointments, o
       let priceChangeMessage = "";
       if (formData.price !== selectedBooking.price) {
         // Down payment is fixed at 50% of the ORIGINAL price
-        const downPaymentPaid = selectedBooking.price * 0.5;
+        const downPaymentPaid = selectedBooking.down_payment || selectedBooking.price * 0.5;
         const newRemainingBalance = formData.price - downPaymentPaid;
+        dbUpdate.remaining_amount = newRemainingBalance;
 
         let noteMsg = "";
         if (newRemainingBalance < 0) {
@@ -401,6 +402,8 @@ export function BookingReservationModule({ appointments, onUpdateAppointments, o
             status: formData.status,
             price: formData.price,
             total_amount: formData.price,
+            remaining_amount: dbUpdate.remaining_amount !== undefined ? dbUpdate.remaining_amount : b.remaining_amount,
+            remainingBalance: dbUpdate.remaining_amount !== undefined ? dbUpdate.remaining_amount : b.remainingBalance,
             notes: dbUpdate.notes || (b as any).notes,
           }
           : b

@@ -118,20 +118,27 @@ export function BarberScheduleCalendar({ appointments, barberName }: BarberSched
                     <p className="text-xs text-[#87765E]">Total Price</p>
                     <p className="text-sm text-[#5C4A3A]">₱{selectedAppointment.price}</p>
                   </div>
-                  {selectedAppointment.downPaymentPaid && (
-                    <>
-                      <div>
-                        <p className="text-xs text-[#87765E]">Down Payment</p>
-                        <p className="text-sm text-green-600">₱{(selectedAppointment.price * 0.5).toFixed(2)}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-[#87765E]">Remaining Balance</p>
-                        <p className="text-sm text-orange-600">
-                          ₱{selectedAppointment.remainingBalance || (selectedAppointment.price * 0.5).toFixed(2)}
-                        </p>
-                      </div>
-                    </>
-                  )}
+                  {selectedAppointment.downPaymentPaid && (() => {
+                    const price = Number(selectedAppointment.price || 0);
+                    const dp = Number((selectedAppointment as any).down_payment) || (price * 0.5);
+                    const rem = price - dp;
+                    return (
+                      <>
+                        <div>
+                          <p className="text-xs text-[#87765E]">Down Payment</p>
+                          <p className="text-sm text-green-600">₱{dp.toFixed(2)}</p>
+                        </div>
+                        {rem > 0 && (
+                          <div>
+                            <p className="text-xs text-[#87765E]">Remaining Balance</p>
+                            <p className="text-sm text-orange-600">
+                              ₱{rem.toFixed(2)}
+                            </p>
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                   {selectedAppointment.paymentStatus && (
                     <div>
                       <p className="text-xs text-[#87765E]">Payment Status</p>

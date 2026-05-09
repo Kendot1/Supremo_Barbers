@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Card,
   CardContent,
@@ -364,11 +364,41 @@ export function PaymentVerification({
       apt.paymentStatus === "rejected",
   ).length;
 
+  // Group bundled appointments by payment proof
+  const groupedAppointments = useMemo(() => {
+    const groups = new Map<string, AppointmentWithPayment[]>();
+    
+    appointmentsWithPayment.forEach(apt => {
+      // Group by paymentProof + userId + date to be safe. If no proof, group by ID so it's separate.
+      const key = apt.paymentProof ? `${apt.paymentProof}_${apt.userId || apt.customer_id}_${apt.date}` : apt.id;
+      if (!groups.has(key)) {
+        groups.set(key, []);
+      }
+      groups.get(key)!.push(apt);
+    });
+
+    return Array.from(groups.values()).map(group => {
+      if (group.length === 1) return group[0];
+
+      // Combine multiple appointments into a single "bundle" appointment for UI
+      const primary = group[0];
+      return {
+        ...primary,
+        id: primary.id, // keep primary ID for React keys
+        service: group.map(a => a.service).join(' + '),
+        price: group.reduce((sum, a) => sum + Number(a.price || 0), 0),
+        paymentAmount: group.reduce((sum, a) => sum + Number(a.paymentAmount || (Number(a.price || 0)/2)), 0),
+        _isBundled: true,
+        _bundledAppointments: group
+      } as AppointmentWithPayment & { _isBundled?: true, _bundledAppointments?: AppointmentWithPayment[] };
+    });
+  }, [appointmentsWithPayment]);
+
   // Calculate pagination
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentPayments = appointmentsWithPayment.slice(indexOfFirstItem, indexOfLastItem);
-  const totalPages = Math.ceil(appointmentsWithPayment.length / itemsPerPage);
+  const currentPayments = groupedAppointments.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(groupedAppointments.length / itemsPerPage);
 
   const handleViewProof = (
     appointment: AppointmentWithPayment,
@@ -396,60 +426,58 @@ export function PaymentVerification({
     if (!selectedAppointment) return;
 
     try {
-      // Update appointment payment status AND appointment status in database
-      // Use "paid" for payment_status - database only allows: pending, partial, paid, refunded
-      // Set appointment status to "verified" when payment is approved
-      const updatePayload = {
-        payment_status: "paid",
-        status: "verified", // Set to "verified" when payment is approved
-      };
+      const appointmentsToProcess = (selectedAppointment as any)._bundledAppointments || [selectedAppointment];
+      
+      await Promise.all(appointmentsToProcess.map(async (apt: any) => {
+        // Update appointment payment status AND appointment status in database
+        const updatePayload = {
+          payment_status: "paid",
+          status: "verified", 
+        };
 
+        await API.appointments.update(apt.id, updatePayload);
 
-
-      const updatedAppointment = await API.appointments.update(
-        selectedAppointment.id,
-        updatePayload,
-      );
-
-
-      // Update payment record if it exists - only update verified_by and verified_at
-      if (selectedAppointment.payment?.id) {
-        try {
-          await API.payments.update(
-            selectedAppointment.payment.id,
-            {
-              verified_by:
-                userRole === "admin" ? "Admin" : "Barber",
+        // Update payment record if it exists
+        if (apt.payment?.id) {
+          try {
+            await API.payments.update(apt.payment.id, {
+              verified_by: userRole === "admin" ? "Admin" : "Barber",
               verified_at: new Date().toISOString(),
-            },
-          );
-        } catch (error) {
-          console.warn("⚠️ Payment record update (not critical):", error);
+            });
+          } catch (error) {
+            console.warn("⚠️ Payment record update (not critical):", error);
+          }
         }
-      }
+        
+        // Update local state
+        onUpdateAppointment(apt.id, {
+          paymentStatus: "verified",
+          status: "verified",
+          paymentVerifiedAt: new Date().toISOString(),
+          paymentVerifiedBy: userRole === "admin" ? "Admin" : "Barber",
+        });
+      }));
 
-      // Send direct notification to customer FIRST
-
-      const customerId = selectedAppointment.userId || selectedAppointment.customer_id || '';
-
+      // Send ONE notification
+      const primaryApt = appointmentsToProcess[0];
+      const customerId = primaryApt.userId || primaryApt.customer_id || '';
 
       if (customerId && currentUser) {
         try {
           const notificationPayload = {
             userId: customerId,
-            userRole: 'customer', // Required field for database
+            userRole: 'customer',
             title: '✅ Booking Confirmed',
-            message: `Great news! Your payment of ₱${(selectedAppointment.paymentAmount || selectedAppointment.price / 2).toFixed(2)} for ${selectedAppointment.service} on ${parseLocalDate(selectedAppointment.date).toLocaleDateString()} has been verified and approved. Your booking is confirmed!`,
+            message: `Great news! Your payment of ₱${(selectedAppointment.paymentAmount || selectedAppointment.price / 2).toFixed(2)} for ${selectedAppointment.service} on ${parseLocalDate(primaryApt.date).toLocaleDateString()} has been verified and approved. Your booking is confirmed!`,
             type: 'booking',
-            appointmentId: selectedAppointment.id,
+            appointmentId: primaryApt.id, 
             isRead: false,
             actionUrl: '/appointments',
             actionLabel: 'View Appointment',
           };
 
-          const createdNotification = await API.notifications.create(notificationPayload);
+          await API.notifications.create(notificationPayload);
 
-          // Create audit log for payment verification
           const { createAuditLog } = await import('../services/audit-notification.service');
           await createAuditLog({
             userId: currentUser.id,
@@ -458,78 +486,45 @@ export function PaymentVerification({
             userEmail: currentUser.email,
             action: 'payment_verified',
             entityType: 'appointment',
-            entityId: selectedAppointment.id,
-            description: `${currentUser.name} verified payment for ${selectedAppointment.customerName || 'customer'}`,
+            entityId: primaryApt.id,
+            description: `${currentUser.name} verified payment for ${primaryApt.customerName || 'customer'}`,
             status: 'success',
-            metadata: { appointmentId: selectedAppointment.id }
+            metadata: { appointmentId: primaryApt.id, isBundled: !!(selectedAppointment as any)._isBundled }
           });
         } catch (error) {
           console.error('❌ Failed to send direct approval notification:', error);
-          console.error('❌ Error type:', typeof error);
-          console.error('❌ Error message:', error?.message);
-          console.error('❌ Error stack:', error?.stack);
-          console.error('❌ Full error object:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
         }
-      } else {
-        console.warn('⚠️ Could not send notification - missing customerId or currentUser');
-        console.warn('⚠️ customerId:', customerId);
-        console.warn('⚠️ currentUser:', currentUser);
       }
 
-      // Update local state with "verified" for UI display (mapped from "paid")
-      onUpdateAppointment(selectedAppointment.id, {
-        paymentStatus: "verified",
-        status: "verified", // Match database status
-        paymentVerifiedAt: new Date().toISOString(),
-        paymentVerifiedBy:
-          userRole === "admin" ? "Admin" : "Barber",
-      });
-
       toast.success(
-        `Payment approved for ${selectedAppointment.customerName}'s appointment`,
-        {
-          description:
-            "Appointment verified. Customer will be notified.",
-        },
+        `Payment approved for ${primaryApt.customerName}'s appointment`,
+        { description: "Appointment verified. Customer will be notified." }
       );
-
-      // Create audit log and notification for customer using the new audit service
 
       if (currentUser) {
         await logPaymentVerification(
           currentUser.id,
           currentUser.name,
           currentUser.email,
-          selectedAppointment.id,
+          primaryApt.id,
           "approved",
           {
-            customerId:
-              selectedAppointment.userId ||
-              selectedAppointment.customer_id ||
-              "",
-            customerName: selectedAppointment.customerName || "",
+            customerId: primaryApt.userId || primaryApt.customer_id || "",
+            customerName: primaryApt.customerName || "",
             service: selectedAppointment.service,
-            barber: selectedAppointment.barber,
-            barberId:
-              selectedAppointment.barberId ||
-              selectedAppointment.barber_id ||
-              "",
-            date: selectedAppointment.date,
-            time: selectedAppointment.time,
-            amount:
-              selectedAppointment.paymentAmount ||
-              selectedAppointment.price / 2,
+            barber: primaryApt.barber,
+            barberId: primaryApt.barberId || primaryApt.barber_id || "",
+            date: primaryApt.date,
+            time: primaryApt.time,
+            amount: selectedAppointment.paymentAmount || selectedAppointment.price / 2,
           }
         );
-
       }
 
-      // Trigger appointment refresh in parent component FIRST and wait for it
       if (onRefreshAppointments) {
         await onRefreshAppointments();
       }
 
-      // Then refresh local payment data
       await fetchPayments(true);
 
       setIsApproveDialogOpen(false);
@@ -537,17 +532,7 @@ export function PaymentVerification({
       setSelectedAppointment(null);
     } catch (error: any) {
       console.error("❌ Error approving payment:", error);
-      console.error(
-        "❌ Error details:",
-        error.message || error,
-      );
-      console.error(
-        "❌ Full error object:",
-        JSON.stringify(error, null, 2),
-      );
-      toast.error(
-        `Failed to approve payment: ${error.message || "Unknown error"}`,
-      );
+      toast.error(`Failed to approve payment: ${error.message || "Unknown error"}`);
     }
   };
 
@@ -558,121 +543,89 @@ export function PaymentVerification({
     }
 
     try {
-      // Update appointment with rejection - set status to "rejected" and payment_status to "pending"
-      // This allows customer to see it was rejected but can resubmit payment
-      const updatedAppointment = await API.appointments.update(
-        selectedAppointment.id,
-        {
-          status: "rejected", // Change appointment status to rejected
-          payment_status: "pending", // Reset payment status so they can resubmit
+      const appointmentsToProcess = (selectedAppointment as any)._bundledAppointments || [selectedAppointment];
+
+      await Promise.all(appointmentsToProcess.map(async (apt: any) => {
+        await API.appointments.update(apt.id, {
+          status: "rejected", 
+          payment_status: "pending", 
           notes: `Payment rejected: ${rejectionReason}`,
-        },
-      );
+        });
 
-
-
-      // Update payment record if it exists
-      if (selectedAppointment.payment?.id) {
-        try {
-          await API.payments.update(
-            selectedAppointment.payment.id,
-            {
-              verified_by:
-                userRole === "admin" ? "Admin" : "Barber",
+        if (apt.payment?.id) {
+          try {
+            await API.payments.update(apt.payment.id, {
+              verified_by: userRole === "admin" ? "Admin" : "Barber",
               verified_at: new Date().toISOString(),
               notes: rejectionReason,
-            },
-          );
-        } catch (error) {
-          console.warn(
-            "⚠ Payment record update failed (not critical):",
-            error,
-          );
+            });
+          } catch (error) {
+            console.warn("⚠ Payment record update failed (not critical):", error);
+          }
         }
-      }
 
-      // Send direct notification to customer FIRST
+        onUpdateAppointment(apt.id, {
+          status: "rejected",
+          paymentStatus: "rejected",
+          paymentVerifiedAt: new Date().toISOString(),
+          paymentVerifiedBy: userRole === "admin" ? "Admin" : "Barber",
+          rejectionReason: rejectionReason,
+        });
+      }));
 
-      const customerId = selectedAppointment.userId || selectedAppointment.customer_id || '';
+      const primaryApt = appointmentsToProcess[0];
+      const customerId = primaryApt.userId || primaryApt.customer_id || '';
+
       if (customerId && currentUser) {
         try {
           const notificationPayload = {
             userId: customerId,
-            userRole: 'customer', // Required field for database
+            userRole: 'customer', 
             title: '❌ Payment Rejected',
-            message: `Your payment proof for ${selectedAppointment.service} on ${parseLocalDate(selectedAppointment.date).toLocaleDateString()} was rejected. Reason: ${rejectionReason}. Please upload a new payment proof to confirm your booking.`,
+            message: `Your payment proof for ${selectedAppointment.service} on ${parseLocalDate(primaryApt.date).toLocaleDateString()} was rejected. Reason: ${rejectionReason}. Please upload a new payment proof to confirm your booking.`,
             type: 'booking',
-            appointmentId: selectedAppointment.id,
+            appointmentId: primaryApt.id,
             isRead: false,
             actionUrl: '/appointments',
             actionLabel: 'View Appointment',
           };
 
           await API.notifications.create(notificationPayload);
-
         } catch (error) {
           console.error('❌ Failed to send direct rejection notification:', error);
         }
-      } else {
-        console.warn('⚠️ Could not send notification - missing customerId or currentUser');
       }
 
-      // Update local state - show as rejected
-      onUpdateAppointment(selectedAppointment.id, {
-        status: "rejected", // Update appointment status to rejected
-        paymentStatus: "rejected", // Also mark payment as rejected for UI
-        paymentVerifiedAt: new Date().toISOString(),
-        paymentVerifiedBy:
-          userRole === "admin" ? "Admin" : "Barber",
-        rejectionReason: rejectionReason,
-      });
-
       toast.error(
-        `Payment rejected for ${selectedAppointment.customerName}'s appointment`,
-        {
-          description:
-            "Customer will be notified to resubmit payment proof",
-        },
+        `Payment rejected for ${primaryApt.customerName}'s appointment`,
+        { description: "Customer will be notified to resubmit payment proof" }
       );
-
-      // Create audit log and notification for customer using the new audit service
 
       if (currentUser) {
         await logPaymentVerification(
           currentUser.id,
           currentUser.name,
           currentUser.email,
-          selectedAppointment.id,
+          primaryApt.id,
           "rejected",
           {
-            customerId:
-              selectedAppointment.userId ||
-              selectedAppointment.customer_id ||
-              "",
-            customerName: selectedAppointment.customerName || "",
+            customerId: primaryApt.userId || primaryApt.customer_id || "",
+            customerName: primaryApt.customerName || "",
             service: selectedAppointment.service,
-            barber: selectedAppointment.barber,
-            barberId:
-              selectedAppointment.barberId ||
-              selectedAppointment.barber_id ||
-              "",
-            date: selectedAppointment.date,
-            time: selectedAppointment.time,
-            amount:
-              selectedAppointment.paymentAmount ||
-              selectedAppointment.price / 2,
+            barber: primaryApt.barber,
+            barberId: primaryApt.barberId || primaryApt.barber_id || "",
+            date: primaryApt.date,
+            time: primaryApt.time,
+            amount: selectedAppointment.paymentAmount || selectedAppointment.price / 2,
           },
           rejectionReason
         );
-
       }
 
-      // Trigger appointment refresh in parent component FIRST and wait for it
       if (onRefreshAppointments) {
         await onRefreshAppointments();
       }
 
-      // Then refresh local payment data
       await fetchPayments(true);
 
       setIsRejectDialogOpen(false);
@@ -680,13 +633,7 @@ export function PaymentVerification({
       setSelectedAppointment(null);
     } catch (error: any) {
       console.error("❌ Error rejecting payment:", error);
-      console.error(
-        "❌ Error details:",
-        error.message || error,
-      );
-      toast.error(
-        `Failed to reject payment: ${error.message || "Unknown error"}`,
-      );
+      toast.error(`Failed to reject payment: ${error.message || "Unknown error"}`);
     }
   };
 
@@ -1042,20 +989,14 @@ export function PaymentVerification({
                           <div className="text-xs md:text-sm">
                             <div className="text-[#5C4A3A]">
                               ₱
-                              {appointment.paymentAmount?.toFixed(
-                                2,
-                              ) ||
-                                (appointment.price / 2).toFixed(
-                                  2,
-                                )}
+                              {Number(appointment.paymentAmount || (Number(appointment.price) / 2)).toFixed(2)}
                             </div>
                           </div>
                         </TableCell>
                         <TableCell className="hidden xl:table-cell">
                           <div className="text-xs text-[#5C4A3A]">
                             ₱
-                            {appointment.price?.toFixed(2) ||
-                              "0.00"}
+                            {Number(appointment.price || 0).toFixed(2)}
                           </div>
                         </TableCell>
                         <TableCell>
@@ -1185,7 +1126,7 @@ export function PaymentVerification({
                     Total Service Price
                   </p>
                   <p className="text-[#5C4A3A]">
-                    ₱{selectedAppointment.price.toFixed(2)}
+                    ₱{Number(selectedAppointment.price || 0).toFixed(2)}
                   </p>
                 </div>
                 <div>
@@ -1194,9 +1135,9 @@ export function PaymentVerification({
                   </p>
                   <p className="text-[#5C4A3A] font-bold">
                     ₱
-                    {(
+                    {Number(
                       selectedAppointment.paymentAmount ||
-                      selectedAppointment.price / 2
+                      (Number(selectedAppointment.price || 0) / 2)
                     ).toFixed(2)}
                   </p>
                   <p className="text-xs text-[#87765E]">

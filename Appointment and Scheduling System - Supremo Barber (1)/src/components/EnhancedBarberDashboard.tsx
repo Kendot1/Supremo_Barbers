@@ -2961,60 +2961,70 @@ export function EnhancedBarberDashboard({
                   Payment Information
                 </Label>
                 <div className="mt-2 space-y-1 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-green-600">
-                      Total Amount:
-                    </span>
-                    <span className="text-green-700 font-medium">
-                      ₱{selectedAppointment.price.toLocaleString()}
-                    </span>
-                  </div>
-                  {selectedAppointment.down_payment || selectedAppointment.downPaymentPaid ? (
-                    <div className="flex justify-between">
-                      <span className="text-green-600">
-                        Down Payment:
-                      </span>
-                      <span className="text-green-700 font-medium">
-                        ₱{(selectedAppointment.down_payment || selectedAppointment.price * 0.5).toLocaleString()}
-                      </span>
-                    </div>
-                  ) : null}
-                  {selectedAppointment.status === "completed" ? (
-                    <div className="flex justify-between items-center pt-1 border-t border-green-200">
-                      <span className="text-green-600 font-medium">
-                        Payment Status:
-                      </span>
-                      <Badge className="bg-green-500 hover:bg-green-600 text-white text-xs">
-                        Fully Paid
-                      </Badge>
-                    </div>
-                  ) : (
-                    <>
-                      {(selectedAppointment.remainingBalance > 0 || selectedAppointment.remaining_amount > 0) && (
+                  {(() => {
+                    const price = Number(selectedAppointment.price || 0);
+                    const actualDownPayment = Number(selectedAppointment.down_payment) || (price * 0.5);
+                    const actualRemaining = price - actualDownPayment;
+                    
+                    return (
+                      <>
                         <div className="flex justify-between">
                           <span className="text-green-600">
-                            Remaining:
+                            Total Amount:
                           </span>
-                          <span className="text-orange-600 font-medium">
-                            ₱{Number(selectedAppointment.remainingBalance || selectedAppointment.remaining_amount || 0).toFixed(2)}
+                          <span className="text-green-700 font-medium">
+                            ₱{price.toLocaleString()}
                           </span>
                         </div>
-                      )}
-                      {(selectedAppointment.paymentStatus || selectedAppointment.payment_status) && (
-                        <div className="flex justify-between items-center pt-1 border-t border-green-200">
-                          <span className="text-green-600">
-                            Payment Status:
-                          </span>
-                          <Badge className={`text-xs text-white ${(selectedAppointment.paymentStatus || selectedAppointment.payment_status) === 'verified' ? 'bg-green-500' :
-                              (selectedAppointment.paymentStatus || selectedAppointment.payment_status) === 'rejected' ? 'bg-red-500' :
-                                'bg-orange-500'
-                            }`}>
-                            {selectedAppointment.paymentStatus || selectedAppointment.payment_status}
-                          </Badge>
-                        </div>
-                      )}
-                    </>
-                  )}
+                        {(selectedAppointment.down_payment || selectedAppointment.downPaymentPaid) ? (
+                          <div className="flex justify-between">
+                            <span className="text-green-600">
+                              Down Payment:
+                            </span>
+                            <span className="text-green-700 font-medium">
+                              ₱{actualDownPayment.toLocaleString()}
+                            </span>
+                          </div>
+                        ) : null}
+                        {selectedAppointment.status === "completed" ? (
+                          <div className="flex justify-between items-center pt-1 border-t border-green-200">
+                            <span className="text-green-600 font-medium">
+                              Payment Status:
+                            </span>
+                            <Badge className="bg-green-500 hover:bg-green-600 text-white text-xs">
+                              Fully Paid
+                            </Badge>
+                          </div>
+                        ) : (
+                          <>
+                            {actualRemaining > 0 && (
+                              <div className="flex justify-between">
+                                <span className="text-green-600">
+                                  Remaining:
+                                </span>
+                                <span className="text-orange-600 font-medium">
+                                  ₱{actualRemaining.toFixed(2)}
+                                </span>
+                              </div>
+                            )}
+                            {(selectedAppointment.paymentStatus || selectedAppointment.payment_status) && (
+                              <div className="flex justify-between items-center pt-1 border-t border-green-200">
+                                <span className="text-green-600">
+                                  Payment Status:
+                                </span>
+                                <Badge className={`text-xs text-white ${(selectedAppointment.paymentStatus || selectedAppointment.payment_status) === 'verified' ? 'bg-green-500' :
+                                    (selectedAppointment.paymentStatus || selectedAppointment.payment_status) === 'rejected' ? 'bg-red-500' :
+                                      'bg-orange-500'
+                                  }`}>
+                                  {selectedAppointment.paymentStatus || selectedAppointment.payment_status}
+                                </Badge>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
 

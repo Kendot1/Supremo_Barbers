@@ -503,7 +503,7 @@ function App() {
                 (d: any) => d.userAgent === navigator.userAgent
               );
               // If the device was removed from the list, force logout
-              if (devices && devices.length >= 0 && !thisDevice) {
+              if (devices && devices.length > 0 && !thisDevice) {
                 // Device not found in the list — it was removed
                 const trustedKey = `trusted_device_${currentUser.email.toLowerCase()}`;
                 localStorage.removeItem(trustedKey);
@@ -608,12 +608,12 @@ function App() {
           currentUser.email,
           createdAppointment.id,
           {
-            service: appointment.service,
-            barber: appointment.barber,
-            barberId: appointment.barberId || '',
-            date: appointment.date,
-            time: appointment.time,
-            price: appointment.price,
+            service: transformedAppointment.service || appointment.service || '',
+            barber: transformedAppointment.barber || appointment.barber || '',
+            barberId: transformedAppointment.barberId || transformedAppointment.barber_id || appointment.barberId || appointment.barber_id || '',
+            date: transformedAppointment.date || appointment.date || '',
+            time: transformedAppointment.time || appointment.time || '',
+            price: transformedAppointment.price || appointment.price || 0,
           }
         ).then(() => {
 

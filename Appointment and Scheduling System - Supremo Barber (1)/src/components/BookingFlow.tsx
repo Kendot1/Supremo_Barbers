@@ -247,6 +247,7 @@ export function BookingFlow({
   const [showFinalConfirmation, setShowFinalConfirmation] =
     useState(false);
   const [isSubmittingBooking, setIsSubmittingBooking] = useState(false);
+  const [barberAppointments, setBarberAppointments] = useState<Appointment[]>([]);
 
   // Database-driven state
   const [services, setServices] = useState<Service[]>([]);
@@ -381,6 +382,43 @@ export function BookingFlow({
     }
   }, [preSelectedSlot, barbers, onClearPreSelectedSlot]);
 
+  // Fetch barber's appointments when a barber is selected
+  useEffect(() => {
+    const fetchBarberAppointments = async () => {
+      if (selectedBarber?.id) {
+        try {
+          const apps = await API.appointments.getByBarberId(selectedBarber.id);
+          const transformed = apps.map((apt: any) => ({
+            id: apt.id,
+            userId: apt.customer_id || apt.userId || '',
+            service: apt.service_name || apt.service || '',
+            barber: selectedBarber.name, // Force set to selected barber
+            date: apt.appointment_date || apt.date || '',
+            time: apt.appointment_time || apt.time || '',
+            status: apt.status || 'pending',
+            duration: apt.service_duration || apt.duration || 0
+          }));
+          setBarberAppointments(transformed);
+        } catch (error) {
+          console.error("Failed to fetch barber appointments:", error);
+        }
+      } else {
+        setBarberAppointments([]);
+      }
+    };
+    fetchBarberAppointments();
+  }, [selectedBarber]);
+
+  const allRelevantAppointments = useMemo(() => {
+    const combined = [...appointments, ...barberAppointments];
+    const uniqueIds = new Set();
+    return combined.filter(apt => {
+      if (uniqueIds.has(apt.id)) return false;
+      uniqueIds.add(apt.id);
+      return true;
+    });
+  }, [appointments, barberAppointments]);
+
   // Helper to convert time string to minutes since midnight
   const timeToMinutes = (timeStr: string): number => {
     const [time, period] = timeStr.split(" ");
@@ -424,7 +462,7 @@ export function BookingFlow({
     const newBookingEnd =
       newBookingStart + selectedService.duration;
 
-    return appointments.some((apt) => {
+    return allRelevantAppointments.some((apt) => {
       // Only consider active appointments (not cancelled or completed)
       const isActiveAppointment =
         apt.status === 'pending' ||
@@ -455,7 +493,7 @@ export function BookingFlow({
   const areAllSlotsBooked = useMemo(() => {
     if (!selectedDate || !selectedBarber || !selectedService) return false;
     return timeSlots.every((time) => isTimeDisabled(time));
-  }, [selectedDate, selectedBarber, selectedService, appointments]);
+  }, [selectedDate, selectedBarber, selectedService, allRelevantAppointments]);
 
   // Find the next available date with open slots
   const getNextAvailableDate = useMemo(() => {
@@ -479,7 +517,7 @@ export function BookingFlow({
         const bookingStart = timeToMinutes(time);
         const bookingEnd = bookingStart + selectedService.duration;
 
-        const isBooked = appointments.some((apt) => {
+        const isBooked = allRelevantAppointments.some((apt) => {
           const isActiveAppointment =
             apt.status === 'pending' ||
             apt.status === 'confirmed' ||
@@ -512,7 +550,7 @@ export function BookingFlow({
           const bookingStart = timeToMinutes(time);
           const bookingEnd = bookingStart + selectedService.duration;
 
-          const isBooked = appointments.some((apt) => {
+          const isBooked = allRelevantAppointments.some((apt) => {
             const isActiveAppointment =
               apt.status === 'pending' ||
               apt.status === 'confirmed' ||
@@ -547,7 +585,7 @@ export function BookingFlow({
     }
 
     return null;
-  }, [selectedBarber, selectedService, appointments]);
+  }, [selectedBarber, selectedService, allRelevantAppointments]);
 
   const handleServiceSelect = useCallback((serviceId: string) => {
     const service = services.find((s) => s.id === serviceId);

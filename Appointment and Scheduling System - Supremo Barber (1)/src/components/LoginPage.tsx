@@ -1213,6 +1213,22 @@ export function LoginPage({ onLogin, onBack }: LoginPageProps) {
         JSON.stringify(response.user),
       );
       localStorage.setItem("authToken", response.token);
+      localStorage.setItem("loginTime", Date.now().toString());
+
+      // Mark device as trusted for customers
+      if (response.user.role === 'customer') {
+        const trustedKey = `trusted_device_${response.user.email.toLowerCase()}`;
+        localStorage.setItem(trustedKey, 'true');
+        localStorage.setItem(`${trustedKey}_ts`, Date.now().toString());
+      }
+
+      // Register device in background (fire-and-forget)
+      const deviceInfo = parseUserAgent(navigator.userAgent);
+      API.users.registerDevice(response.user.id, {
+        ...deviceInfo,
+        userAgent: navigator.userAgent,
+        isTrusted: response.user.role === 'customer',
+      }).catch(() => {});
 
       // Log user registration to audit logs
       await logUserRegistration(
