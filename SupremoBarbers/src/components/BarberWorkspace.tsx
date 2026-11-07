@@ -18,6 +18,7 @@ import {
   Users,
 } from "lucide-react";
 import { toast } from "sonner";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "./ui/dialog";
 import { BarberEarningsOverview } from "./BarberEarningsOverview";
 import { BarberProfile } from "./BarberProfile";
 import { BarberScheduleCalendar } from "./BarberScheduleCalendar";
@@ -193,5 +194,18 @@ function AvailabilityEditor({ availability, setAvailability, onSave, isSaving }:
 }
 
 function CancelDialog({ appointment, onClose, onConfirm, isBusy }: { appointment: Appointment; onClose: () => void; onConfirm: () => void; isBusy: boolean }) {
-  return <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#241d18]/55 p-4" role="dialog" aria-modal="true" aria-labelledby="barber-cancel-title"><div className="w-full max-w-md rounded-[1.5rem] border border-[#ded2c3] bg-[#fffdfa] p-6 shadow-2xl"><p className="text-[0.65rem] font-bold uppercase tracking-[0.2em] text-[#a05d32]">Appointment action</p><h2 id="barber-cancel-title" className="mt-2 font-display text-2xl text-[#241d18]">Cancel {appointment.customerName || appointment.customer_name || "this appointment"}?</h2><p className="mt-3 text-sm leading-6 text-[#786b5c]">This will update the customer’s booking and payment state. Make sure you have confirmed the change with the customer.</p><div className="mt-6 flex justify-end gap-2"><button type="button" onClick={onClose} className="rounded-xl border border-[#d5c5b4] px-4 py-2.5 text-sm font-bold text-[#786b5c]">Keep appointment</button><button type="button" onClick={onConfirm} disabled={isBusy} className="rounded-xl bg-[#974d2a] px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">{isBusy ? "Cancelling…" : "Cancel appointment"}</button></div></div></div>;
+  return (
+    <Dialog open onOpenChange={(open) => { if (!open && !isBusy) onClose(); }}>
+      <DialogContent className="max-h-[85dvh] overflow-y-auto overscroll-contain border-brand-line bg-white sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Cancel {appointment.customerName || appointment.customer_name || "this appointment"}?</DialogTitle>
+          <DialogDescription>This will update the customer’s booking and payment state. Confirm the change with the customer before continuing.</DialogDescription>
+        </DialogHeader>
+        <div className="mt-4 flex flex-wrap justify-end gap-2">
+          <button type="button" autoFocus onClick={onClose} disabled={isBusy} className="min-h-11 rounded-lg border border-brand-line px-4 text-sm font-semibold text-brand-ink disabled:opacity-50">Keep appointment</button>
+          <button type="button" onClick={onConfirm} disabled={isBusy} className="min-h-11 rounded-lg bg-brand-rust px-4 text-sm font-semibold text-white disabled:opacity-50">{isBusy ? "Cancelling…" : "Cancel appointment"}</button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 }

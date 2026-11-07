@@ -1296,14 +1296,16 @@ export function CustomerBookingManagement({
 
               <div className="space-y-3">
                 <div>
-                  <Label className="text-sm text-[#5C4A3A] mb-2 block">Rating</Label>
-                  <div className="flex items-center gap-2">
+                  <Label id="review-rating-label" className="text-sm text-[#5C4A3A] mb-2 block">Rating</Label>
+                  <div role="group" aria-labelledby="review-rating-label" className="flex items-center gap-2">
                     {[1, 2, 3, 4, 5].map(rating => (
                       <button
                         key={rating}
                         type="button"
+                        aria-label={`${rating} out of 5 stars`}
+                        aria-pressed={reviewRating === rating}
                         onClick={() => setReviewRating(rating)}
-                        className="focus:outline-none transition-all hover:scale-110"
+                        className="rounded-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#795019] transition-transform hover:scale-110"
                       >
                         <Star
                           className={`w-8 h-8 cursor-pointer ${rating <= reviewRating
@@ -1325,8 +1327,9 @@ export function CustomerBookingManagement({
                   )}
                 </div>
                 <div>
-                  <Label className="text-sm text-[#5C4A3A] mb-2 block">Comment</Label>
+                  <Label htmlFor="review-comment" className="text-sm text-[#5C4A3A] mb-2 block">Comment</Label>
                   <Textarea
+                    id="review-comment"
                     value={reviewComment}
                     onChange={(e) => setReviewComment(e.target.value)}
                     placeholder="Tell us about your experience..."

@@ -526,6 +526,7 @@ export function NotificationCenter({
           variant="ghost"
           size="sm"
           className="relative hover:bg-[#FBF7EF] cursor-pointer"
+          aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ''}`}
         >
           <Bell className="w-5 h-5 text-[#5C4A3A]" />
           {unreadCount > 0 && (
@@ -550,6 +551,7 @@ export function NotificationCenter({
               variant="ghost"
               size="sm"
               onClick={fetchNotifications}
+              aria-label="Refresh notifications"
               disabled={isLoading}
               className="h-8 w-8 p-0"
             >
@@ -623,14 +625,19 @@ export function NotificationCenter({
                     key={notification.id}
                     className={`p-4 hover:bg-[#FBF7EF] transition-colors cursor-pointer group relative ${!notification.isRead ? 'bg-blue-50/30' : ''
                       }`}
-                    onClick={() => handleNotificationClick(notification)}
                   >
+                    <button
+                      type="button"
+                      onClick={() => handleNotificationClick(notification)}
+                      aria-label={`${notification.isRead ? '' : 'Unread: '}${notification.title}. ${notification.message}${notification.actionLabel ? `. ${notification.actionLabel}` : ''}`}
+                      className="absolute inset-0 w-full rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#DB9D47]"
+                    />
                     {/* Unread indicator */}
                     {!notification.isRead && (
                       <div className="absolute left-2 top-1/2 -translate-y-1/2 w-2 h-2 bg-[#DB9D47] rounded-full" />
                     )}
 
-                    <div className="flex gap-3 pl-4">
+                    <div className="flex gap-3 pl-4 pointer-events-none">
                       {/* Icon */}
                       <div className={`flex-shrink-0 ${getNotificationColor(notification.type)}`}>
                         <Bell className="w-5 h-5" />
@@ -653,18 +660,14 @@ export function NotificationCenter({
 
                         {/* Action button */}
                         {notification.actionUrl && notification.actionLabel && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-xs text-[#DB9D47] hover:text-[#C58A3C] p-0 h-auto font-normal"
-                          >
+                          <span className="text-xs text-[#DB9D47] font-normal">
                             {notification.actionLabel} →
-                          </Button>
+                          </span>
                         )}
                       </div>
 
                       {/* Actions */}
-                      <div className="flex-shrink-0 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="relative pointer-events-auto flex-shrink-0 flex gap-1 opacity-100 [@media(hover:hover)_and_(pointer:fine)]:opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity">
                         {!notification.isRead && (
                           <Button
                             variant="ghost"
@@ -675,6 +678,7 @@ export function NotificationCenter({
                             }}
                             className="h-6 w-6 p-0"
                             title="Mark as read"
+                            aria-label={`Mark ${notification.title} as read`}
                           >
                             <Eye className="w-3 h-3" />
                           </Button>
@@ -688,6 +692,7 @@ export function NotificationCenter({
                           }}
                           className="h-6 w-6 p-0 hover:text-red-600"
                           title="Delete"
+                          aria-label={`Delete ${notification.title}`}
                         >
                           <Trash2 className="w-3 h-3" />
                         </Button>

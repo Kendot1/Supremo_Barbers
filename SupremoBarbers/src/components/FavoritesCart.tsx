@@ -239,6 +239,7 @@ export function FavoritesCart({
       <SheetTrigger asChild>
         {trigger || (
           <Button
+            aria-label={`Open favorites (${favoriteCount})`}
             variant="ghost"
             size="icon"
             className="relative text-[#5C4A3A] hover:bg-[#FBF7EF] cursor-pointer"
@@ -337,6 +338,7 @@ export function FavoritesCart({
                             <div className="flex items-center">
                               <Checkbox
                                 id={`service-${serviceId}`}
+                                aria-label={`Select ${service.name}`}
                                 checked={isSelected}
                                 onCheckedChange={() => toggleSelectService(serviceId)}
                                 className="data-[state=checked]:bg-[#DB9D47] data-[state=checked]:border-[#DB9D47]"
@@ -387,6 +389,7 @@ export function FavoritesCart({
                               <Button
                                 size="sm"
                                 variant="ghost"
+                                aria-label={`Remove ${service.name} from favorites`}
                                 onClick={() => handleRemoveFavorite(serviceId)}
                                 disabled={isRemoving}
                                 className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50"
@@ -399,6 +402,7 @@ export function FavoritesCart({
                               </Button>
                               <Button
                                 size="sm"
+                                aria-label={`Book ${service.name}`}
                                 onClick={() => handleBookNow(serviceId)}
                                 className="h-8 w-8 p-0 bg-[#DB9D47] hover:bg-[#C88A35] text-white"
                               >

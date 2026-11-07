@@ -324,11 +324,12 @@ export function PaymentProofUpload({
 
               {/* Upload Section - matches BookingFlow upload pattern */}
               <div className="space-y-2">
-                <Label className="text-[#5C4A3A] text-xs font-medium">
+                <Label htmlFor="remaining-payment-proof" className="text-[#5C4A3A] text-xs font-medium">
                   Upload Proof of Payment
                 </Label>
 
                 <input
+                  id="remaining-payment-proof"
                   ref={fileInputRef}
                   type="file"
                   accept="image/*"
@@ -337,7 +338,9 @@ export function PaymentProofUpload({
                 />
 
                 {!previewUrl ? (
-                  <div
+                  <button
+                    type="button"
+                    aria-label="Upload proof of payment"
                     onClick={handleUploadClick}
                     className="border-2 border-dashed border-[#E8DCC8] rounded-lg p-4 flex flex-col items-center justify-center cursor-pointer hover:border-[#DB9D47] transition-colors"
                   >
@@ -348,7 +351,7 @@ export function PaymentProofUpload({
                     <p className="text-[10px] text-[#87765E]">
                       PNG, JPG or JPEG (max. 5MB)
                     </p>
-                  </div>
+                  </button>
                 ) : (
                   <div className="space-y-2">
                     <div className="relative rounded-lg overflow-hidden border-2 border-[#E8DCC8]">

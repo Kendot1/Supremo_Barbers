@@ -1,0 +1,22 @@
+[
+  {
+    "screen": "isolated-role-shell",
+    "width": 1440,
+    "violations": []
+  },
+  {
+    "screen": "isolated-role-shell",
+    "width": 768,
+    "violations": []
+  },
+  {
+    "screen": "isolated-role-shell",
+    "width": 375,
+    "violations": []
+  },
+  {
+    "screen": "isolated-role-shell",
+    "width": 320,
+    "violations": []
+  }
+]

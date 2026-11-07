@@ -73,15 +73,15 @@ export function Pagination({
   };
 
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 px-2">
+    <div className="flex flex-col xl:flex-row items-center justify-between gap-4 px-2">
       {/* Items per page selector */}
       <div className="flex items-center gap-2">
-        <span className="text-sm text-[#87765E] whitespace-nowrap">Rows per page:</span>
+        <span className="text-sm text-brand-muted whitespace-nowrap">Rows per page:</span>
         <Select
           value={itemsPerPage.toString()}
           onValueChange={(value) => onItemsPerPageChange(parseInt(value))}
         >
-          <SelectTrigger className="w-20 h-9">
+          <SelectTrigger aria-label="Rows per page" className="w-20 min-h-11">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -95,19 +95,19 @@ export function Pagination({
       </div>
 
       {/* Page info and navigation */}
-      <div className="flex items-center gap-4">
+      <div className="flex flex-wrap items-center justify-center gap-3">
         {/* Current range display */}
-        <span className="text-sm text-[#87765E] whitespace-nowrap">
+        <span className="text-sm text-brand-muted whitespace-nowrap">
           {startItem}-{endItem} of {totalItems}
         </span>
 
         {/* Navigation buttons */}
-        <div className="flex items-center gap-1">
+        <div className="flex flex-wrap items-center justify-center gap-1">
           {/* First page */}
           <Button
             variant="outline"
             size="sm"
-            className="h-9 w-9 p-0"
+            className="h-11 w-11 p-0"
             onClick={() => onPageChange(1)}
             disabled={!canGoPrevious}
           >
@@ -119,7 +119,7 @@ export function Pagination({
           <Button
             variant="outline"
             size="sm"
-            className="h-9 w-9 p-0"
+            className="h-11 w-11 p-0"
             onClick={() => onPageChange(currentPage - 1)}
             disabled={!canGoPrevious}
           >
@@ -132,7 +132,7 @@ export function Pagination({
             {getPageNumbers().map((page, index) => {
               if (page === '...') {
                 return (
-                  <span key={`ellipsis-${index}`} className="px-2 text-[#87765E]">
+                  <span key={`ellipsis-${index}`} className="px-2 text-brand-muted">
                     ...
                   </span>
                 );
@@ -142,9 +142,10 @@ export function Pagination({
                   key={page}
                   variant={currentPage === page ? 'default' : 'outline'}
                   size="sm"
-                  className={`h-9 w-9 p-0 ${
+                  aria-current={currentPage === page ? "page" : undefined}
+                  className={`h-11 w-11 p-0 ${
                     currentPage === page
-                      ? 'bg-[#DB9D47] hover:bg-[#C88A35] text-white'
+                      ? 'bg-[#DB9D47] hover:bg-[#C88A35] text-brand-ink'
                       : ''
                   }`}
                   onClick={() => onPageChange(page as number)}
@@ -157,7 +158,7 @@ export function Pagination({
 
           {/* Current page indicator (mobile) */}
           <div className="sm:hidden">
-            <span className="text-sm text-[#87765E]">
+            <span className="text-sm text-brand-muted">
               Page {currentPage} of {totalPages}
             </span>
           </div>
@@ -166,7 +167,7 @@ export function Pagination({
           <Button
             variant="outline"
             size="sm"
-            className="h-9 w-9 p-0"
+            className="h-11 w-11 p-0"
             onClick={() => onPageChange(currentPage + 1)}
             disabled={!canGoNext}
           >
@@ -178,7 +179,7 @@ export function Pagination({
           <Button
             variant="outline"
             size="sm"
-            className="h-9 w-9 p-0"
+            className="h-11 w-11 p-0"
             onClick={() => onPageChange(totalPages)}
             disabled={!canGoNext}
           >

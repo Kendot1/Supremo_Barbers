@@ -59,8 +59,8 @@ function PasswordInput({ className, ...props }: React.ComponentPropsWithoutRef<t
       <Input
         {...props}
         type={showPassword ? "text" : "password"}
-        className={className}
-      />
+        className={`pr-12 ${className || ""}`}
+              />
       <button
         type="button"
         aria-label={showPassword ? "Hide password" : "Show password"}
@@ -1352,7 +1352,7 @@ export function LoginPage({
           <TabsContent value="login">
             <Card>
               <CardHeader>
-                <CardTitle>Welcome Back</CardTitle>
+                <CardTitle>Welcome back</CardTitle>
                 <CardDescription>
                   {loginStep === 1 && "Sign in to your account to continue"}
                   {loginStep === 2 && "Verify your identity"}
@@ -1398,7 +1398,7 @@ export function LoginPage({
                         <Button
                           type="button"
                           variant="link"
-                          className="h-auto p-0 text-xs text-[#DB9D47] hover:text-[#C08A3C]"
+                          className="h-auto p-0 text-xs text-brand-rust hover:text-brand-ink"
                           onClick={() => {
 
                             setShowForgotPassword(true);

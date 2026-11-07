@@ -946,13 +946,24 @@ export function BookingFlow({
                     return (
                       <Card
                         key={service.id}
+                        role="button"
+                        tabIndex={isAlreadyBooked ? -1 : 0}
+                        aria-label={`Select ${service.name}`}
+                        aria-pressed={selectedServices.some((serviceItem: Service) => serviceItem.id === service.id)}
+                        aria-disabled={isAlreadyBooked}
+                        onKeyDown={(event: any) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            if (!isAlreadyBooked) handleServiceSelect(service.id);
+                          }
+                        }}
                         onClick={() => {
                           if (!isAlreadyBooked) {
                             handleServiceSelect(service.id);
                           }
                         }}
                         className={cn(
-                          "border-2 transition-all relative overflow-hidden",
+                          "border-2 transition-all relative overflow-hidden focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#795019]",
                           isAlreadyBooked
                             ? "border-gray-300 opacity-50 cursor-not-allowed grayscale"
                             : selectedServices.some(s => s.id === service.id)
@@ -1115,12 +1126,23 @@ export function BookingFlow({
                     {barbers.map((barber) => (
                       <div
                         key={barber.id}
+                        role="button"
+                        tabIndex={barber.available ? 0 : -1}
+                        aria-label={`Select barber ${barber.name}`}
+                        aria-pressed={selectedBarber?.id === barber.id}
+                        aria-disabled={!barber.available}
+                        onKeyDown={(event: any) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            if (barber.available) handleBarberSelect(barber.id);
+                          }
+                        }}
                         onClick={() =>
                           barber.available &&
                           handleBarberSelect(barber.id)
                         }
                         className={cn(
-                          "relative border-2 rounded-lg cursor-pointer transition-all hover:shadow-lg overflow-hidden flex-shrink-0 w-[280px] snap-center",
+                          "relative border-2 rounded-lg cursor-pointer transition-all hover:shadow-lg overflow-hidden focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#795019] flex-shrink-0 w-[280px] snap-center",
                           !barber.available
                             ? "opacity-50 cursor-not-allowed"
                             : "",
@@ -1216,12 +1238,23 @@ export function BookingFlow({
                     {barbers.map((barber) => (
                       <div
                         key={barber.id}
+                        role="button"
+                        tabIndex={barber.available ? 0 : -1}
+                        aria-label={`Select barber ${barber.name}`}
+                        aria-pressed={selectedBarber?.id === barber.id}
+                        aria-disabled={!barber.available}
+                        onKeyDown={(event: any) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            if (barber.available) handleBarberSelect(barber.id);
+                          }
+                        }}
                         onClick={() =>
                           barber.available &&
                           handleBarberSelect(barber.id)
                         }
                         className={cn(
-                          "relative border-2 rounded-lg cursor-pointer transition-all hover:shadow-lg overflow-hidden",
+                          "relative border-2 rounded-lg cursor-pointer transition-all hover:shadow-lg overflow-hidden focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#795019]",
                           !barber.available
                             ? "opacity-50 cursor-not-allowed"
                             : "",
@@ -1928,7 +1961,7 @@ export function BookingFlow({
 
             {/* Compact Upload Section */}
             <div className="space-y-2">
-              <Label className="text-[#5C4A3A] text-xs sm:text-sm">
+              <Label htmlFor="payment-proof" className="text-[#5C4A3A] text-xs sm:text-sm">
                 Upload Proof of Payment
               </Label>
 
@@ -1970,7 +2003,9 @@ export function BookingFlow({
               />
 
               {!uploadedProof ? (
-                <div
+                <button
+                  type="button"
+                  aria-label="Upload proof of payment"
                   onClick={() =>
                     document
                       .getElementById("payment-proof")
@@ -1996,7 +2031,7 @@ export function BookingFlow({
                       </p>
                     </>
                   )}
-                </div>
+                </button>
               ) : (
                 <div className="space-y-2">
                   <div className="relative rounded-lg overflow-hidden border border-[#E8DCC8]">

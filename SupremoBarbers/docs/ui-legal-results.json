@@ -1,0 +1,42 @@
+[
+  {
+    "screen": "Terms & Conditions",
+    "width": 1440,
+    "violations": []
+  },
+  {
+    "screen": "Terms & Conditions",
+    "width": 768,
+    "violations": []
+  },
+  {
+    "screen": "Terms & Conditions",
+    "width": 375,
+    "violations": []
+  },
+  {
+    "screen": "Terms & Conditions",
+    "width": 320,
+    "violations": []
+  },
+  {
+    "screen": "Privacy Policy",
+    "width": 1440,
+    "violations": []
+  },
+  {
+    "screen": "Privacy Policy",
+    "width": 768,
+    "violations": []
+  },
+  {
+    "screen": "Privacy Policy",
+    "width": 375,
+    "violations": []
+  },
+  {
+    "screen": "Privacy Policy",
+    "width": 320,
+    "violations": []
+  }
+]

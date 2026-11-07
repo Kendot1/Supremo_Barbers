@@ -7,23 +7,23 @@
 
   /* Public Supremo Barber brand tokens. */
   --brand-ink: #211d19;
-  --brand-cream: #fffaf0;
-  --brand-sand: #e8dcc8;
-  --brand-gold: #d99b45;
-  --brand-rust: #a9562d;
-  --brand-muted: #75685a;
+  --brand-cream: #fbf3e6;
+  --brand-sand: #e5cfb1;
+  --brand-gold: #DB9D47;
+  --brand-rust: #70401f;
+  --brand-muted: #614d3c;
   --brand-line: #e3d6c3;
 
   /* User-Friendly Supremo Barber Palette - Softer on Eyes */
   --background: #FFFDF8;
-  --foreground: #5C4A3A;
+  --foreground: #3d2b20;
   --card: #FFFFFF;
   --card-foreground: #5C4A3A;
   --popover: #FFFFFF;
   --popover-foreground: #5C4A3A;
 
   /* Primary: Amber #DB9D47 */
-  --primary: #DB9D47;
+  --primary: #a9562d;
   --primary-foreground: #FFFFFF;
 
   /* Secondary: Soft Cream */
@@ -32,14 +32,14 @@
 
   /* Muted - Gentle background */
   --muted: #FBF7EF;
-  --muted-foreground: #87765E;
+  --muted-foreground: #75685a;
 
   /* Accent: Soft Terracotta */
-  --accent: #D98555;
+  --accent: #a9562d;
   --accent-foreground: #FFFFFF;
 
   /* Destructive */
-  --destructive: #E57373;
+  --destructive: #b43737;
   --destructive-foreground: #FFFFFF;
 
   /* Borders - Softer */
@@ -49,7 +49,7 @@
   --switch-background: #E8DCC8;
   --font-weight-medium: 500;
   --font-weight-normal: 400;
-  --ring: #DB9D47;
+  --ring: #70401f;
 
   /* Charts - Warm and Soft */
   --chart-1: #DB9D47;
@@ -162,7 +162,7 @@
 
   body {
     @apply bg-brand-cream text-brand-ink antialiased;
-    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-family: "Segoe UI", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   }
 }
 
@@ -173,11 +173,11 @@
   }
 
   .sb-topbar {
-    @apply sticky top-0 z-30 border-b border-brand-line/80 bg-brand-cream/90 shadow-[0_8px_24px_rgb(33_29_25/5%)] backdrop-blur-xl;
+    @apply sticky top-0 z-30 border-b border-brand-line bg-brand-cream;
   }
 
   .sb-panel {
-    @apply rounded-2xl border border-brand-line/80 bg-white shadow-[0_12px_32px_rgb(33_29_25/6%)];
+    @apply rounded-xl border border-brand-line bg-white;
   }
 
   .sb-panel-muted {
@@ -214,7 +214,7 @@
 
   .sb-auth-shell {
     @apply min-h-screen bg-brand-ink px-3 py-6 text-brand-ink sm:px-6 sm:py-10;
-    background-image: radial-gradient(circle at 12% 12%, rgb(217 155 69 / 15%), transparent 34%), radial-gradient(circle at 88% 86%, rgb(169 86 45 / 18%), transparent 36%);
+
   }
 }
 

@@ -14,22 +14,23 @@ interface TermsAndConditionsProps {
 
 export function TermsAndConditions({ onBack }: TermsAndConditionsProps) {
   return (
-    <div className="min-h-screen bg-[#F5EDD8]">
+    <div className="min-h-screen bg-brand-cream">
       {/* Header */}
-      <div className="bg-[#6E5A48] text-[#F5EDD8] shadow-md sticky top-0 z-50">
+      <div className="bg-brand-ink text-brand-cream sticky top-0 z-50">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center gap-3">
             <Button
               variant="ghost"
               size="icon"
               onClick={onBack}
+              aria-label="Back to home"
               className="text-[#F5EDD8] hover:bg-[#5C4A3A] hover:text-[#FFC976]"
             >
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div className="flex items-center gap-2">
               <Scissors className="w-5 h-5 text-[#FFC976]" />
-              <h1 className="text-xl font-bold text-[#FFC976]">
+              <h1 className="font-display text-xl font-semibold text-brand-cream">
                 Terms & Conditions
               </h1>
             </div>
@@ -40,7 +41,7 @@ export function TermsAndConditions({ onBack }: TermsAndConditionsProps) {
       {/* Content */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Intro */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <div className="bg-white rounded-xl border border-brand-line p-6 mb-6">
           <h2 className="text-2xl font-bold text-[#6E5A48] mb-3">
             Terms of Service - Supremo Barber
           </h2>
@@ -57,8 +58,8 @@ export function TermsAndConditions({ onBack }: TermsAndConditionsProps) {
         {/* Main Content */}
         <Accordion type="single" collapsible className="space-y-3">
           {/* Section 1: Account Registration */}
-          <AccordionItem value="account" className="bg-white rounded-lg shadow-md border-none overflow-hidden">
-            <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-[#F5EDD8]/50">
+          <AccordionItem value="account" className="bg-white rounded-xl border border-brand-line overflow-hidden">
+            <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-brand-cream/50">
               <div className="flex items-center gap-3">
                 <Users className="w-5 h-5 text-[#DB9D47]" />
                 <span className="text-lg font-semibold text-[#6E5A48]">
@@ -113,8 +114,8 @@ export function TermsAndConditions({ onBack }: TermsAndConditionsProps) {
           </AccordionItem>
 
           {/* Section 2: Booking Process */}
-          <AccordionItem value="booking" className="bg-white rounded-lg shadow-md border-none overflow-hidden">
-            <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-[#F5EDD8]/50">
+          <AccordionItem value="booking" className="bg-white rounded-xl border border-brand-line overflow-hidden">
+            <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-brand-cream/50">
               <div className="flex items-center gap-3">
                 <Calendar className="w-5 h-5 text-[#DB9D47]" />
                 <span className="text-lg font-semibold text-[#6E5A48]">
@@ -184,8 +185,8 @@ export function TermsAndConditions({ onBack }: TermsAndConditionsProps) {
           </AccordionItem>
 
           {/* Section 3: Payment Terms */}
-          <AccordionItem value="payment" className="bg-white rounded-lg shadow-md border-none overflow-hidden">
-            <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-[#F5EDD8]/50">
+          <AccordionItem value="payment" className="bg-white rounded-xl border border-brand-line overflow-hidden">
+            <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-brand-cream/50">
               <div className="flex items-center gap-3">
                 <CreditCard className="w-5 h-5 text-[#DB9D47]" />
                 <span className="text-lg font-semibold text-[#6E5A48]">
@@ -198,12 +199,12 @@ export function TermsAndConditions({ onBack }: TermsAndConditionsProps) {
                 <div>
                   <h4 className="font-semibold text-[#6E5A48] mb-2">Payment Structure</h4>
                   <div className="grid grid-cols-2 gap-4 mb-3">
-                    <div className="p-4 bg-[#F5EDD8] rounded-md text-center">
+                    <div className="p-4 bg-brand-cream rounded-md text-center">
                       <p className="text-sm text-[#7A6854] mb-1">Down Payment (Online)</p>
                       <p className="text-2xl font-bold text-[#DB9D47]">50%</p>
                       <p className="text-xs text-[#7A6854] mt-1">Required to secure booking</p>
                     </div>
-                    <div className="p-4 bg-[#F5EDD8] rounded-md text-center">
+                    <div className="p-4 bg-brand-cream rounded-md text-center">
                       <p className="text-sm text-[#7A6854] mb-1">Balance (At Shop)</p>
                       <p className="text-2xl font-bold text-[#DB9D47]">50%</p>
                       <p className="text-xs text-[#7A6854] mt-1">Paid after service</p>
@@ -263,8 +264,8 @@ export function TermsAndConditions({ onBack }: TermsAndConditionsProps) {
           </AccordionItem>
 
           {/* Section 4: Cancellation & Rescheduling */}
-          <AccordionItem value="cancellation" className="bg-white rounded-lg shadow-md border-none overflow-hidden">
-            <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-[#F5EDD8]/50">
+          <AccordionItem value="cancellation" className="bg-white rounded-xl border border-brand-line overflow-hidden">
+            <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-brand-cream/50">
               <div className="flex items-center gap-3">
                 <RefreshCw className="w-5 h-5 text-[#DB9D47]" />
                 <span className="text-lg font-semibold text-[#6E5A48]">
@@ -370,8 +371,8 @@ export function TermsAndConditions({ onBack }: TermsAndConditionsProps) {
           </AccordionItem>
 
           {/* Section 5: Service & Shop Rules */}
-          <AccordionItem value="service" className="bg-white rounded-lg shadow-md border-none overflow-hidden">
-            <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-[#F5EDD8]/50">
+          <AccordionItem value="service" className="bg-white rounded-xl border border-brand-line overflow-hidden">
+            <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-brand-cream/50">
               <div className="flex items-center gap-3">
                 <Scissors className="w-5 h-5 text-[#DB9D47]" />
                 <span className="text-lg font-semibold text-[#6E5A48]">
@@ -456,8 +457,8 @@ export function TermsAndConditions({ onBack }: TermsAndConditionsProps) {
           </AccordionItem>
 
           {/* Section 6: Liability & Disputes */}
-          <AccordionItem value="liability" className="bg-white rounded-lg shadow-md border-none overflow-hidden">
-            <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-[#F5EDD8]/50">
+          <AccordionItem value="liability" className="bg-white rounded-xl border border-brand-line overflow-hidden">
+            <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-brand-cream/50">
               <div className="flex items-center gap-3">
                 <Scale className="w-5 h-5 text-[#DB9D47]" />
                 <span className="text-lg font-semibold text-[#6E5A48]">
@@ -499,7 +500,7 @@ export function TermsAndConditions({ onBack }: TermsAndConditionsProps) {
                   <h4 className="font-semibold text-[#6E5A48] mb-2">Dispute Resolution</h4>
                   <div className="space-y-2 text-sm">
                     <p className="mb-2">If you have a complaint or dispute:</p>
-                    <div className="p-3 bg-[#F5EDD8] rounded-md space-y-2">
+                    <div className="p-3 bg-brand-cream rounded-md space-y-2">
                       <p><strong>Step 1:</strong> Speak with your barber or shop manager immediately</p>
                       <p><strong>Step 2:</strong> If unresolved, email info@supremobarber.com within 48 hours with details</p>
                       <p><strong>Step 3:</strong> We'll investigate and respond within 3-5 business days</p>
@@ -519,8 +520,8 @@ export function TermsAndConditions({ onBack }: TermsAndConditionsProps) {
           </AccordionItem>
 
           {/* Section 7: Changes & Termination */}
-          <AccordionItem value="changes" className="bg-white rounded-lg shadow-md border-none overflow-hidden">
-            <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-[#F5EDD8]/50">
+          <AccordionItem value="changes" className="bg-white rounded-xl border border-brand-line overflow-hidden">
+            <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-brand-cream/50">
               <div className="flex items-center gap-3">
                 <FileText className="w-5 h-5 text-[#DB9D47]" />
                 <span className="text-lg font-semibold text-[#6E5A48]">

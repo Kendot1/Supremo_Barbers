@@ -3,12 +3,9 @@ import {
   ArrowRight,
   ArrowUpRight,
   CalendarDays,
-  Check,
   Clock3,
-  Mail,
   MapPin,
   Menu,
-  Phone,
   Scissors,
   ShieldCheck,
   Star,
@@ -78,13 +75,6 @@ const NAV_ITEMS = [
   { label: "Reviews", id: "reviews" },
 ] as const;
 
-const CONTACT = {
-  address: "Blk 1, Lot 5 Quirino Hwy, Novaliches, Quezon City, 1118 Metro Manila",
-  phone: "+63 933 861 5024",
-  email: "suremobarbershops@gmail.com",
-  hours: "Monday–Saturday · 9:00 AM–8:00 PM",
-};
-
 function getServiceId(service: Service): string {
   return service.id || service._id || service.name;
 }
@@ -124,16 +114,16 @@ function SectionIntro({
   return (
     <div className={`${centered ? "mx-auto text-center" : ""} max-w-2xl`}>
       <p
-        className={`mb-4 flex items-center gap-3 text-xs font-bold uppercase tracking-[0.24em] ${
+        className={`mb-3 flex items-center gap-3 text-sm font-semibold ${
           centered ? "justify-center" : ""
-        } ${dark ? "text-brand-gold" : "text-brand-rust"}`}
+        } ${dark ? "text-brand-rust" : "text-brand-rust"}`}
       >
         <span className="h-px w-8 bg-current" aria-hidden="true" />
         {eyebrow}
       </p>
       <h2
-        className={`font-display text-4xl leading-[0.98] tracking-[-0.04em] sm:text-5xl lg:text-6xl ${
-          dark ? "text-brand-cream" : "text-brand-ink"
+        className={`font-display text-3xl leading-tight tracking-[-0.03em] sm:text-4xl lg:text-5xl ${
+          dark ? "text-brand-ink" : "text-brand-ink"
         }`}
       >
         {title}
@@ -141,7 +131,7 @@ function SectionIntro({
       <p
         className={`mt-6 max-w-xl text-base leading-8 sm:text-lg ${
           centered ? "mx-auto" : ""
-        } ${dark ? "text-brand-sand/75" : "text-brand-muted"}`}
+        } ${dark ? "text-brand-muted" : "text-brand-muted"}`}
       >
         {description}
       </p>
@@ -162,8 +152,8 @@ function ServiceCard({
   const imageUrl = service.imageUrl ? normalizeR2Url(service.imageUrl) : null;
 
   return (
-    <article className="group flex h-full flex-col overflow-hidden rounded-[1.5rem] border border-brand-line bg-white shadow-[0_16px_50px_rgb(39_31_24/6%)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_22px_60px_rgb(39_31_24/12%)]">
-      <div className="relative h-52 overflow-hidden bg-brand-ink sm:h-60">
+    <article className="group flex h-full flex-col overflow-hidden rounded-xl border border-brand-line bg-white transition-colors hover:border-brand-rust/50">
+      <div className="relative h-44 overflow-hidden bg-brand-ink sm:h-52">
         {imageUrl ? (
           <ImageWithFallback
             src={imageUrl}
@@ -173,13 +163,13 @@ function ServiceCard({
             className="h-full w-full object-cover opacity-90 transition duration-500 group-hover:scale-105"
           />
         ) : (
-          <div className="flex h-full items-center justify-center bg-[radial-gradient(circle_at_30%_20%,rgb(217_151_69/30%),transparent_36%),linear-gradient(135deg,#211d19,#5b4030)]">
+          <div className="flex h-full items-center justify-center bg-brand-ink">
             <Scissors className="h-12 w-12 text-brand-gold/80" aria-hidden="true" />
           </div>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-brand-ink/85 via-brand-ink/10 to-transparent" />
         {price && (
-          <span className="absolute right-4 top-4 rounded-full bg-brand-cream/95 px-3 py-1.5 text-sm font-bold text-brand-ink shadow-lg">
+          <span className="absolute right-4 top-4 rounded-lg bg-brand-cream/95 px-3 py-1.5 text-sm font-bold text-brand-ink shadow-lg">
             {price}
           </span>
         )}
@@ -189,10 +179,10 @@ function ServiceCard({
       </div>
 
       <div className="flex flex-1 flex-col p-5 sm:p-6">
-        <p className="line-clamp-3 min-h-[4.5rem] text-sm leading-7 text-brand-muted">
+        <p className="line-clamp-3 min-h-[4rem] text-sm leading-6 text-brand-muted">
           {service.description || "A considered grooming service tailored to your style."}
         </p>
-        <div className="mt-5 flex items-center justify-between border-t border-brand-line pt-4">
+        <div className="mt-4 flex items-center justify-between border-t border-brand-line pt-4">
           {duration !== null ? (
             <span className="inline-flex items-center gap-2 text-sm font-medium text-brand-muted">
               <Clock3 className="h-4 w-4 text-brand-rust" aria-hidden="true" />
@@ -204,7 +194,7 @@ function ServiceCard({
           <button
             type="button"
             onClick={() => onSelect(serviceId)}
-            className="inline-flex min-h-11 items-center gap-2 rounded-full px-3 text-sm font-bold text-brand-rust transition hover:bg-brand-gold/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-2"
+            className="inline-flex min-h-11 items-center gap-2 rounded-lg px-3 text-sm font-bold text-brand-rust transition hover:bg-brand-gold/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-2"
             aria-label={`Book ${service.name}`}
           >
             Book
@@ -239,8 +229,8 @@ function ReviewCard({
     <button
       type="button"
       onClick={() => onSelect(review)}
-      className="flex min-h-[17rem] w-full flex-col rounded-[1.5rem] border border-brand-line bg-brand-cream p-6 text-left shadow-[0_14px_45px_rgb(39_31_24/5%)] transition duration-300 hover:-translate-y-1 hover:border-brand-gold/60 hover:shadow-[0_22px_55px_rgb(39_31_24/10%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-4 sm:p-7"
-      aria-label={`Read review from ${name}`}
+      className="flex min-h-[14rem] w-full flex-col rounded-xl border border-brand-line bg-brand-cream p-6 text-left transition-colors hover:border-brand-rust/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-4 sm:p-7"
+      aria-haspopup="dialog"
     >
       <div className="flex items-start justify-between gap-4">
         {review.customerAvatar ? (
@@ -249,10 +239,10 @@ function ReviewCard({
             alt=""
             loading="lazy"
             decoding="async"
-            className="h-12 w-12 rounded-full object-cover ring-2 ring-brand-gold/30"
+            className="h-12 w-12 rounded-lg object-cover ring-2 ring-brand-gold/30"
           />
         ) : (
-          <span className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-ink font-display text-lg text-brand-gold ring-2 ring-brand-gold/30">
+          <span className="flex h-12 w-12 items-center justify-center rounded-lg bg-brand-ink font-display text-lg text-brand-gold ring-2 ring-brand-gold/30">
             {initials || "SB"}
           </span>
         )}
@@ -262,7 +252,7 @@ function ReviewCard({
               key={`${getReviewId(review, index)}-star-${starIndex}`}
               className={`h-4 w-4 ${
                 starIndex < rating
-                  ? "fill-brand-gold text-brand-gold"
+                  ? "fill-brand-gold text-brand-rust"
                   : "text-brand-line"
               }`}
               aria-hidden="true"
@@ -270,7 +260,7 @@ function ReviewCard({
           ))}
         </span>
       </div>
-      <p className="mt-6 line-clamp-4 flex-1 font-display text-xl leading-8 text-brand-ink">
+      <p className="mt-5 line-clamp-4 flex-1 font-display text-lg leading-7 text-brand-ink">
         “{review.comment}”
       </p>
       <span className="mt-5 border-t border-brand-line pt-4 text-sm font-bold uppercase tracking-[0.14em] text-brand-muted">
@@ -380,12 +370,12 @@ export function LandingPage({
   };
 
   return (
-    <div className="min-h-screen overflow-x-clip bg-brand-cream text-brand-ink">
+    <div className="min-h-screen bg-brand-cream text-brand-ink">
       <a href="#main-content" className="skip-link">
         Skip to content
       </a>
 
-      <header className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-brand-ink/90 text-brand-cream shadow-lg shadow-brand-ink/10 backdrop-blur-xl">
+      <header className="fixed inset-x-0 top-0 z-50 border-b border-white/10 bg-brand-cream text-brand-ink">
         <nav aria-label="Primary navigation" className="mx-auto max-w-7xl px-5 sm:px-8">
           <div className="flex h-[4.75rem] items-center justify-between">
             <a
@@ -402,10 +392,10 @@ export function LandingPage({
                 className="h-11 w-11 object-contain transition duration-300 group-hover:scale-105"
               />
               <span className="hidden sm:block">
-                <span className="block font-display text-xl leading-none tracking-tight text-brand-cream">
-                  Supremo <span className="text-brand-gold">Barber</span>
+                <span className="block font-display text-xl leading-none tracking-tight text-brand-ink">
+                  Supremo <span className="text-brand-rust">Barber</span>
                 </span>
-                <span className="mt-1 block text-[0.65rem] font-bold uppercase tracking-[0.2em] text-brand-sand/65">
+                <span className="mt-1 block text-[0.65rem] font-bold uppercase tracking-[0.2em] text-brand-muted">
                   Novaliches · Quezon City
                 </span>
               </span>
@@ -419,8 +409,8 @@ export function LandingPage({
                   aria-current={activeSection === item.id ? "location" : undefined}
                   className={`relative py-3 text-sm font-semibold transition-colors after:absolute after:inset-x-0 after:bottom-0 after:h-px after:origin-left after:bg-brand-gold after:transition-transform ${
                     activeSection === item.id
-                      ? "text-brand-gold after:scale-x-100"
-                      : "text-brand-sand/75 after:scale-x-0 hover:text-brand-cream hover:after:scale-x-100"
+                      ? "text-brand-rust after:scale-x-100"
+                      : "text-brand-muted after:scale-x-0 hover:text-brand-ink hover:after:scale-x-100"
                   }`}
                 >
                   {item.label}
@@ -433,14 +423,14 @@ export function LandingPage({
                 type="button"
                 variant="ghost"
                 onClick={onLogin}
-                className="text-brand-sand hover:bg-white/10 hover:text-brand-cream"
+                className="text-brand-muted hover:bg-brand-sand hover:text-brand-ink"
               >
                 Sign in
               </Button>
               <Button
                 type="button"
                 onClick={onGetStarted}
-                className="rounded-full bg-brand-gold px-5 font-bold text-brand-ink shadow-lg shadow-brand-gold/20 hover:bg-brand-gold/90"
+                className="rounded-lg bg-brand-rust px-5 font-bold text-white  hover:bg-brand-rust/90"
               >
                 Book appointment
                 <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -454,14 +444,14 @@ export function LandingPage({
                     type="button"
                     aria-label="Open navigation menu"
                     aria-expanded={mobileMenuOpen}
-                    className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl text-brand-cream transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
+                    className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl text-brand-ink transition hover:bg-brand-sand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold"
                   >
                     <Menu className="h-6 w-6" aria-hidden="true" />
                   </button>
                 </SheetTrigger>
                 <SheetContent
                   side="right"
-                  className="w-[min(88vw,22rem)] border-brand-line bg-brand-cream text-brand-ink"
+                  className="w-[min(88vw,22rem)] overflow-y-auto overscroll-contain border-brand-line bg-brand-cream text-brand-ink"
                 >
                   <SheetHeader className="text-left">
                     <SheetTitle className="font-display text-2xl text-brand-ink">
@@ -486,7 +476,7 @@ export function LandingPage({
                       <Button
                         type="button"
                         onClick={onGetStarted}
-                        className="h-12 w-full rounded-full bg-brand-gold font-bold text-brand-ink hover:bg-brand-gold/90"
+                        className="h-12 w-full rounded-lg bg-brand-rust font-bold text-white hover:bg-brand-rust/90"
                       >
                         Book appointment
                         <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -495,7 +485,7 @@ export function LandingPage({
                         type="button"
                         variant="outline"
                         onClick={onLogin}
-                        className="mt-3 h-12 w-full rounded-full border-brand-line text-brand-ink hover:bg-brand-ink hover:text-brand-cream"
+                        className="mt-3 h-12 w-full rounded-lg border-brand-line text-brand-ink hover:bg-brand-rust hover:text-white"
                       >
                         Sign in
                       </Button>
@@ -508,35 +498,31 @@ export function LandingPage({
         </nav>
       </header>
 
-      <main id="main-content">
+      <main id="main-content" tabIndex={-1}>
         <section
           id="home"
           aria-labelledby="hero-heading"
-          className="relative isolate overflow-hidden bg-brand-ink pt-[4.75rem] text-brand-cream"
+          className="relative isolate overflow-hidden bg-brand-cream pt-[4.75rem] text-brand-ink"
         >
-          <div className="absolute inset-0 -z-10 opacity-40" aria-hidden="true">
-            <div className="absolute -left-40 top-20 h-96 w-96 rounded-full bg-brand-rust/30 blur-3xl" />
-            <div className="absolute -right-40 bottom-0 h-[32rem] w-[32rem] rounded-full bg-brand-gold/20 blur-3xl" />
-          </div>
-          <div className="mx-auto grid min-h-[calc(100svh-4.75rem)] max-w-7xl items-center gap-12 px-5 py-16 sm:px-8 sm:py-20 lg:grid-cols-[1.02fr_0.98fr] lg:gap-16 lg:py-24">
+          <div className="mx-auto grid min-h-[min(720px,calc(100svh-4.75rem))] max-w-7xl items-center gap-10 px-5 py-14 sm:px-8 sm:py-16 lg:grid-cols-[1.05fr_0.95fr] lg:gap-12 lg:py-20">
             <div className="max-w-2xl motion-safe:animate-fade-in-up">
-              <p className="mb-6 inline-flex items-center gap-3 rounded-full border border-brand-gold/30 bg-brand-gold/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.2em] text-brand-gold">
+              <p className="mb-6 inline-flex items-center gap-3 text-sm font-medium text-brand-rust">
                 <Scissors className="h-4 w-4" aria-hidden="true" />
                 Classic craft · modern finish
               </p>
-              <h1 id="hero-heading" className="font-display text-6xl leading-[0.88] tracking-[-0.06em] sm:text-7xl lg:text-[7.4rem]">
+              <h1 id="hero-heading" className="font-display text-4xl leading-[1.05] tracking-[-0.035em] sm:text-5xl lg:text-6xl">
                 Stay sharp.
-                <span className="mt-3 block text-brand-gold">Look supreme.</span>
+                <span className="mt-3 block text-brand-rust">Look supreme.</span>
               </h1>
-              <p className="mt-8 max-w-xl text-lg leading-8 text-brand-sand/80 sm:text-xl">
+              <p className="mt-6 max-w-xl text-base leading-7 text-brand-muted sm:text-lg">
                 Thoughtful cuts, clean finishes, and a barbershop experience made for your everyday confidence.
               </p>
-              <div className="mt-10 flex flex-col gap-3 sm:flex-row">
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Button
                   type="button"
                   size="lg"
                   onClick={onGetStarted}
-                  className="h-14 rounded-full bg-brand-gold px-7 text-base font-bold text-brand-ink shadow-xl shadow-brand-gold/20 hover:bg-brand-gold/90"
+                  className="h-14 rounded-lg bg-brand-rust px-7 text-base font-bold text-white hover:bg-brand-rust/90"
                 >
                   Book an appointment
                   <ArrowRight className="h-5 w-5" aria-hidden="true" />
@@ -546,29 +532,29 @@ export function LandingPage({
                   size="lg"
                   variant="outline"
                   onClick={() => scrollTo("services")}
-                  className="h-14 rounded-full border-white/25 bg-white/5 px-7 text-base font-semibold text-brand-cream hover:bg-white/10 hover:text-brand-cream"
+                  className="h-14 rounded-lg border-brand-line bg-white px-7 text-base font-semibold text-brand-ink hover:bg-brand-sand hover:text-brand-ink"
                 >
                   Explore services
                 </Button>
               </div>
-              <div className="mt-12 grid max-w-xl gap-5 border-t border-white/15 pt-6 text-sm sm:grid-cols-2">
+              <div className="mt-9 grid max-w-xl gap-5 border-t border-white/15 pt-6 text-sm sm:grid-cols-2">
                 <a
                   href={MAP_URL}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group inline-flex items-start gap-3 text-brand-sand/75 hover:text-brand-cream"
+                  className="group inline-flex items-start gap-3 text-brand-ink/80 hover:text-brand-ink"
                 >
-                  <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-brand-gold" aria-hidden="true" />
+                  <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-brand-rust" aria-hidden="true" />
                   <span>
-                    <span className="block font-bold text-brand-cream">Visit the shop</span>
+                    <span className="block font-bold text-brand-ink">Visit the shop</span>
                     <span className="mt-1 block leading-6">Novaliches, Quezon City</span>
                   </span>
                   <ArrowUpRight className="mt-0.5 h-4 w-4 opacity-0 transition group-hover:opacity-100" aria-hidden="true" />
                 </a>
-                <div className="inline-flex items-start gap-3 text-brand-sand/75">
-                  <Clock3 className="mt-0.5 h-4 w-4 shrink-0 text-brand-gold" aria-hidden="true" />
+                <div className="inline-flex items-start gap-3 text-brand-ink/80">
+                  <Clock3 className="mt-0.5 h-4 w-4 shrink-0 text-brand-rust" aria-hidden="true" />
                   <span>
-                    <span className="block font-bold text-brand-cream">Open Monday–Saturday</span>
+                    <span className="block font-bold text-brand-ink">Open Monday–Saturday</span>
                     <span className="mt-1 block leading-6">9:00 AM–8:00 PM · Sunday closed</span>
                   </span>
                 </div>
@@ -576,8 +562,8 @@ export function LandingPage({
             </div>
 
             <div className="relative mx-auto w-full max-w-xl motion-safe:animate-fade-in-up lg:justify-self-end">
-              <div className="absolute -inset-4 rounded-[2rem] border border-brand-gold/25" aria-hidden="true" />
-              <figure className="relative overflow-hidden rounded-[1.75rem] border border-white/15 bg-brand-ink shadow-2xl shadow-black/30">
+              <div className="hidden" aria-hidden="true" />
+              <figure className="relative overflow-hidden rounded-xl border border-brand-line bg-brand-ink">
                 <img
                   src={HERO_IMAGE_URL}
                   alt=""
@@ -589,10 +575,10 @@ export function LandingPage({
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-brand-ink via-transparent to-brand-ink/10" aria-hidden="true" />
                 <figcaption className="absolute bottom-6 left-6 right-6 flex items-end justify-between gap-6">
-                  <span className="max-w-[13rem] font-display text-2xl leading-tight text-brand-cream sm:text-3xl">
+                  <span className="max-w-[13rem] font-display text-2xl leading-tight text-white sm:text-3xl">
                     Your look, considered from every angle.
                   </span>
-                  <span className="hidden rounded-full border border-brand-gold/50 bg-brand-ink/60 px-3 py-2 text-xs font-bold uppercase tracking-[0.18em] text-brand-gold sm:block">
+                  <span className="hidden rounded-lg border border-brand-gold/50 bg-brand-ink/80 px-3 py-2 text-xs font-bold uppercase tracking-[0.18em] text-brand-gold sm:block">
                     Supremo standard
                   </span>
                 </figcaption>
@@ -609,7 +595,7 @@ export function LandingPage({
               { icon: ShieldCheck, label: "Simple online booking", detail: "50% GCash deposit at checkout" },
             ].map((item) => (
               <div key={item.label} className="flex items-center gap-4 bg-brand-cream px-1 py-6 sm:px-6">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-gold/15 text-brand-rust">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-brand-gold/15 text-brand-rust">
                   <item.icon className="h-5 w-5" aria-hidden="true" />
                 </span>
                 <span>
@@ -621,49 +607,49 @@ export function LandingPage({
           </div>
         </section>
 
-        <section id="services" aria-labelledby="services-heading" className="bg-brand-cream px-5 py-20 sm:px-8 sm:py-28 lg:py-36">
+        <section id="services" aria-labelledby="services-heading" className="bg-brand-cream px-5 py-16 sm:px-8 sm:py-20 lg:py-24">
           <div className="mx-auto max-w-7xl">
             <div className="flex flex-col justify-between gap-8 lg:flex-row lg:items-end">
               <SectionIntro
                 eyebrow="The menu"
-                title={<span id="services-heading">Made for the chair, built around you.</span>}
-                description="Explore the current Supremo Barber services, with pricing and timing shown when available."
+                title={<span id="services-heading">Services & pricing</span>}
+                description="Choose a service, then select an available barber and time."
               />
               <button
                 type="button"
                 onClick={onGetStarted}
-                className="inline-flex min-h-11 items-center gap-2 self-start rounded-full border border-brand-line px-5 text-sm font-bold text-brand-rust transition hover:border-brand-gold hover:bg-brand-gold/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-2 lg:self-end"
+                className="inline-flex min-h-11 items-center gap-2 self-start rounded-lg border border-brand-line px-5 text-sm font-bold text-brand-rust transition hover:border-brand-gold hover:bg-brand-gold/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-gold focus-visible:ring-offset-2 lg:self-end"
               >
                 Book from the full menu
                 <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </button>
             </div>
 
-            <div className="mt-12">
+            <div className="mt-9">
               {isLoadingContent ? (
                 <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3" role="status" aria-live="polite">
                   {Array.from({ length: 6 }, (_, index) => (
-                    <div key={index} className="h-[25rem] animate-pulse rounded-[1.5rem] bg-brand-line/50" />
+                    <div key={index} className="h-[25rem] animate-pulse rounded-xl bg-brand-line/50" />
                   ))}
                   <span className="sr-only">Loading services</span>
                 </div>
               ) : contentError.services ? (
-                <div className="rounded-[1.5rem] border border-brand-rust/30 bg-brand-rust/5 px-6 py-10 text-center">
-                  <p className="font-display text-2xl text-brand-ink">The service menu is taking a moment.</p>
-                  <p className="mt-2 text-brand-muted">Please try again or start a booking to see the live menu.</p>
+                <div className="rounded-xl border border-brand-rust/30 bg-brand-rust/5 px-6 py-10 text-center">
+                  <p className="font-display text-2xl text-brand-ink">The service menu couldn’t load.</p>
+                  <p className="mt-2 text-brand-muted">Try again, or contact the shop for service details.</p>
                   <Button
                     type="button"
                     variant="outline"
                     onClick={() => void loadContent()}
-                    className="mt-5 rounded-full border-brand-rust text-brand-rust hover:bg-brand-rust hover:text-white"
+                    className="mt-5 rounded-lg border-brand-rust text-brand-rust hover:bg-brand-rust hover:text-white"
                   >
                     Try again
                   </Button>
                 </div>
               ) : services.length === 0 ? (
-                <div className="rounded-[1.5rem] border border-brand-line bg-white px-6 py-10 text-center">
-                  <p className="font-display text-2xl text-brand-ink">Services are being refreshed.</p>
-                  <p className="mt-2 text-brand-muted">Start a booking to view the latest availability.</p>
+                <div className="rounded-xl border border-brand-line bg-white px-6 py-10 text-center">
+                  <p className="font-display text-2xl text-brand-ink">No services are listed yet.</p>
+                  <p className="mt-2 text-brand-muted">Contact the shop for the current service menu.</p>
                 </div>
               ) : (
                 <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -676,8 +662,8 @@ export function LandingPage({
           </div>
         </section>
 
-        <section id="about" aria-labelledby="about-heading" className="bg-brand-ink px-5 py-20 text-brand-cream sm:px-8 sm:py-28 lg:py-36">
-          <div className="mx-auto grid max-w-7xl gap-16 lg:grid-cols-[0.9fr_1.1fr] lg:items-start lg:gap-24">
+        <section id="about" aria-labelledby="about-heading" className="bg-brand-sand px-5 py-20 text-brand-ink sm:px-8 sm:py-28 lg:py-36">
+          <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-start lg:gap-16">
             <SectionIntro
               eyebrow="The Supremo way"
               title={<span id="about-heading">Good grooming is a small daily ritual.</span>}
@@ -692,67 +678,49 @@ export function LandingPage({
               ].map((principle) => (
                 <div
                   key={principle.number}
-                  className={`border-t border-white/15 pt-5 ${
+                  className={`border-t border-brand-line pt-5 ${
                     principle.number === "03" ? "sm:col-span-2 sm:max-w-[calc(50%-1.25rem)]" : ""
                   }`}
                 >
-                  <span className="font-mono text-xs font-bold tracking-[0.2em] text-brand-gold">{principle.number}</span>
-                  <h3 className="mt-4 font-display text-2xl text-brand-cream">{principle.title}</h3>
-                  <p className="mt-3 text-sm leading-7 text-brand-sand/70">{principle.text}</p>
+                  <span className="font-mono text-xs font-bold tracking-[0.2em] text-brand-rust">{principle.number}</span>
+                  <h3 className="mt-4 font-display text-2xl text-brand-ink">{principle.title}</h3>
+                  <p className="mt-3 text-sm leading-7 text-brand-muted">{principle.text}</p>
                 </div>
               ))}
             </div>
           </div>
-          <div className="mx-auto mt-16 grid max-w-7xl gap-4 border-t border-white/15 pt-8 text-sm sm:grid-cols-2 lg:grid-cols-4">
-            <a href={MAP_URL} target="_blank" rel="noopener noreferrer" className="flex items-start gap-3 text-brand-sand/75 hover:text-brand-cream">
-              <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-brand-gold" aria-hidden="true" />
-              <span className="leading-6">{CONTACT.address}</span>
-            </a>
-            <a href={`tel:${CONTACT.phone.replace(/\s/g, "")}`} className="flex items-center gap-3 text-brand-sand/75 hover:text-brand-cream">
-              <Phone className="h-4 w-4 shrink-0 text-brand-gold" aria-hidden="true" />
-              {CONTACT.phone}
-            </a>
-            <a href={`mailto:${CONTACT.email}`} className="flex items-center gap-3 text-brand-sand/75 hover:text-brand-cream">
-              <Mail className="h-4 w-4 shrink-0 text-brand-gold" aria-hidden="true" />
-              <span className="break-all">{CONTACT.email}</span>
-            </a>
-            <div className="flex items-start gap-3 text-brand-sand/75">
-              <Clock3 className="mt-0.5 h-4 w-4 shrink-0 text-brand-gold" aria-hidden="true" />
-              <span className="leading-6">{CONTACT.hours}<br />Sunday closed</span>
-            </div>
-          </div>
         </section>
 
-        <section id="reviews" aria-labelledby="reviews-heading" className="bg-brand-sand/30 px-5 py-20 sm:px-8 sm:py-28 lg:py-36">
+        <section id="reviews" aria-labelledby="reviews-heading" className="bg-brand-sand/30 px-5 py-16 sm:px-8 sm:py-20 lg:py-24">
           <div className="mx-auto max-w-7xl">
             <SectionIntro
               eyebrow="In their words"
-              title={<span id="reviews-heading">The best kind of finish is the one you feel.</span>}
-              description="Recent feedback shared by customers who chose to show their review on the Supremo Barber landing page."
+              title={<span id="reviews-heading">Customer reviews</span>}
+              description="Feedback shared by Supremo Barber customers."
               centered
             />
-            <div className="mt-12">
+            <div className="mt-9">
               {isLoadingContent ? (
                 <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3" role="status" aria-live="polite">
                   {Array.from({ length: 3 }, (_, index) => (
-                    <div key={index} className="h-[17rem] animate-pulse rounded-[1.5rem] bg-brand-line/60" />
+                    <div key={index} className="h-[17rem] animate-pulse rounded-xl bg-brand-line/60" />
                   ))}
                   <span className="sr-only">Loading reviews</span>
                 </div>
               ) : contentError.reviews ? (
-                <div className="rounded-[1.5rem] border border-brand-line bg-brand-cream px-6 py-10 text-center">
+                <div className="rounded-xl border border-brand-line bg-brand-cream px-6 py-10 text-center">
                   <p className="font-display text-2xl text-brand-ink">Reviews are taking a moment to load.</p>
                   <Button
                     type="button"
                     variant="outline"
                     onClick={() => void loadContent()}
-                    className="mt-5 rounded-full border-brand-rust text-brand-rust hover:bg-brand-rust hover:text-white"
+                    className="mt-5 rounded-lg border-brand-rust text-brand-rust hover:bg-brand-rust hover:text-white"
                   >
                     Try again
                   </Button>
                 </div>
               ) : reviews.length === 0 ? (
-                <div className="rounded-[1.5rem] border border-brand-line bg-brand-cream px-6 py-10 text-center">
+                <div className="rounded-xl border border-brand-line bg-brand-cream px-6 py-10 text-center">
                   <p className="font-display text-2xl text-brand-ink">Customer stories are coming soon.</p>
                   <p className="mt-2 text-brand-muted">Book a visit and make the next one yours.</p>
                 </div>
@@ -766,34 +734,6 @@ export function LandingPage({
             </div>
           </div>
         </section>
-
-        <section id="booking" aria-labelledby="booking-heading" className="bg-brand-gold px-5 py-20 sm:px-8 sm:py-28">
-          <div className="mx-auto flex max-w-7xl flex-col items-start justify-between gap-8 lg:flex-row lg:items-end">
-            <div className="max-w-2xl">
-              <p className="mb-4 text-xs font-bold uppercase tracking-[0.24em] text-brand-ink/65">Ready when you are</p>
-              <h2 id="booking-heading" className="font-display text-5xl leading-[0.95] tracking-[-0.04em] text-brand-ink sm:text-6xl">
-                Your next good cut is one click away.
-              </h2>
-              <p className="mt-5 max-w-xl text-base leading-8 text-brand-ink/75 sm:text-lg">
-                Choose a service, pick an available time, and confirm your appointment with the existing Supremo Barber booking flow.
-              </p>
-            </div>
-            <Button
-              type="button"
-              size="lg"
-              onClick={onGetStarted}
-              className="h-14 rounded-full bg-brand-ink px-7 text-base font-bold text-brand-cream shadow-xl hover:bg-brand-ink/90"
-            >
-              Book an appointment
-              <ArrowRight className="h-5 w-5" aria-hidden="true" />
-            </Button>
-          </div>
-          <div className="mx-auto mt-10 flex max-w-7xl flex-wrap gap-x-8 gap-y-3 border-t border-brand-ink/15 pt-5 text-sm font-medium text-brand-ink/70">
-            <span className="inline-flex items-center gap-2"><Check className="h-4 w-4" aria-hidden="true" /> Live service availability</span>
-            <span className="inline-flex items-center gap-2"><Check className="h-4 w-4" aria-hidden="true" /> 50% GCash deposit at checkout</span>
-            <span className="inline-flex items-center gap-2"><Check className="h-4 w-4" aria-hidden="true" /> Sunday appointments unavailable</span>
-          </div>
-        </section>
       </main>
 
       <Footer
@@ -803,7 +743,7 @@ export function LandingPage({
       />
 
       <Dialog open={Boolean(selectedReview)} onOpenChange={(open) => !open && setSelectedReview(null)}>
-        <DialogContent className="max-h-[85vh] overflow-y-auto border-brand-line bg-brand-cream sm:max-w-lg">
+        <DialogContent className="max-h-[85dvh] overflow-y-auto overscroll-contain border-brand-line bg-brand-cream sm:max-w-lg">
           <DialogHeader>
             <DialogTitle className="font-display text-3xl text-brand-ink">Customer review</DialogTitle>
             <DialogDescription className="text-brand-muted">Shared with permission on the Supremo Barber landing page.</DialogDescription>
@@ -814,7 +754,7 @@ export function LandingPage({
                 {Array.from({ length: 5 }, (_, index) => (
                   <Star
                     key={index}
-                    className={`h-5 w-5 ${index < getRating(selectedReview.rating) ? "fill-brand-gold text-brand-gold" : "text-brand-line"}`}
+                    className={`h-5 w-5 ${index < getRating(selectedReview.rating) ? "fill-brand-gold text-brand-rust" : "text-brand-line"}`}
                     aria-hidden="true"
                   />
                 ))}

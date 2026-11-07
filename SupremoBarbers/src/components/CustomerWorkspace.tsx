@@ -187,15 +187,7 @@ export function CustomerWorkspace({
 
       {activeSection === "book" && (
         <div className="space-y-6">
-          <SectionTitle eyebrow="A simple four-step visit" title="Choose how you want to feel walking out." description="Select your service, barber, date, and time. We will keep the booking details and payment instructions together." />
-          <div className="grid gap-3 sm:grid-cols-4">
-            {["Service", "Barber", "Time", "Confirm"].map((step, index) => (
-              <div key={step} className="flex items-center gap-3 rounded-2xl border border-[#ded2c3] bg-[#fffdfa] p-3.5">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#241d18] text-xs font-bold text-[#e0a756]">0{index + 1}</span>
-                <span className="text-sm font-semibold text-[#4e4034]">{step}</span>
-              </div>
-            ))}
-          </div>
+          <SectionTitle title="Book an appointment" description="Select your service, barber, date, and time, then review the payment details." />
           <div className="rounded-[1.5rem] border border-[#ded2c3] bg-[#fffdfa] p-4 shadow-[0_18px_45px_rgb(64_47_32/6%)] sm:p-6">
             <BookingFlow
               user={user}

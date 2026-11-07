@@ -14,22 +14,23 @@ interface PrivacyPolicyProps {
 
 export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
   return (
-    <div className="min-h-screen bg-[#F5EDD8]">
+    <div className="min-h-screen bg-brand-cream">
       {/* Header */}
-      <div className="bg-[#6E5A48] text-[#F5EDD8] shadow-md sticky top-0 z-50">
+      <div className="bg-brand-ink text-brand-cream sticky top-0 z-50">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center gap-3">
             <Button
               variant="ghost"
               size="icon"
               onClick={onBack}
+              aria-label="Back to home"
               className="text-[#F5EDD8] hover:bg-[#5C4A3A] hover:text-[#FFC976]"
             >
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div className="flex items-center gap-2">
               <Shield className="w-5 h-5 text-[#FFC976]" />
-              <h1 className="text-xl font-bold text-[#FFC976]">
+              <h1 className="font-display text-xl font-semibold text-brand-cream">
                 Privacy Policy
               </h1>
             </div>
@@ -40,7 +41,7 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
       {/* Content */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Intro */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <div className="bg-white rounded-xl border border-brand-line p-6 mb-6">
           <h2 className="text-2xl font-bold text-[#6E5A48] mb-3">
             Privacy Policy - Supremo Barber
           </h2>
@@ -64,8 +65,8 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
         {/* Main Content */}
         <Accordion type="single" collapsible className="space-y-3">
           {/* Section 1: Information We Collect */}
-          <AccordionItem value="collect" className="bg-white rounded-lg shadow-md border-none overflow-hidden">
-            <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-[#F5EDD8]/50">
+          <AccordionItem value="collect" className="bg-white rounded-xl border border-brand-line overflow-hidden">
+            <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-brand-cream/50">
               <div className="flex items-center gap-3">
                 <Database className="w-5 h-5 text-[#DB9D47]" />
                 <span className="text-lg font-semibold text-[#6E5A48]">
@@ -83,7 +84,7 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
                   <h4 className="font-semibold text-[#6E5A48] mb-2">1. Information You Provide Directly</h4>
 
                   <div className="space-y-3">
-                    <div className="p-3 bg-[#F5EDD8] rounded-md">
+                    <div className="p-3 bg-brand-cream rounded-md">
                       <p className="font-semibold text-[#6E5A48] mb-2 text-sm">Account Registration Information</p>
                       <div className="space-y-1 text-sm text-[#5C4A3A]">
                         <p>• <strong>Full Name:</strong> To identify you and personalize your experience</p>
@@ -94,7 +95,7 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
                       </div>
                     </div>
 
-                    <div className="p-3 bg-[#F5EDD8] rounded-md">
+                    <div className="p-3 bg-brand-cream rounded-md">
                       <p className="font-semibold text-[#6E5A48] mb-2 text-sm">Booking & Service Information</p>
                       <div className="space-y-1 text-sm text-[#5C4A3A]">
                         <p>• <strong>Service Selections:</strong> Which services you choose (haircut, shave, styling, etc.)</p>
@@ -105,7 +106,7 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
                       </div>
                     </div>
 
-                    <div className="p-3 bg-[#F5EDD8] rounded-md">
+                    <div className="p-3 bg-brand-cream rounded-md">
                       <p className="font-semibold text-[#6E5A48] mb-2 text-sm">Payment Information</p>
                       <div className="space-y-1 text-sm text-[#5C4A3A]">
                         <p>• <strong>GCash Receipt Screenshots:</strong> For payment verification</p>
@@ -121,7 +122,7 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
 
                 <div>
                   <h4 className="font-semibold text-[#6E5A48] mb-2">2. Information Automatically Collected</h4>
-                  <div className="p-3 bg-[#F5EDD8] rounded-md">
+                  <div className="p-3 bg-brand-cream rounded-md">
                     <div className="space-y-1 text-sm text-[#5C4A3A]">
                       <p>• <strong>Device Information:</strong> Type of device, operating system, browser type (helps us optimize the site)</p>
                       <p>• <strong>IP Address:</strong> For security and fraud prevention</p>
@@ -153,8 +154,8 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
           </AccordionItem>
 
           {/* Section 2: How We Use Your Information */}
-          <AccordionItem value="use" className="bg-white rounded-lg shadow-md border-none overflow-hidden">
-            <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-[#F5EDD8]/50">
+          <AccordionItem value="use" className="bg-white rounded-xl border border-brand-line overflow-hidden">
+            <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-brand-cream/50">
               <div className="flex items-center gap-3">
                 <Eye className="w-5 h-5 text-[#DB9D47]" />
                 <span className="text-lg font-semibold text-[#6E5A48]">
@@ -169,7 +170,7 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
                 </p>
 
                 <div className="space-y-3">
-                  <div className="p-3 bg-[#F5EDD8] rounded-md">
+                  <div className="p-3 bg-brand-cream rounded-md">
                     <div className="flex items-start gap-2 mb-1">
                       <Check className="w-4 h-4 text-[#DB9D47] flex-shrink-0 mt-0.5" />
                       <div className="text-sm text-[#5C4A3A]">
@@ -185,7 +186,7 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
                     </div>
                   </div>
 
-                  <div className="p-3 bg-[#F5EDD8] rounded-md">
+                  <div className="p-3 bg-brand-cream rounded-md">
                     <div className="flex items-start gap-2 mb-1">
                       <Check className="w-4 h-4 text-[#DB9D47] flex-shrink-0 mt-0.5" />
                       <div className="text-sm text-[#5C4A3A]">
@@ -201,7 +202,7 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
                     </div>
                   </div>
 
-                  <div className="p-3 bg-[#F5EDD8] rounded-md">
+                  <div className="p-3 bg-brand-cream rounded-md">
                     <div className="flex items-start gap-2 mb-1">
                       <Check className="w-4 h-4 text-[#DB9D47] flex-shrink-0 mt-0.5" />
                       <div className="text-sm text-[#5C4A3A]">
@@ -217,7 +218,7 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
                     </div>
                   </div>
 
-                  <div className="p-3 bg-[#F5EDD8] rounded-md">
+                  <div className="p-3 bg-brand-cream rounded-md">
                     <div className="flex items-start gap-2 mb-1">
                       <Check className="w-4 h-4 text-[#DB9D47] flex-shrink-0 mt-0.5" />
                       <div className="text-sm text-[#5C4A3A]">
@@ -233,7 +234,7 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
                     </div>
                   </div>
 
-                  <div className="p-3 bg-[#F5EDD8] rounded-md">
+                  <div className="p-3 bg-brand-cream rounded-md">
                     <div className="flex items-start gap-2 mb-1">
                       <Check className="w-4 h-4 text-[#DB9D47] flex-shrink-0 mt-0.5" />
                       <div className="text-sm text-[#5C4A3A]">
@@ -250,7 +251,7 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
                     </div>
                   </div>
 
-                  <div className="p-3 bg-[#F5EDD8] rounded-md">
+                  <div className="p-3 bg-brand-cream rounded-md">
                     <div className="flex items-start gap-2 mb-1">
                       <Check className="w-4 h-4 text-[#DB9D47] flex-shrink-0 mt-0.5" />
                       <div className="text-sm text-[#5C4A3A]">
@@ -277,8 +278,8 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
           </AccordionItem>
 
           {/* Section 3: How We Share Your Information */}
-          <AccordionItem value="sharing" className="bg-white rounded-lg shadow-md border-none overflow-hidden">
-            <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-[#F5EDD8]/50">
+          <AccordionItem value="sharing" className="bg-white rounded-xl border border-brand-line overflow-hidden">
+            <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-brand-cream/50">
               <div className="flex items-center gap-3">
                 <Users className="w-5 h-5 text-[#DB9D47]" />
                 <span className="text-lg font-semibold text-[#6E5A48]">
@@ -297,7 +298,7 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
                 </p>
 
                 <div className="space-y-3">
-                  <div className="p-3 bg-[#F5EDD8] rounded-md">
+                  <div className="p-3 bg-brand-cream rounded-md">
                     <p className="font-semibold text-[#6E5A48] mb-2 text-sm">With Our Team</p>
                     <p className="text-sm text-[#5C4A3A]">
                       Your information is shared with our barbers and administrative staff who need it to provide services
@@ -306,7 +307,7 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
                     </p>
                   </div>
 
-                  <div className="p-3 bg-[#F5EDD8] rounded-md">
+                  <div className="p-3 bg-brand-cream rounded-md">
                     <p className="font-semibold text-[#6E5A48] mb-2 text-sm">Service Providers</p>
                     <p className="text-sm text-[#5C4A3A] mb-2">
                       We work with trusted third-party service providers who help us operate our business:
@@ -323,7 +324,7 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
                     </p>
                   </div>
 
-                  <div className="p-3 bg-[#F5EDD8] rounded-md">
+                  <div className="p-3 bg-brand-cream rounded-md">
                     <p className="font-semibold text-[#6E5A48] mb-2 text-sm">Legal Requirements</p>
                     <p className="text-sm text-[#5C4A3A] mb-2">
                       We may disclose your information if required by law or in good faith belief that such action is necessary to:
@@ -337,7 +338,7 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
                     </ul>
                   </div>
 
-                  <div className="p-3 bg-[#F5EDD8] rounded-md">
+                  <div className="p-3 bg-brand-cream rounded-md">
                     <p className="font-semibold text-[#6E5A48] mb-2 text-sm">Business Transfers</p>
                     <p className="text-sm text-[#5C4A3A]">
                       If Supremo Barber is involved in a merger, acquisition, or sale of assets, your information may be
@@ -346,7 +347,7 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
                     </p>
                   </div>
 
-                  <div className="p-3 bg-[#F5EDD8] rounded-md">
+                  <div className="p-3 bg-brand-cream rounded-md">
                     <p className="font-semibold text-[#6E5A48] mb-2 text-sm">With Your Consent</p>
                     <p className="text-sm text-[#5C4A3A]">
                       We may share your information with third parties when you explicitly consent to such sharing
@@ -366,8 +367,8 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
           </AccordionItem>
 
           {/* Section 4: Data Security */}
-          <AccordionItem value="security" className="bg-white rounded-lg shadow-md border-none overflow-hidden">
-            <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-[#F5EDD8]/50">
+          <AccordionItem value="security" className="bg-white rounded-xl border border-brand-line overflow-hidden">
+            <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-brand-cream/50">
               <div className="flex items-center gap-3">
                 <Lock className="w-5 h-5 text-[#DB9D47]" />
                 <span className="text-lg font-semibold text-[#6E5A48]">
@@ -383,7 +384,7 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
                 </p>
 
                 <div className="space-y-3">
-                  <div className="p-3 bg-[#F5EDD8] rounded-md">
+                  <div className="p-3 bg-brand-cream rounded-md">
                     <div className="flex items-start gap-2 mb-1">
                       <Shield className="w-5 h-5 text-[#DB9D47] flex-shrink-0 mt-0.5" />
                       <div className="text-sm text-[#5C4A3A]">
@@ -397,7 +398,7 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
                     </div>
                   </div>
 
-                  <div className="p-3 bg-[#F5EDD8] rounded-md">
+                  <div className="p-3 bg-brand-cream rounded-md">
                     <div className="flex items-start gap-2 mb-1">
                       <Server className="w-5 h-5 text-[#DB9D47] flex-shrink-0 mt-0.5" />
                       <div className="text-sm text-[#5C4A3A]">
@@ -413,7 +414,7 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
                     </div>
                   </div>
 
-                  <div className="p-3 bg-[#F5EDD8] rounded-md">
+                  <div className="p-3 bg-brand-cream rounded-md">
                     <div className="flex items-start gap-2 mb-1">
                       <Eye className="w-5 h-5 text-[#DB9D47] flex-shrink-0 mt-0.5" />
                       <div className="text-sm text-[#5C4A3A]">
@@ -429,7 +430,7 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
                     </div>
                   </div>
 
-                  <div className="p-3 bg-[#F5EDD8] rounded-md">
+                  <div className="p-3 bg-brand-cream rounded-md">
                     <div className="flex items-start gap-2 mb-1">
                       <FileText className="w-5 h-5 text-[#DB9D47] flex-shrink-0 mt-0.5" />
                       <div className="text-sm text-[#5C4A3A]">
@@ -465,8 +466,8 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
           </AccordionItem>
 
           {/* Section 5: Data Retention */}
-          <AccordionItem value="retention" className="bg-white rounded-lg shadow-md border-none overflow-hidden">
-            <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-[#F5EDD8]/50">
+          <AccordionItem value="retention" className="bg-white rounded-xl border border-brand-line overflow-hidden">
+            <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-brand-cream/50">
               <div className="flex items-center gap-3">
                 <Clock className="w-5 h-5 text-[#DB9D47]" />
                 <span className="text-lg font-semibold text-[#6E5A48]">
@@ -481,7 +482,7 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
                 </p>
 
                 <div className="space-y-3">
-                  <div className="p-3 bg-[#F5EDD8] rounded-md">
+                  <div className="p-3 bg-brand-cream rounded-md">
                     <p className="font-semibold text-[#6E5A48] mb-2 text-sm">Active Account Data</p>
                     <p className="text-sm text-[#5C4A3A]">
                       <strong>Retention:</strong> As long as your account is active<br />
@@ -490,7 +491,7 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
                     </p>
                   </div>
 
-                  <div className="p-3 bg-[#F5EDD8] rounded-md">
+                  <div className="p-3 bg-brand-cream rounded-md">
                     <p className="font-semibold text-[#6E5A48] mb-2 text-sm">Payment Records</p>
                     <p className="text-sm text-[#5C4A3A]">
                       <strong>Retention:</strong> 7 years after transaction date<br />
@@ -500,7 +501,7 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
                     </p>
                   </div>
 
-                  <div className="p-3 bg-[#F5EDD8] rounded-md">
+                  <div className="p-3 bg-brand-cream rounded-md">
                     <p className="font-semibold text-[#6E5A48] mb-2 text-sm">Marketing Data</p>
                     <p className="text-sm text-[#5C4A3A]">
                       <strong>Retention:</strong> Until you opt out or close your account<br />
@@ -510,7 +511,7 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
                     </p>
                   </div>
 
-                  <div className="p-3 bg-[#F5EDD8] rounded-md">
+                  <div className="p-3 bg-brand-cream rounded-md">
                     <p className="font-semibold text-[#6E5A48] mb-2 text-sm">Deleted Account Data</p>
                     <p className="text-sm text-[#5C4A3A]">
                       <strong>Retention:</strong> 30 days after account deletion request<br />
@@ -520,7 +521,7 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
                     </p>
                   </div>
 
-                  <div className="p-3 bg-[#F5EDD8] rounded-md">
+                  <div className="p-3 bg-brand-cream rounded-md">
                     <p className="font-semibold text-[#6E5A48] mb-2 text-sm">Inactive Accounts</p>
                     <p className="text-sm text-[#5C4A3A]">
                       <strong>Definition:</strong> No login for 3 years<br />
@@ -542,8 +543,8 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
           </AccordionItem>
 
           {/* Section 6: Your Privacy Rights */}
-          <AccordionItem value="rights" className="bg-white rounded-lg shadow-md border-none overflow-hidden">
-            <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-[#F5EDD8]/50">
+          <AccordionItem value="rights" className="bg-white rounded-xl border border-brand-line overflow-hidden">
+            <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-brand-cream/50">
               <div className="flex items-center gap-3">
                 <Users className="w-5 h-5 text-[#DB9D47]" />
                 <span className="text-lg font-semibold text-[#6E5A48]">
@@ -558,7 +559,7 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
                 </p>
 
                 <div className="space-y-3">
-                  <div className="p-3 bg-[#F5EDD8] rounded-md">
+                  <div className="p-3 bg-brand-cream rounded-md">
                     <div className="flex items-start gap-2 mb-1">
                       <Eye className="w-5 h-5 text-[#DB9D47] flex-shrink-0 mt-0.5" />
                       <div className="text-sm text-[#5C4A3A]">
@@ -571,7 +572,7 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
                     </div>
                   </div>
 
-                  <div className="p-3 bg-[#F5EDD8] rounded-md">
+                  <div className="p-3 bg-brand-cream rounded-md">
                     <div className="flex items-start gap-2 mb-1">
                       <FileText className="w-5 h-5 text-[#DB9D47] flex-shrink-0 mt-0.5" />
                       <div className="text-sm text-[#5C4A3A]">
@@ -583,7 +584,7 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
                     </div>
                   </div>
 
-                  <div className="p-3 bg-[#F5EDD8] rounded-md">
+                  <div className="p-3 bg-brand-cream rounded-md">
                     <div className="flex items-start gap-2 mb-1">
                       <Trash2 className="w-5 h-5 text-[#DB9D47] flex-shrink-0 mt-0.5" />
                       <div className="text-sm text-[#5C4A3A]">
@@ -596,7 +597,7 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
                     </div>
                   </div>
 
-                  <div className="p-3 bg-[#F5EDD8] rounded-md">
+                  <div className="p-3 bg-brand-cream rounded-md">
                     <div className="flex items-start gap-2 mb-1">
                       <Download className="w-5 h-5 text-[#DB9D47] flex-shrink-0 mt-0.5" />
                       <div className="text-sm text-[#5C4A3A]">
@@ -609,7 +610,7 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
                     </div>
                   </div>
 
-                  <div className="p-3 bg-[#F5EDD8] rounded-md">
+                  <div className="p-3 bg-brand-cream rounded-md">
                     <div className="flex items-start gap-2 mb-1">
                       <AlertCircle className="w-5 h-5 text-[#DB9D47] flex-shrink-0 mt-0.5" />
                       <div className="text-sm text-[#5C4A3A]">
@@ -621,7 +622,7 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
                     </div>
                   </div>
 
-                  <div className="p-3 bg-[#F5EDD8] rounded-md">
+                  <div className="p-3 bg-brand-cream rounded-md">
                     <div className="flex items-start gap-2 mb-1">
                       <Lock className="w-5 h-5 text-[#DB9D47] flex-shrink-0 mt-0.5" />
                       <div className="text-sm text-[#5C4A3A]">
@@ -632,7 +633,7 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
                     </div>
                   </div>
 
-                  <div className="p-3 bg-[#F5EDD8] rounded-md">
+                  <div className="p-3 bg-brand-cream rounded-md">
                     <div className="flex items-start gap-2 mb-1">
                       <Shield className="w-5 h-5 text-[#DB9D47] flex-shrink-0 mt-0.5" />
                       <div className="text-sm text-[#5C4A3A]">
@@ -669,8 +670,8 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
           </AccordionItem>
 
           {/* Section 7: Cookies */}
-          <AccordionItem value="cookies" className="bg-white rounded-lg shadow-md border-none overflow-hidden">
-            <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-[#F5EDD8]/50">
+          <AccordionItem value="cookies" className="bg-white rounded-xl border border-brand-line overflow-hidden">
+            <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-brand-cream/50">
               <div className="flex items-center gap-3">
                 <Cookie className="w-5 h-5 text-[#DB9D47]" />
                 <span className="text-lg font-semibold text-[#6E5A48]">
@@ -768,8 +769,8 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
           </AccordionItem>
 
           {/* Section 8: International Users & Children */}
-          <AccordionItem value="other" className="bg-white rounded-lg shadow-md border-none overflow-hidden">
-            <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-[#F5EDD8]/50">
+          <AccordionItem value="other" className="bg-white rounded-xl border border-brand-line overflow-hidden">
+            <AccordionTrigger className="px-6 py-4 hover:no-underline hover:bg-brand-cream/50">
               <div className="flex items-center gap-3">
                 <Globe className="w-5 h-5 text-[#DB9D47]" />
                 <span className="text-lg font-semibold text-[#6E5A48]">
@@ -784,7 +785,7 @@ export function PrivacyPolicy({ onBack }: PrivacyPolicyProps) {
                   <p className="text-sm text-[#5C4A3A] mb-2">
                     Our services are primarily for customers in the Philippines, but your data may be processed internationally:
                   </p>
-                  <div className="p-3 bg-[#F5EDD8] rounded-md">
+                  <div className="p-3 bg-brand-cream rounded-md">
                     <p className="text-sm text-[#5C4A3A] mb-2">
                       <strong>Where Your Data Goes:</strong>
                     </p>

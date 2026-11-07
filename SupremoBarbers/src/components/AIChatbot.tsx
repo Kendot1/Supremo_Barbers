@@ -103,6 +103,8 @@ export function AIChatbot({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const launcherRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
@@ -181,6 +183,38 @@ export function AIChatbot({
         setMessages([welcomeMessage]);
       }
     }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsOpen(false);
+        window.setTimeout(() => launcherRef.current?.focus(), 0);
+      }
+    };
+    const handleFocus = (event: KeyboardEvent) => {
+      if (event.key !== "Tab" || !dialogRef.current) return;
+      const focusable = Array.from(dialogRef.current.querySelectorAll<HTMLElement>(
+        'button:not([disabled]), input:not([disabled]), [href], [tabindex]:not([tabindex="-1"])',
+      ));
+      if (!focusable.length) return;
+      const first = focusable[0] as HTMLElement;
+        const last = focusable[focusable.length - 1] as HTMLElement;
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", handleEscape);
+    document.addEventListener("keydown", handleFocus);
+    return () => {
+      document.removeEventListener("keydown", handleEscape);
+      document.removeEventListener("keydown", handleFocus);
+    };
   }, [isOpen]);
 
   const getWelcomeMessage = () => {
@@ -556,8 +590,9 @@ How can I assist you today?`;
       {!isOpen && (
         <div className="fixed bottom-24 right-4 lg:bottom-6 lg:right-6 z-50 transition-all duration-300">
           <Button
+            ref={launcherRef}
             onClick={() => setIsOpen(true)}
-            className="h-12 w-12 sm:h-14 sm:w-14 rounded-full bg-[#DB9D47] hover:bg-[#C88D3F] text-white shadow-lg hover:shadow-xl transition-all duration-300 group relative"
+            className="h-12 w-12 sm:h-14 sm:w-14 rounded-full bg-[#DB9D47] hover:bg-[#B97832] text-brand-ink shadow-lg hover:shadow-xl transition-all duration-300 group relative"
             aria-label="Open AI Chat"
           >
             <MessageCircle className="w-5 h-5 sm:w-6 sm:h-6 group-hover:scale-110 transition-transform" />
@@ -585,6 +620,11 @@ How can I assist you today?`;
                       
                       animate-in slide-in-from-bottom-5 duration-300
                       z-50"
+            ref={dialogRef}
+            tabIndex={-1}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="ai-chatbot-title"
           >
             <Card
               className="
@@ -615,7 +655,7 @@ How can I assist you today?`;
                       </div>
                     </div>
                     <div>
-                      <CardTitle className="text-white text-sm sm:text-base font-bold flex items-center gap-2">
+                      <CardTitle id="ai-chatbot-title" className="text-white text-sm sm:text-base font-bold flex items-center gap-2">
                         AI Assistant
                       </CardTitle>
                       <p className="text-[10px] sm:text-xs text-white/90">
@@ -626,7 +666,11 @@ How can I assist you today?`;
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => setIsOpen(false)}
+                    aria-label="Close AI Chat"
+                    onClick={() => {
+                      setIsOpen(false);
+                      launcherRef.current?.focus();
+                    }}
                     className="text-white hover:bg-white/20 h-8 w-8 p-0"
                   >
                     <X className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -670,7 +714,7 @@ How can I assist you today?`;
 
                           ${message.role === "user"
                             ? "bg-[#DB9D47] text-white self-end"
-                            : "bg-white border border-[#E8DCC8] text-[#2D2D2D] self-start"
+                            : "bg-white border border-[#E5CFB1] text-[#2D2D2D] self-start"
                           }
                         `}
                       >
@@ -712,7 +756,7 @@ How can I assist you today?`;
                           className="w-8 h-8 object-cover"
                         />
                       </div>
-                      <div className="max-w-[75%] bg-[#FFF8E7] border-2 border-[#DB9D47] rounded-2xl p-3 shadow-sm flex items-center gap-1">
+                      <div className="max-w-[75%] bg-[#FBF3E6] border-2 border-[#DB9D47] rounded-2xl p-3 shadow-sm flex items-center gap-1">
                         <div
                           className="w-2 h-2 bg-[#DB9D47] rounded-full animate-bounce"
                           style={{ animationDelay: "0ms" }}
@@ -764,7 +808,7 @@ How can I assist you today?`;
                 </div>
 
                 {/* Quick Actions - Fixed at bottom */}
-                <div className="flex-shrink-0 px-4 py-2 bg-white border-t border-[#E8DCC8]">
+                <div className="flex-shrink-0 px-4 py-2 bg-white border-t border-[#E5CFB1]">
                   <div className="flex gap-2 overflow-x-auto pb-2">
                     <QuickActionButton
                       onClick={() => {
@@ -826,7 +870,7 @@ How can I assist you today?`;
                 </div>
 
                 {/* Input Area - Fixed at bottom */}
-                <div className="flex-shrink-0 p-4 bg-white border-t border-[#E8DCC8]">
+                <div className="flex-shrink-0 p-4 bg-white border-t border-[#E5CFB1]">
                   {/* Image Preview */}
                   {imagePreview && (
                     <div className="mb-3 relative inline-block">
@@ -856,7 +900,7 @@ How can I assist you today?`;
                       <Button
                         onClick={handleSendImage}
                         disabled={isLoading}
-                        className="flex-1 bg-[#DB9D47] hover:bg-[#C88D3F] text-white"
+                        className="flex-1 bg-[#DB9D47] hover:bg-[#B97832] text-white"
                       >
                         {isLoading ? (
                           <Loader2 className="w-5 h-5 animate-spin mr-2" />
@@ -874,16 +918,18 @@ How can I assist you today?`;
                             setInputMessage(e.target.value)
                           }
                           onKeyDown={handleKeyPress}
-                          placeholder="Ask me anything..."
+                          aria-label="Message the AI assistant"
+                          name="message"
                           disabled={isLoading}
-                          className="flex-1 border-[#E8DCC8] focus:border-[#DB9D47]"
+                          className="flex-1 border-[#E5CFB1] focus:border-[#DB9D47]"
                         />
                         <Button
                           onClick={handleSendMessage}
                           disabled={
                             !inputMessage.trim() || isLoading
                           }
-                          className="bg-[#DB9D47] hover:bg-[#C88D3F] text-white px-4"
+                          aria-label="Send message"
+                          className="bg-[#DB9D47] hover:bg-[#B97832] text-brand-ink px-4"
                         >
                           {isLoading ? (
                             <Loader2 className="w-5 h-5 animate-spin" />
@@ -894,7 +940,8 @@ How can I assist you today?`;
                         <Button
                           onClick={() => fileInputRef.current?.click()}
                           disabled={isLoading}
-                          className="bg-[#DB9D47] hover:bg-[#C88D3F] text-white px-4"
+                          className="bg-[#DB9D47] hover:bg-[#B97832] text-brand-ink px-4"
+                          aria-label="Attach an image"
                         >
                           <ImagePlus className="w-5 h-5" />
                         </Button>
@@ -935,7 +982,7 @@ function QuickActionButton({
       variant="outline"
       size="sm"
       onClick={onClick}
-      className="text-xs whitespace-nowrap border-[#E8DCC8] text-[#5C4A3A] hover:bg-[#FBF7EF] hover:border-[#DB9D47]"
+      className="text-xs whitespace-nowrap border-[#E5CFB1] text-[#5C4A3A] hover:bg-[#FBF7EF] hover:border-[#DB9D47]"
     >
       {label}
     </Button>

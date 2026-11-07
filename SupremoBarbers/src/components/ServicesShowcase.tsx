@@ -380,9 +380,12 @@ export function ServicesShowcase({
                     {/* Favorite Button - Always show for logged-in users */}
                     {userId && (
                       <button
+                        type="button"
+                        aria-label={`Favorite ${service.name}`}
+                        aria-pressed={isFavorite}
                         onClick={(e) => handleToggleFavorite(e, serviceId)}
                         disabled={isToggling}
-                        className="absolute top-3 right-3 bg-white rounded-full p-2 shadow-md hover:shadow-lg transition-all hover:scale-110 disabled:opacity-50 z-10 cursor-pointer"
+                        className="absolute top-3 right-3 bg-white rounded-full p-2 shadow-md hover:shadow-lg transition-all hover:scale-110 disabled:opacity-50 z-10 cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#795019]"
                       >
                         {isToggling ? (
                           <Loader2 className="w-5 h-5 text-[#DB9D47] animate-spin" />

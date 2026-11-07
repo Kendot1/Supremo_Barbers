@@ -223,7 +223,7 @@ export function ContactForm({
             <Button
               type="submit"
               disabled={isSubmitting || submitStatus === "success"}
-              className="flex-1 bg-[#DB9D47] hover:bg-[#C88D3F] text-white disabled:opacity-60 disabled:cursor-not-allowed transition-all"
+              className="flex-1 bg-brand-gold hover:bg-brand-sand text-brand-ink disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
             >
               {isSubmitting ? (
                 <>
@@ -243,7 +243,7 @@ export function ContactForm({
               type="button"
               onClick={onBack}
               variant="outline"
-              className="flex-1 border-[#DB9D47] text-[#DB9D47] hover:bg-[#DB9D47] hover:text-white transition-all"
+              className="flex-1 border-brand-line text-brand-rust hover:bg-brand-sand hover:text-brand-ink transition-colors"
             >
               Back to Home
             </Button>
@@ -255,11 +255,11 @@ export function ContactForm({
             Or reach us directly:
           </p>
           <div className="flex flex-wrap justify-center gap-4 text-sm mb-2">
-            <a href={`mailto:${primaryEmail}`} className="text-[#DB9D47] hover:underline">
+            <a href={`mailto:${primaryEmail}`} className="text-brand-rust hover:underline">
               {primaryEmail}
             </a>
             <span className="text-[#7A6854]">•</span>
-            <span className="text-[#5C4A3A]">+63 912 345 6789</span>
+            <span className="text-[#5C4A3A]">+63 933 861 5024</span>
           </div>
           {secondaryContact && (
             <p className="text-xs text-center text-[#7A6854]">
