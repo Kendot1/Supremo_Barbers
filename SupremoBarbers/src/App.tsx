@@ -1,6 +1,6 @@
-import { LoadingFallback } from "./components/LoadingFallback";
-import { ErrorBoundary } from "./components/ErrorBoundary";
-import { AIChatbot } from "./components/AIChatbot";
+import { LoadingFallback } from "./components/feedback/LoadingFallback";
+import { ErrorBoundary } from "./components/feedback/ErrorBoundary";
+import { AIChatbot } from "./features/chat/AIChatbot";
 import { lazy, Suspense, useState, useEffect, useCallback, useMemo, startTransition } from "react";
 import { Toaster } from "sonner";
 import { toast } from "sonner";
@@ -15,100 +15,15 @@ import {
 
 // Lazy load heavy components for code splitting
 // Note: These components use named exports, so we need to wrap them for lazy loading
-const LandingPage = lazy(() => import("./components/LandingPage").then(module => ({ default: module.LandingPage })));
-const LoginPage = lazy(() => import("./components/LoginPage"));
-const ImprovedSuperAdminDashboard = lazy(() => import("./components/AdminWorkspace").then(module => ({ default: module.AdminWorkspace })));
-const BarberDashboard = lazy(() => import("./components/BarberWorkspace").then(module => ({ default: module.BarberWorkspace })));
-const CustomerDashboard = lazy(() => import("./components/CustomerWorkspace").then(module => ({ default: module.CustomerWorkspace })));
-const TermsAndConditions = lazy(() => import("./components/TermsAndConditions").then(module => ({ default: module.TermsAndConditions })));
-const PrivacyPolicy = lazy(() => import("./components/PrivacyPolicy").then(module => ({ default: module.PrivacyPolicy })));
+const LandingPage = lazy(() => import("./features/marketing/LandingPage").then(module => ({ default: module.LandingPage })));
+const LoginPage = lazy(() => import("./features/auth/LoginPage"));
+const ImprovedSuperAdminDashboard = lazy(() => import("./features/admin/AdminWorkspace").then(module => ({ default: module.AdminWorkspace })));
+const BarberDashboard = lazy(() => import("./features/barber/BarberWorkspace").then(module => ({ default: module.BarberWorkspace })));
+const CustomerDashboard = lazy(() => import("./features/customer/CustomerWorkspace").then(module => ({ default: module.CustomerWorkspace })));
+const TermsAndConditions = lazy(() => import("./features/legal/TermsAndConditions").then(module => ({ default: module.TermsAndConditions })));
+const PrivacyPolicy = lazy(() => import("./features/legal/PrivacyPolicy").then(module => ({ default: module.PrivacyPolicy })));
 
-export type UserRole =
-  | "admin"
-  | "barber"
-  | "staff"
-  | "customer"
-  | null;
-
-export interface User {
-  id: string;
-  name: string;
-  email: string;
-  username: string;
-  role: UserRole;
-  phone?: string;
-  isActive?: boolean;
-  avatarUrl?: string;
-  bio?: string;
-  createdAt?: string;
-  emailVerified?: boolean;
-  pendingEmail?: string;
-}
-
-export interface Appointment {
-  id: string;
-  userId: string;
-  service: string;
-  barber: string;
-  date: string;
-  time: string;
-  price: number;
-  duration?: number; // Service duration in minutes
-  status: 'pending' | 'confirmed' | 'upcoming' | 'completed' | 'cancelled' | 'rejected' | 'verified';
-  canCancel: boolean;
-  paymentProof?: string;
-  paymentStatus?: 'pending' | 'verified' | 'rejected';
-  paymentVerifiedAt?: string;
-  paymentVerifiedBy?: string;
-  downPaymentPaid?: boolean;
-  remainingBalance?: number;
-  customerName?: string;
-  customer?: string; // For display purposes
-  rescheduledCount?: number; // Track number of times rescheduled (max 1)
-  cancellationReason?: string; // Reason for cancellation (from barber or customer)
-  cancelledBy?: string; // Who cancelled the appointment (barber name or customer name)
-  cancelledAt?: string; // Timestamp of cancellation
-  // Database fields (from Supabase backend)
-  customerId?: string;
-  customer_id?: string;
-  barberId?: string;
-  barber_id?: string;
-  serviceId?: string;
-  service_id?: string;
-  appointment_date?: string;
-  appointment_time?: string;
-  total_amount?: number;
-  down_payment?: number;
-  remaining_amount?: number;
-  payment_status?: 'pending' | 'verified' | 'rejected';
-  // Additional fields from backend
-  customer_name?: string;
-  barber_name?: string;
-  service_name?: string;
-  service_price?: number;
-  service_duration?: number;
-  notes?: string;
-  cancellation_reason?: string; // Database column for cancellation reason
-  created_at?: string;
-}
-
-export interface Notification {
-  id: string;
-  userId: string;
-  userRole: 'customer' | 'barber' | 'admin';
-  type: string;
-  title: string;
-  message: string;
-  relatedId?: string;
-  relatedType?: string;
-  isRead: boolean;
-  readAt?: string;
-  actionUrl?: string;
-  actionLabel?: string;
-  createdAt: string;
-  updatedAt: string;
-  read?: boolean; // Backwards compatibility
-}
+import type { Appointment, Notification, User, UserRole } from "./types/domain";
 
 type View = "landingpage" | "login" | "register" | "terms" | "privacy";
 

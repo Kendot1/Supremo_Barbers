@@ -32,7 +32,7 @@ venv/
 env/
 ENV/
 .venv/
-src/supabase/functions/index
+supabase/functions/index
 src/utils/supabase/index
 
 # Jupyter

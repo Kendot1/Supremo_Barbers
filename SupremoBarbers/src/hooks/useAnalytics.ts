@@ -4,7 +4,7 @@
  */
 
 import { useMemo } from 'react';
-import type { Appointment } from '../App';
+import type { Appointment } from '../types/domain';
 
 interface User {
   id: string;

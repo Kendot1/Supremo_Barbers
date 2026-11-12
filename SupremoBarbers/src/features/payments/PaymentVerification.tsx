@@ -1,0 +1,1429 @@
+import { useState, useEffect, useMemo } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/card";
+import { Button } from "../../components/ui/button";
+import { Badge } from "../../components/ui/badge";
+import { Input } from "../../components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../../components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "../../components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "../../components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../components/ui/select";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "../../components/ui/tabs";
+import {
+  CheckCircle2,
+  XCircle,
+  Clock,
+  Calendar as CalendarIcon,
+  User,
+  Scissors,
+  Eye,
+  Image as ImageIcon,
+  AlertCircle,
+  FileText,
+  Search,
+  Filter,
+  RefreshCw,
+  Loader2,
+  Download,
+} from "lucide-react";
+import { FaPesoSign } from "react-icons/fa6";
+import { toast } from "sonner";
+import type { Appointment } from "../../types/domain";
+import { Textarea } from "../../components/ui/textarea";
+import { Label } from "../../components/ui/label";
+import {
+  createNotification,
+  type Notification,
+} from "../notifications/NotificationCenter";
+import {
+  exportToCSV,
+  formatDateForExport,
+  formatCurrencyForExport,
+} from "../../utils/exportUtils";
+import API from "../../services/api.service";
+import { logPaymentVerification } from "../../services/audit-notification.service";
+import { Pagination } from "../../components/ui/pagination";
+
+// Utility function to parse date string without timezone issues
+const parseLocalDate = (dateString: string): Date => {
+  const [year, month, day] = dateString.split("-").map(Number);
+  return new Date(year, month - 1, day);
+};
+
+// Payment record interface matching database schema
+interface PaymentRecord {
+  id: string;
+  appointment_id: string;
+  amount: number;
+  payment_method: string;
+  payment_type: "downpayment" | "full" | "remaining";
+  created_at: string;
+  proof_url?: string;
+}
+
+// Extended appointment with payment data
+interface AppointmentWithPayment extends Appointment {
+  payment?: PaymentRecord;
+  paymentAmount?: number;
+  paymentReference?: string;
+  paymentMethod?: string;
+  paymentType?: string;
+}
+
+interface PaymentVerificationProps {
+  appointments: Appointment[];
+  onUpdateAppointment: (
+    appointmentId: string,
+    updates: Partial<Appointment>,
+  ) => void;
+  userRole: "admin" | "barber";
+  onAddNotification?: (notification: Notification) => void;
+  onRefreshAppointments?: () => Promise<void>;
+  currentUser?: { id: string; name: string; email: string };
+}
+
+export function PaymentVerification({
+  appointments,
+  onUpdateAppointment,
+  userRole,
+  onAddNotification,
+  onRefreshAppointments,
+  currentUser,
+}: PaymentVerificationProps) {
+  const [selectedAppointment, setSelectedAppointment] =
+    useState<AppointmentWithPayment | null>(null);
+  const [isViewDialogOpen, setIsViewDialogOpen] =
+    useState(false);
+  const [isApproveDialogOpen, setIsApproveDialogOpen] =
+    useState(false);
+  const [isRejectDialogOpen, setIsRejectDialogOpen] =
+    useState(false);
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [filterStatus, setFilterStatus] = useState<
+    "all" | "pending" | "verified" | "rejected"
+  >("pending");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterBarber, setFilterBarber] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  // Database state
+  const [payments, setPayments] = useState<PaymentRecord[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [services, setServices] = useState<any[]>([]);
+
+  // Fetch payments from database
+  const fetchPayments = async (
+    showRefreshIndicator = false,
+  ) => {
+    try {
+      if (showRefreshIndicator) {
+        setIsRefreshing(true);
+      }
+
+      const paymentsData = await API.payments.getAll();
+      setPayments(paymentsData || []);
+
+      // Also fetch services to get real prices
+      const servicesData = await API.services.getAll();
+      setServices(servicesData || []);
+    } catch (error) {
+      console.error("❌ Error fetching payments:", error);
+      toast.error("Failed to load payment data");
+    } finally {
+      setIsLoading(false);
+      if (showRefreshIndicator) {
+        setIsRefreshing(false);
+      }
+    }
+  };
+
+  // Fetch on mount
+  useEffect(() => {
+    fetchPayments();
+  }, []);
+
+  // Join appointments with payment records
+  const appointmentsWithPaymentData: AppointmentWithPayment[] =
+    appointments.map((apt) => {
+      const payment = payments.find(
+        (p) => p.appointment_id === apt.id,
+      );
+      const service = services.find(
+        (s) => s.id === apt.serviceId || s.name === apt.service,
+      );
+
+      return {
+        ...apt,
+        payment,
+        paymentAmount: payment?.amount,
+        paymentMethod: payment?.payment_method,
+        paymentType: payment?.payment_type,
+        // Check both appointment paymentProof and payment record proof_url
+        paymentProof: apt.paymentProof || (payment as any)?.proof_url || undefined,
+        // Use real service price if available
+        price: service?.price || apt.price,
+      };
+    });
+
+  // Auto-cancel appointments with pending payments that have passed their date
+  useEffect(() => {
+    const autoCancelExpiredAppointments = async () => {
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+      for (const apt of appointmentsWithPaymentData) {
+        // Only auto-cancel if:
+        // 1. Payment status is still pending
+        // 2. Appointment status is not already cancelled/completed
+        // 3. Appointment date has passed
+        if (
+          apt.paymentStatus === 'pending' &&
+          apt.status !== 'cancelled' &&
+          apt.status !== 'completed' &&
+          apt.paymentProof // Has submitted payment proof but not verified
+        ) {
+          const aptDate = parseLocalDate(apt.date);
+
+          // If appointment date has passed
+          if (aptDate < today) {
+
+
+            try {
+              // Update appointment to cancelled
+              await API.appointments.update(apt.id, {
+                status: 'cancelled',
+                notes: `Auto-cancelled: Payment not verified before appointment date (${apt.date})`,
+                cancellation_reason: 'Payment not verified before appointment date',
+              });
+
+              // Update local state
+              onUpdateAppointment(apt.id, {
+                status: 'cancelled',
+                cancellationReason: 'Payment not verified before appointment date',
+                cancelledBy: 'System',
+                cancelledAt: new Date().toISOString(),
+              });
+
+              // Send notification to customer
+              if (currentUser) {
+                try {
+                  await API.notifications.create({
+                    userId: apt.userId || apt.customer_id || '',
+                    userRole: 'customer', // Required field for database
+                    title: 'Appointment Auto-Cancelled',
+                    message: `Your appointment for ${apt.service} on ${parseLocalDate(apt.date).toLocaleDateString()} was automatically cancelled due to unverified payment.`,
+                    type: 'booking',
+                    appointmentId: apt.id,
+                    isRead: false,
+                    actionUrl: `/appointments?highlight=${apt.id}`, // Highlight the cancelled appointment
+                    actionLabel: 'View Appointments',
+                  });
+                } catch (error) {
+                  console.error('Failed to send auto-cancel notification:', error);
+                }
+              }
+
+              toast.error(
+                `Auto-cancelled appointment for ${apt.customerName} - payment not verified in time`
+              );
+            } catch (error) {
+              console.error('Failed to auto-cancel appointment:', error);
+            }
+          }
+        }
+      }
+    };
+
+    // Run on mount and whenever appointments change
+    if (appointmentsWithPaymentData.length > 0) {
+      autoCancelExpiredAppointments();
+    }
+
+    // Check every hour for expired appointments
+    const interval = setInterval(() => {
+      autoCancelExpiredAppointments();
+    }, 3600000); // 1 hour
+
+    return () => clearInterval(interval);
+  }, [appointmentsWithPaymentData, currentUser, onUpdateAppointment]);
+
+  // Get unique barbers for filter
+  const barbers = Array.from(
+    new Set(appointments.map((apt) => apt.barber)),
+  );
+
+  // Filter appointments with payment proofs
+  const appointmentsWithPayment =
+    appointmentsWithPaymentData.filter((apt) => {
+      // Show appointments that:
+      // 1. Have payment records in database, OR
+      // 2. Have uploaded payment proof, OR
+      // 3. Have payment_status = 'pending' and need to upload proof
+      const hasPayment = apt.payment || apt.paymentProof || apt.paymentStatus === 'pending';
+
+      const matchesStatus =
+        filterStatus === "all" ||
+        apt.paymentStatus === filterStatus;
+
+      // Format date for better search experience
+      const formattedDate = parseLocalDate(
+        apt.date,
+      ).toLocaleDateString();
+
+      const matchesSearch =
+        apt.id
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
+        apt.customerName
+          ?.toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
+        apt.service
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
+        apt.barber
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
+        apt.date.includes(searchTerm) ||
+        formattedDate
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
+        apt.time
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
+        apt.price.toString().includes(searchTerm) ||
+        apt.paymentReference
+          ?.toLowerCase()
+          .includes(searchTerm.toLowerCase());
+      const matchesBarber =
+        filterBarber === "all" || apt.barber === filterBarber;
+
+      return (
+        hasPayment &&
+        matchesStatus &&
+        matchesSearch &&
+        matchesBarber
+      );
+    });
+
+  const pendingCount = appointmentsWithPaymentData.filter(
+    (apt) =>
+      (apt.payment || apt.paymentProof || apt.paymentStatus === 'pending') &&
+      apt.paymentStatus === "pending",
+  ).length;
+
+  const verifiedCount = appointmentsWithPaymentData.filter(
+    (apt) =>
+      (apt.payment || apt.paymentProof) &&
+      apt.paymentStatus === "verified",
+  ).length;
+
+  const rejectedCount = appointmentsWithPaymentData.filter(
+    (apt) =>
+      (apt.payment || apt.paymentProof) &&
+      apt.paymentStatus === "rejected",
+  ).length;
+
+  // Group bundled appointments by payment proof
+  const groupedAppointments = useMemo(() => {
+    const groups = new Map<string, AppointmentWithPayment[]>();
+    
+    appointmentsWithPayment.forEach(apt => {
+      // Group by paymentProof + userId + date to be safe. If no proof, group by ID so it's separate.
+      const key = apt.paymentProof ? `${apt.paymentProof}_${apt.userId || apt.customer_id}_${apt.date}` : apt.id;
+      if (!groups.has(key)) {
+        groups.set(key, []);
+      }
+      groups.get(key)!.push(apt);
+    });
+
+    return Array.from(groups.values()).map(group => {
+      if (group.length === 1) return group[0];
+
+      // Combine multiple appointments into a single "bundle" appointment for UI
+      const primary = group[0];
+      return {
+        ...primary,
+        id: primary.id, // keep primary ID for React keys
+        service: group.map(a => a.service).join(' + '),
+        price: group.reduce((sum, a) => sum + Number(a.price || 0), 0),
+        paymentAmount: group.reduce((sum, a) => sum + Number(a.paymentAmount || (Number(a.price || 0)/2)), 0),
+        _isBundled: true,
+        _bundledAppointments: group
+      } as AppointmentWithPayment & { _isBundled?: true, _bundledAppointments?: AppointmentWithPayment[] };
+    });
+  }, [appointmentsWithPayment]);
+
+  // Calculate pagination
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentPayments = groupedAppointments.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(groupedAppointments.length / itemsPerPage);
+
+  const handleViewProof = (
+    appointment: AppointmentWithPayment,
+  ) => {
+    setSelectedAppointment(appointment);
+    setIsViewDialogOpen(true);
+  };
+
+  const handleApproveClick = (
+    appointment: AppointmentWithPayment,
+  ) => {
+    setSelectedAppointment(appointment);
+    setIsApproveDialogOpen(true);
+  };
+
+  const handleRejectClick = (
+    appointment: AppointmentWithPayment,
+  ) => {
+    setSelectedAppointment(appointment);
+    setRejectionReason("");
+    setIsRejectDialogOpen(true);
+  };
+
+  const handleConfirmApprove = async () => {
+    if (!selectedAppointment) return;
+
+    try {
+      const appointmentsToProcess = (selectedAppointment as any)._bundledAppointments || [selectedAppointment];
+      
+      await Promise.all(appointmentsToProcess.map(async (apt: any) => {
+        // Update appointment payment status AND appointment status in database
+        const updatePayload = {
+          payment_status: "paid",
+          status: "verified", 
+        };
+
+        await API.appointments.update(apt.id, updatePayload);
+
+        // Update payment record if it exists
+        if (apt.payment?.id) {
+          try {
+            await API.payments.update(apt.payment.id, {
+              verified_by: userRole === "admin" ? "Admin" : "Barber",
+              verified_at: new Date().toISOString(),
+            });
+          } catch (error) {
+            console.warn("⚠️ Payment record update (not critical):", error);
+          }
+        }
+        
+        // Update local state
+        onUpdateAppointment(apt.id, {
+          paymentStatus: "verified",
+          status: "verified",
+          paymentVerifiedAt: new Date().toISOString(),
+          paymentVerifiedBy: userRole === "admin" ? "Admin" : "Barber",
+        });
+      }));
+
+      // Send ONE notification
+      const primaryApt = appointmentsToProcess[0];
+      const customerId = primaryApt.userId || primaryApt.customer_id || '';
+
+      if (customerId && currentUser) {
+        try {
+          const notificationPayload = {
+            userId: customerId,
+            userRole: 'customer',
+            title: '✅ Booking Confirmed',
+            message: `Great news! Your payment of ₱${(selectedAppointment.paymentAmount || selectedAppointment.price / 2).toFixed(2)} for ${selectedAppointment.service} on ${parseLocalDate(primaryApt.date).toLocaleDateString()} has been verified and approved. Your booking is confirmed!`,
+            type: 'booking',
+            appointmentId: primaryApt.id, 
+            isRead: false,
+            actionUrl: '/appointments',
+            actionLabel: 'View Appointment',
+          };
+
+          await API.notifications.create(notificationPayload);
+
+          const { createAuditLog } = await import('../../services/audit-notification.service');
+          await createAuditLog({
+            userId: currentUser.id,
+            userRole: userRole,
+            userName: currentUser.name,
+            userEmail: currentUser.email,
+            action: 'payment_verified',
+            entityType: 'appointment',
+            entityId: primaryApt.id,
+            description: `${currentUser.name} verified payment for ${primaryApt.customerName || 'customer'}`,
+            status: 'success',
+            metadata: { appointmentId: primaryApt.id, isBundled: !!(selectedAppointment as any)._isBundled }
+          });
+        } catch (error) {
+          console.error('❌ Failed to send direct approval notification:', error);
+        }
+      }
+
+      toast.success(
+        `Payment approved for ${primaryApt.customerName}'s appointment`,
+        { description: "Appointment verified. Customer will be notified." }
+      );
+
+      if (currentUser) {
+        await logPaymentVerification(
+          currentUser.id,
+          currentUser.name,
+          currentUser.email,
+          primaryApt.id,
+          "approved",
+          {
+            customerId: primaryApt.userId || primaryApt.customer_id || "",
+            customerName: primaryApt.customerName || "",
+            service: selectedAppointment.service,
+            barber: primaryApt.barber,
+            barberId: primaryApt.barberId || primaryApt.barber_id || "",
+            date: primaryApt.date,
+            time: primaryApt.time,
+            amount: selectedAppointment.paymentAmount || selectedAppointment.price / 2,
+          }
+        );
+      }
+
+      if (onRefreshAppointments) {
+        await onRefreshAppointments();
+      }
+
+      await fetchPayments(true);
+
+      setIsApproveDialogOpen(false);
+      setIsViewDialogOpen(false);
+      setSelectedAppointment(null);
+    } catch (error: any) {
+      console.error("❌ Error approving payment:", error);
+      toast.error(`Failed to approve payment: ${error.message || "Unknown error"}`);
+    }
+  };
+
+  const handleConfirmReject = async () => {
+    if (!selectedAppointment || !rejectionReason.trim()) {
+      toast.error("Please provide a rejection reason");
+      return;
+    }
+
+    try {
+      const appointmentsToProcess = (selectedAppointment as any)._bundledAppointments || [selectedAppointment];
+
+      await Promise.all(appointmentsToProcess.map(async (apt: any) => {
+        await API.appointments.update(apt.id, {
+          status: "rejected", 
+          payment_status: "pending", 
+          notes: `Payment rejected: ${rejectionReason}`,
+        });
+
+        if (apt.payment?.id) {
+          try {
+            await API.payments.update(apt.payment.id, {
+              verified_by: userRole === "admin" ? "Admin" : "Barber",
+              verified_at: new Date().toISOString(),
+              notes: rejectionReason,
+            });
+          } catch (error) {
+            console.warn("⚠ Payment record update failed (not critical):", error);
+          }
+        }
+
+        onUpdateAppointment(apt.id, {
+          status: "rejected",
+          paymentStatus: "rejected",
+          paymentVerifiedAt: new Date().toISOString(),
+          paymentVerifiedBy: userRole === "admin" ? "Admin" : "Barber",
+          rejectionReason: rejectionReason,
+        });
+      }));
+
+      const primaryApt = appointmentsToProcess[0];
+      const customerId = primaryApt.userId || primaryApt.customer_id || '';
+
+      if (customerId && currentUser) {
+        try {
+          const notificationPayload = {
+            userId: customerId,
+            userRole: 'customer', 
+            title: '❌ Payment Rejected',
+            message: `Your payment proof for ${selectedAppointment.service} on ${parseLocalDate(primaryApt.date).toLocaleDateString()} was rejected. Reason: ${rejectionReason}. Please upload a new payment proof to confirm your booking.`,
+            type: 'booking',
+            appointmentId: primaryApt.id,
+            isRead: false,
+            actionUrl: '/appointments',
+            actionLabel: 'View Appointment',
+          };
+
+          await API.notifications.create(notificationPayload);
+        } catch (error) {
+          console.error('❌ Failed to send direct rejection notification:', error);
+        }
+      }
+
+      toast.error(
+        `Payment rejected for ${primaryApt.customerName}'s appointment`,
+        { description: "Customer will be notified to resubmit payment proof" }
+      );
+
+      if (currentUser) {
+        await logPaymentVerification(
+          currentUser.id,
+          currentUser.name,
+          currentUser.email,
+          primaryApt.id,
+          "rejected",
+          {
+            customerId: primaryApt.userId || primaryApt.customer_id || "",
+            customerName: primaryApt.customerName || "",
+            service: selectedAppointment.service,
+            barber: primaryApt.barber,
+            barberId: primaryApt.barberId || primaryApt.barber_id || "",
+            date: primaryApt.date,
+            time: primaryApt.time,
+            amount: selectedAppointment.paymentAmount || selectedAppointment.price / 2,
+          },
+          rejectionReason
+        );
+      }
+
+      if (onRefreshAppointments) {
+        await onRefreshAppointments();
+      }
+
+      await fetchPayments(true);
+
+      setIsRejectDialogOpen(false);
+      setIsViewDialogOpen(false);
+      setSelectedAppointment(null);
+    } catch (error: any) {
+      console.error("❌ Error rejecting payment:", error);
+      toast.error(`Failed to reject payment: ${error.message || "Unknown error"}`);
+    }
+  };
+
+  const handleExportPayments = () => {
+    if (appointmentsWithPayment.length === 0) {
+      toast.error("No payment data to export");
+      return;
+    }
+
+    const exportData = appointmentsWithPayment.map((apt) => ({
+      "Appointment ID": apt.id.substring(0, 8),
+      Customer: apt.customerName || "Unknown",
+      Service: apt.service,
+      Barber: apt.barber,
+      Date: formatDateForExport(apt.date),
+      Time: apt.time,
+      "Payment Amount": formatCurrencyForExport(
+        apt.paymentAmount || apt.price / 2
+      ),
+      "Total Price": formatCurrencyForExport(apt.price),
+      "Payment Method": apt.paymentMethod || "N/A",
+      "Payment Type": apt.paymentType || "downpayment",
+      "Payment Status": apt.paymentStatus || "pending",
+      Reference: apt.paymentReference || "N/A",
+    }));
+
+    exportToCSV(
+      exportData,
+      [
+        "Appointment ID",
+        "Customer",
+        "Service",
+        "Barber",
+        "Date",
+        "Time",
+        "Payment Amount",
+        "Total Price",
+        "Payment Method",
+        "Payment Type",
+        "Payment Status",
+        "Reference",
+      ],
+      "supremo-barber-payments"
+    );
+
+    toast.success(
+      `Exported ${appointmentsWithPayment.length} payment records successfully!`
+    );
+  };
+
+  const getStatusBadge = (status: string) => {
+    const config = {
+      pending: {
+        label: "Pending",
+        className:
+          "bg-yellow-100 text-yellow-700 border-yellow-300",
+        icon: Clock,
+      },
+      verified: {
+        label: "Verified",
+        className:
+          "bg-green-100 text-green-700 border-green-300",
+        icon: CheckCircle2,
+      },
+      rejected: {
+        label: "Rejected",
+        className: "bg-red-100 text-red-700 border-red-300",
+        icon: XCircle,
+      },
+    };
+
+    const statusConfig = config[status as keyof typeof config];
+    const Icon = statusConfig?.icon || Clock;
+
+    return (
+      <Badge
+        variant="outline"
+        className={statusConfig?.className || ""}
+      >
+        <Icon className="w-3 h-3 mr-1" />
+        {statusConfig?.label || status}
+      </Badge>
+    );
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-[#DB9D47]" />
+        <span className="ml-3 text-[#5C4A3A]">
+          Loading payment data...
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4 md:space-y-6">
+      {/* Header with Stats */}
+      <div className="grid grid-cols-4 gap-1.5 sm:gap-2 md:gap-4">
+        <Card className="border-[#DB9D47] bg-[#FBF7EF]">
+          <CardContent className="pt-2.5 sm:pt-4 md:pt-6 p-2 sm:p-3 md:p-6">
+            <div className="flex items-center justify-between gap-1">
+              <div>
+                <p className="text-[10px] sm:text-xs md:text-sm text-[#87765E]">
+                  All
+                </p>
+                <p className="text-lg sm:text-2xl md:text-3xl text-[#5C4A3A]">
+                  {pendingCount + verifiedCount + rejectedCount}
+                </p>
+              </div>
+              <FileText className="w-5 h-5 sm:w-7 sm:h-7 md:w-10 md:h-10 text-[#DB9D47] flex-shrink-0" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-yellow-200 bg-yellow-50">
+          <CardContent className="pt-2.5 sm:pt-4 md:pt-6 p-2 sm:p-3 md:p-6">
+            <div className="flex items-center justify-between gap-1">
+              <div>
+                <p className="text-[10px] sm:text-xs md:text-sm text-yellow-700">
+                  Pending
+                </p>
+                <p className="text-lg sm:text-2xl md:text-3xl text-yellow-900">
+                  {pendingCount}
+                </p>
+              </div>
+              <Clock className="w-5 h-5 sm:w-7 sm:h-7 md:w-10 md:h-10 text-yellow-600 flex-shrink-0" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-green-200 bg-green-50">
+          <CardContent className="pt-2.5 sm:pt-4 md:pt-6 p-2 sm:p-3 md:p-6">
+            <div className="flex items-center justify-between gap-1">
+              <div>
+                <p className="text-[10px] sm:text-xs md:text-sm text-green-700">
+                  Verified
+                </p>
+                <p className="text-lg sm:text-2xl md:text-3xl text-green-900">
+                  {verifiedCount}
+                </p>
+              </div>
+              <CheckCircle2 className="w-5 h-5 sm:w-7 sm:h-7 md:w-10 md:h-10 text-green-600 flex-shrink-0" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="pt-2.5 sm:pt-4 md:pt-6 p-2 sm:p-3 md:p-6">
+            <div className="flex items-center justify-between gap-1">
+              <div>
+                <p className="text-[10px] sm:text-xs md:text-sm text-red-700">
+                  Rejected
+                </p>
+                <p className="text-lg sm:text-2xl md:text-3xl text-red-900">
+                  {rejectedCount}
+                </p>
+              </div>
+              <XCircle className="w-5 h-5 sm:w-7 sm:h-7 md:w-10 md:h-10 text-red-600 flex-shrink-0" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card className="border-[#E8DCC8]">
+        <CardHeader className="px-3 py-3 sm:px-6 sm:py-4">
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <CardTitle className="text-[#5C4A3A] text-sm md:text-lg">
+                Payment Verification
+              </CardTitle>
+              <CardDescription className="text-[#87765E] text-xs md:text-sm hidden sm:block">
+                Review and verify customer payment proofs from
+                database
+              </CardDescription>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <Button
+                variant="outline"
+                onClick={handleExportPayments}
+                className="border-[#DB9D47] text-[#DB9D47] hover:bg-[#DB9D47] hover:text-white text-xs md:text-sm px-3 md:px-4"
+              >
+                <Download className="w-4 h-4 mr-1.5" />
+                <span>Export Report</span>
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="px-3 sm:px-6">
+          {/* Status Filter Tabs */}
+          <Tabs
+            value={filterStatus}
+            onValueChange={(value: any) =>
+              setFilterStatus(value)
+            }
+            className="mb-3 md:mb-6"
+          >
+            <TabsList className="grid w-full grid-cols-4 bg-[#FBF7EF] h-8 sm:h-9">
+              <TabsTrigger
+                value="all"
+                className="text-[10px] sm:text-xs md:text-sm px-1 sm:px-2"
+              >
+                All ({pendingCount + verifiedCount + rejectedCount})
+              </TabsTrigger>
+              <TabsTrigger
+                value="pending"
+                className="text-[10px] sm:text-xs md:text-sm px-1 sm:px-2"
+              >
+                <span className="hidden sm:inline">Pending </span>({pendingCount})
+              </TabsTrigger>
+              <TabsTrigger
+                value="verified"
+                className="text-[10px] sm:text-xs md:text-sm px-1 sm:px-2"
+              >
+                <span className="hidden sm:inline">Verified </span>({verifiedCount})
+              </TabsTrigger>
+              <TabsTrigger
+                value="rejected"
+                className="text-[10px] sm:text-xs md:text-sm px-1 sm:px-2"
+              >
+                <span className="hidden sm:inline">Rejected </span>({rejectedCount})
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+
+          <div className="flex gap-2 mb-3 md:mb-6">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#87765E] w-4 h-4" />
+              <Input
+                placeholder="Search payments..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9 border-[#E8DCC8] text-sm h-9"
+              />
+            </div>
+            <Select
+              value={filterBarber}
+              onValueChange={setFilterBarber}
+            >
+              <SelectTrigger className="w-[120px] sm:w-48 border-[#E8DCC8] text-xs sm:text-sm h-9">
+                <Filter className="w-3.5 h-3.5 mr-1 sm:mr-2 flex-shrink-0" />
+                <SelectValue placeholder="Barber" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Barbers</SelectItem>
+                {barbers.map((barber) => (
+                  <SelectItem key={barber} value={barber}>
+                    {barber}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Payment Count */}
+          <div className="mb-2 md:mb-4 text-xs sm:text-sm text-[#87765E]">
+            Showing: {appointmentsWithPayment.length} payment{appointmentsWithPayment.length !== 1 ? "s" : ""}
+          </div>
+
+          {/* Table */}
+          {appointmentsWithPayment.length === 0 ? (
+            <div className="text-center py-12 bg-[#FBF7EF] rounded-lg">
+              <FileText className="w-16 h-16 text-[#87765E] mx-auto mb-4" />
+              <p className="text-[#5C4A3A] mb-2">
+                No payment proofs to review
+              </p>
+              <p className="text-sm text-[#87765E]">
+                {filterStatus === "pending"
+                  ? "All pending payments have been processed"
+                  : `No ${filterStatus} payments found`}
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-lg border border-[#E8DCC8] overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-[#FBF7EF]">
+                    <TableHead className="text-[#5C4A3A] text-xs md:text-sm">
+                      Customer
+                    </TableHead>
+                    <TableHead className="text-[#5C4A3A] text-xs md:text-sm hidden lg:table-cell">
+                      Service
+                    </TableHead>
+                    <TableHead className="text-[#5C4A3A] text-xs md:text-sm hidden md:table-cell">
+                      Barber
+                    </TableHead>
+                    <TableHead className="text-[#5C4A3A] text-xs md:text-sm">
+                      Date
+                    </TableHead>
+                    <TableHead className="text-[#5C4A3A] text-xs md:text-sm hidden sm:table-cell">
+                      Balance
+                    </TableHead>
+                    <TableHead className="text-[#5C4A3A] text-xs md:text-sm hidden xl:table-cell">
+                      Total Price
+                    </TableHead>
+                    <TableHead className="text-[#5C4A3A] text-xs md:text-sm">
+                      Status
+                    </TableHead>
+                    <TableHead className="text-[#5C4A3A] text-xs md:text-sm">
+                      Actions
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {currentPayments.map(
+                    (appointment) => (
+                      <TableRow 
+                        key={appointment.id}
+                        className="hover:bg-[#FBF7EF] cursor-pointer"
+                        onClick={(e) => {
+                          if (!(e.target as HTMLElement).closest('button, a')) {
+                            handleViewProof(appointment);
+                          }
+                        }}
+                      >
+                        <TableCell>
+                          <div className="flex items-center gap-1 md:gap-2">
+                            <User className="w-3 h-3 md:w-4 md:h-4 text-[#87765E] hidden sm:block" />
+                            <span className="text-[#5C4A3A] text-xs md:text-sm truncate max-w-[100px] md:max-w-none">
+                              {appointment.customerName ||
+                                "Unknown"}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden lg:table-cell">
+                          <div className="flex items-center gap-2">
+                            <Scissors className="w-4 h-4 text-[#87765E]" />
+                            <span className="text-[#5C4A3A] text-sm">
+                              {appointment.service}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-[#5C4A3A] text-xs hidden md:table-cell">
+                          {appointment.barber}
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-xs md:text-sm whitespace-nowrap">
+                            <div className="text-[#5C4A3A]">
+                              {parseLocalDate(
+                                appointment.date,
+                              ).toLocaleDateString("en-US", {
+                                month: "short",
+                                day: "numeric",
+                              })}
+                            </div>
+                            <div className="text-[#87765E] text-[10px] md:text-xs">
+                              {appointment.time}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden sm:table-cell">
+                          <div className="text-xs md:text-sm">
+                            <div className="text-[#5C4A3A]">
+                              ₱
+                              {Number(appointment.paymentAmount || (Number(appointment.price) / 2)).toFixed(2)}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="hidden xl:table-cell">
+                          <div className="text-xs text-[#5C4A3A]">
+                            ₱
+                            {Number(appointment.price || 0).toFixed(2)}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {getStatusBadge(
+                            appointment.paymentStatus ||
+                            "pending",
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-1 flex-nowrap">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() =>
+                                handleViewProof(appointment)
+                              }
+                              className="border-[#DB9D47] text-[#DB9D47] hover:bg-[#DB9D47] hover:text-white h-7 md:h-8 px-1.5 md:px-2"
+                            >
+                              <Eye className="w-3 h-3 md:w-4 md:h-4" />
+                              <span className="hidden lg:inline ml-1 text-xs">
+                                View
+                              </span>
+                            </Button>
+                            {appointment.paymentStatus ===
+                              "pending" && (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    onClick={() =>
+                                      handleApproveClick(
+                                        appointment,
+                                      )
+                                    }
+                                    className="bg-green-600 hover:bg-green-700 text-white h-7 md:h-8 px-1.5 md:px-2"
+                                  >
+                                    <CheckCircle2 className="w-3 h-3 md:w-4 md:h-4" />
+                                    <span className="hidden lg:inline ml-1 text-xs">
+                                      Approve
+                                    </span>
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() =>
+                                      handleRejectClick(
+                                        appointment,
+                                      )
+                                    }
+                                    className="border-red-500 text-red-600 hover:bg-red-500 hover:text-white h-7 md:h-8 px-1.5 md:px-2"
+                                  >
+                                    <XCircle className="w-3 h-3 md:w-4 md:h-4" />
+                                    <span className="hidden lg:inline ml-1 text-xs">
+                                      Reject
+                                    </span>
+                                  </Button>
+                                </>
+                              )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ),
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* View Payment Proof Dialog */}
+      <Dialog
+        open={isViewDialogOpen}
+        onOpenChange={setIsViewDialogOpen}
+      >
+        <DialogContent className="sm:max-w-[700px]">
+          <DialogHeader>
+            <DialogTitle className="text-[#5C4A3A]">
+              Payment Proof Details
+            </DialogTitle>
+            <DialogDescription className="text-[#87765E]">
+              Review the payment proof and appointment details
+              from database
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedAppointment && (
+            <div className="space-y-3 sm:space-y-5">
+              {/* Appointment Details */}
+              <div className="grid grid-cols-2 gap-2 sm:gap-4 p-2.5 sm:p-4 bg-[#FBF7EF] rounded-lg">
+                <div>
+                  <p className="text-xs sm:text-sm text-[#87765E]">
+                    Customer
+                  </p>
+                  <p className="text-xs sm:text-sm text-[#5C4A3A]">
+                    {selectedAppointment.customerName}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-[#87765E]">
+                    Service
+                  </p>
+                  <p className="text-[#5C4A3A]">
+                    {selectedAppointment.service}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-[#87765E]">
+                    Barber
+                  </p>
+                  <p className="text-[#5C4A3A]">
+                    {selectedAppointment.barber}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-[#87765E]">
+                    Date & Time
+                  </p>
+                  <p className="text-[#5C4A3A]">
+                    {parseLocalDate(
+                      selectedAppointment.date,
+                    ).toLocaleDateString()}{" "}
+                    at {selectedAppointment.time}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-[#87765E]">
+                    Total Service Price
+                  </p>
+                  <p className="text-[#5C4A3A]">
+                    ₱{Number(selectedAppointment.price || 0).toFixed(2)}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-[#87765E]">
+                    Payment Amount
+                  </p>
+                  <p className="text-[#5C4A3A] font-bold">
+                    ₱
+                    {Number(
+                      selectedAppointment.paymentAmount ||
+                      (Number(selectedAppointment.price || 0) / 2)
+                    ).toFixed(2)}
+                  </p>
+                  <p className="text-xs text-[#87765E]">
+                    {selectedAppointment.paymentType === "full"
+                      ? "Full Payment"
+                      : selectedAppointment.paymentType ===
+                        "remaining"
+                        ? "Remaining Balance"
+                        : "50% Down Payment"}
+                  </p>
+                </div>
+                {selectedAppointment.paymentReference && (
+                  <div>
+                    <p className="text-sm text-[#87765E]">
+                      Reference Number
+                    </p>
+                    <p className="text-[#5C4A3A] font-mono text-sm">
+                      {selectedAppointment.paymentReference}
+                    </p>
+                  </div>
+                )}
+                {selectedAppointment.paymentMethod && (
+                  <div>
+                    <p className="text-sm text-[#87765E]">
+                      Payment Method
+                    </p>
+                    <p className="text-[#5C4A3A] uppercase">
+                      {selectedAppointment.paymentMethod}
+                    </p>
+                  </div>
+                )}
+                <div>
+                  <p className="text-sm text-[#87765E]">
+                    Payment Status
+                  </p>
+                  {getStatusBadge(
+                    selectedAppointment.paymentStatus ||
+                    "pending",
+                  )}
+                </div>
+                {selectedAppointment.payment?.verified_by && (
+                  <div>
+                    <p className="text-sm text-[#87765E]">
+                      Verified By
+                    </p>
+                    <p className="text-[#5C4A3A]">
+                      {selectedAppointment.payment.verified_by}
+                    </p>
+                    {selectedAppointment.payment
+                      .verified_at && (
+                        <p className="text-xs text-[#87765E]">
+                          {new Date(
+                            selectedAppointment.payment.verified_at,
+                          ).toLocaleString()}
+                        </p>
+                      )}
+                  </div>
+                )}
+              </div>
+
+              {/* Payment Proof Image */}
+              <div>
+                <p className="text-sm text-[#87765E] mb-2 flex items-center gap-2">
+                  <ImageIcon className="w-4 h-4" />
+                  Payment Proof
+                </p>
+                {selectedAppointment.paymentProof ? (
+                  <div className="border border-[#E8DCC8] rounded-lg overflow-hidden">
+                    <img
+                      src={selectedAppointment.paymentProof}
+                      alt="Payment Proof"
+                      className="w-full h-auto max-h-[250px] sm:max-h-[400px] object-contain bg-gray-50"
+                      onError={(e) => {
+                        console.error(
+                          "Failed to load image:",
+                          selectedAppointment.paymentProof,
+                        );
+                        e.currentTarget.style.display = "none";
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <div className="p-4 sm:p-8 text-center border border-[#E8DCC8] rounded-lg bg-[#FBF7EF]">
+                    <AlertCircle className="w-8 h-8 sm:w-12 sm:h-12 text-[#87765E] mx-auto mb-2" />
+                    <p className="text-sm text-[#87765E]">
+                      No payment proof uploaded
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Rejection Notes */}
+              {selectedAppointment.paymentStatus ===
+                "rejected" &&
+                (selectedAppointment.payment?.notes ||
+                  selectedAppointment.rejectionReason) && (
+                  <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm text-red-700 font-medium mb-1">
+                      Rejection Reason:
+                    </p>
+                    <p className="text-sm text-red-600">
+                      {selectedAppointment.payment?.notes ||
+                        selectedAppointment.rejectionReason}
+                    </p>
+                  </div>
+                )}
+
+              {/* Action Buttons */}
+              <div className="flex gap-2 sm:gap-3 justify-end flex-wrap">
+                {selectedAppointment.paymentStatus ===
+                  "pending" ? (
+                  <>
+                    <Button
+                      variant="outline"
+                      onClick={() => setIsViewDialogOpen(false)}
+                      className="border-[#E8DCC8] text-[#5C4A3A] text-xs sm:text-sm h-8 sm:h-9"
+                    >
+                      Close
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setIsViewDialogOpen(false);
+                        handleRejectClick(selectedAppointment);
+                      }}
+                      className="border-red-500 text-red-600 hover:bg-red-500 hover:text-white text-xs sm:text-sm h-8 sm:h-9"
+                    >
+                      <XCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                      Reject
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setIsViewDialogOpen(false);
+                        handleApproveClick(selectedAppointment);
+                      }}
+                      className="bg-green-600 hover:bg-green-700 text-white text-xs sm:text-sm h-8 sm:h-9"
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
+                      Approve
+                    </Button>
+                  </>
+                ) : (
+                  <Button
+                    variant="outline"
+                    onClick={() => setIsViewDialogOpen(false)}
+                    className="border-[#E8DCC8] text-[#5C4A3A] text-xs sm:text-sm h-8 sm:h-9"
+                  >
+                    Close
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Approve Confirmation Dialog */}
+      <AlertDialog
+        open={isApproveDialogOpen}
+        onOpenChange={setIsApproveDialogOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-[#5C4A3A]">
+              Approve Payment?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-[#87765E]">
+              Are you sure you want to approve this payment? The
+              customer will be notified and their booking will
+              be confirmed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          {selectedAppointment && (
+            <div className="mt-2 sm:mt-4 p-2.5 sm:p-3 bg-[#FBF7EF] rounded-lg space-y-1 text-xs sm:text-sm">
+              <p className="text-[#5C4A3A]">
+                <span className="text-[#87765E]">
+                  Customer:
+                </span>{" "}
+                {selectedAppointment.customerName}
+              </p>
+              <p className="text-[#5C4A3A]">
+                <span className="text-[#87765E]">Service:</span>{" "}
+                {selectedAppointment.service}
+              </p>
+              <p className="text-[#5C4A3A]">
+                <span className="text-[#87765E]">Amount:</span>{" "}
+                ₱
+                {(
+                  selectedAppointment.paymentAmount ||
+                  selectedAppointment.price / 2
+                ).toFixed(2)}
+              </p>
+              {selectedAppointment.paymentReference && (
+                <p className="text-[#5C4A3A]">
+                  <span className="text-[#87765E]">
+                    Reference:
+                  </span>{" "}
+                  {selectedAppointment.paymentReference}
+                </p>
+              )}
+            </div>
+          )}
+
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-[#E8DCC8] text-[#5C4A3A]">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmApprove}
+              className="bg-green-600 hover:bg-green-700 text-white"
+            >
+              <CheckCircle2 className="w-4 h-4 mr-2" />
+              Approve Payment
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Reject Confirmation Dialog */}
+      <AlertDialog
+        open={isRejectDialogOpen}
+        onOpenChange={setIsRejectDialogOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-[#5C4A3A]">
+              Reject Payment?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-[#87765E]">
+              Please provide a reason for rejecting this
+              payment. The customer will be notified and asked
+              to resubmit.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="space-y-4">
+            <div>
+              <Label
+                htmlFor="rejection-reason"
+                className="text-[#5C4A3A]"
+              >
+                Rejection Reason *
+              </Label>
+              <Textarea
+                id="rejection-reason"
+                placeholder="e.g., Payment proof is blurry, wrong amount, incorrect reference number, etc."
+                value={rejectionReason}
+                onChange={(e) =>
+                  setRejectionReason(e.target.value)
+                }
+                className="mt-2 border-[#E8DCC8] text-sm"
+                rows={3}
+              />
+            </div>
+          </div>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-[#E8DCC8] text-[#5C4A3A]">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmReject}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              <XCircle className="w-4 h-4 mr-2" />
+              Reject Payment
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Pagination */}
+      {appointmentsWithPayment.length > 0 && (
+        <Pagination
+          totalItems={appointmentsWithPayment.length}
+          itemsPerPage={itemsPerPage}
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+          onItemsPerPageChange={(newSize) => {
+            setItemsPerPage(newSize);
+            setCurrentPage(1);
+          }}
+        />
+      )}
+    </div>
+  );
+}

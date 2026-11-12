@@ -4,7 +4,7 @@
  * Stores all data in localStorage with full CRUD operations
  */
 
-import type { User, Appointment, Notification } from '../App';
+import type { User, Appointment, Notification } from '../types/domain';
 
 // Storage keys
 const STORAGE_KEYS = {

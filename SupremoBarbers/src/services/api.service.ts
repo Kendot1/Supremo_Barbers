@@ -9,7 +9,7 @@
  * - Reduced redundant API calls
  */
 
-import type { User, Appointment, Notification } from '../App';
+import type { User, Appointment, Notification } from '../types/domain';
 import { projectId, publicAnonKey } from '../utils/supabase/info';
 import { LocalBackend } from './local-backend.service';
 import { cachedAPICall, apiCache } from '../utils/apiCache';

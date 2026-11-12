@@ -29,7 +29,7 @@ Supabase Auth + PostgreSQL tables
 
 The deployed frontend uses the Edge Function API at `https://<project>.supabase.co/functions/v1/make-server-70e1fc66/api`. The repository does not contain database migrations, so the live schema and RLS policies remain deployment-managed.
 
-The canonical pure appointment-rule module is stored at `src/supabase/functions/server/appointmentRules.ts` so Supabase can bundle it with the Edge Function. The browser entry point at `src/utils/appointmentRules.ts` re-exports that module; this avoids a deploy-time import that walks outside the function directory.
+The canonical pure appointment-rule module is stored at `supabase/functions/server/appointmentRules.ts` so Supabase can bundle it with the Edge Function. The browser entry point at `src/utils/appointmentRules.ts` re-exports that module; this avoids a deploy-time import that walks outside the function directory.
 
 ## Role workflows
 
@@ -38,7 +38,7 @@ The canonical pure appointment-rule module is stored at `src/supabase/functions/
 - Barber: own barber profile/availability, assigned appointments, completion/cancellation/status actions, and earnings/review views.
 - Admin/staff: operational dashboard, all appointment/user/service/barber/payment/review/audit/settings workflows. `staff` now follows the operational dashboard route instead of the unknown-role fallback.
 
-The active role entry points are now `CustomerWorkspace`, `BarberWorkspace`, and `AdminWorkspace`, all built on the shared `redesign/RoleShell`. Customer navigation is organized around the next visit (overview, guided booking, appointments, services, live availability, profile); barber navigation is organized around the floor (today, schedule, calendar, history, earnings, availability, profile); admin navigation is grouped by operating work (command center, appointments, payments, people, catalog, insights, and system controls). Existing API-backed modules remain connected inside these new page structures so the redesign does not bypass booking, payment, authorization, or notification behavior.
+The active role entry points are now `CustomerWorkspace`, `BarberWorkspace`, and `AdminWorkspace`, all built on the shared `components/layout/RoleShell`. Customer navigation is organized around the next visit (overview, guided booking, appointments, services, live availability, profile); barber navigation is organized around the floor (today, schedule, calendar, history, earnings, availability, profile); admin navigation is grouped by operating work (command center, appointments, payments, people, catalog, insights, and system controls). Existing API-backed modules remain connected inside these new page structures so the redesign does not bypass booking, payment, authorization, or notification behavior.
 
 ## Critical integrity rules now enforced at the API boundary
 
