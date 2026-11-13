@@ -37,7 +37,7 @@ import { FaPesoSign } from "react-icons/fa6";
 import { ImageWithFallback } from "../../components/fallback/ImageWithFallback";
 import type { User, Appointment } from "../../types/domain";
 import API from "../../services/api.service";
-import { toast } from "sonner@2.0.3";
+import { toast } from "sonner";
 import { favoriteEvents } from "../../utils/favoriteEvents";
 import { createNotification } from "../../services/audit-notification.service";
 import { isActiveAppointmentStatus } from "../../utils/appointmentRules";
@@ -619,9 +619,10 @@ export function CustomerDashboardOverview({
                 }}
               >
                 {upcomingAppointments.map((booking) => (
-                  <div
+                  <button
+                    type="button"
                     key={booking.id}
-                    className="p-2 rounded-lg bg-[#FBF7EF] border border-[#E8DCC8] hover:shadow-md hover:border-[#DB9D47] transition-all cursor-pointer flex-shrink-0"
+                    className="w-full text-left p-2 rounded-lg bg-surface-sunken border border-border-default hover:shadow-md hover:border-accent-gold transition-all cursor-pointer flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-gold"
                     onClick={() =>
                       handleBookingClick(booking)
                     }
@@ -658,7 +659,7 @@ export function CustomerDashboardOverview({
                         {booking.status}
                       </Badge>
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
             ) : (
@@ -717,9 +718,10 @@ export function CustomerDashboardOverview({
                 }}
               >
                 {availableSlots.map((slot, index) => (
-                  <div
+                  <button
+                    type="button"
                     key={`slot-${slot.time}-${slot.barber}-${index}`}
-                    className="flex items-center justify-between p-3 rounded-lg border border-[#E8DCC8] hover:bg-[#FBF7EF] transition-colors cursor-pointer flex-shrink-0"
+                    className="w-full text-left flex items-center justify-between p-3 rounded-lg border border-border-default hover:bg-surface-sunken transition-colors cursor-pointer flex-shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-gold"
                     onClick={() => {
                       if (onSelectSlot) {
                         const today = new Date();
@@ -745,7 +747,7 @@ export function CustomerDashboardOverview({
                     >
                       Available
                     </Badge>
-                  </div>
+                  </button>
                 ))}
               </div>
             ) : (

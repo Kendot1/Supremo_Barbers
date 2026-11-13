@@ -166,8 +166,8 @@ export function CustomerWorkspace({
       onLogout={onLogout}
       notificationSlot={notificationSlot}
       primaryAction={
-        <button type="button" onClick={() => setActiveSection("book")} className="hidden items-center gap-2 rounded-xl bg-[#241d18] px-4 py-2.5 text-sm font-bold text-[#f9f3e8] transition hover:bg-[#3a2e26] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e0a756] sm:flex">
-          <CalendarDays className="h-4 w-4 text-[#e0a756]" aria-hidden="true" />
+        <button type="button" onClick={() => setActiveSection("book")} className="hidden items-center gap-2 rounded-xl bg-surface-sidebar px-4 py-2.5 text-sm font-bold text-text-on-sidebar transition hover:bg-border-sidebar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-gold sm:flex">
+          <CalendarDays className="h-4 w-4 text-accent-gold" aria-hidden="true" />
           Book a visit
         </button>
       }
@@ -188,7 +188,7 @@ export function CustomerWorkspace({
       {activeSection === "book" && (
         <div className="space-y-6">
           <SectionTitle title="Book an appointment" description="Select your service, barber, date, and time, then review the payment details." />
-          <div className="rounded-[1.5rem] border border-[#ded2c3] bg-[#fffdfa] p-4 shadow-[0_18px_45px_rgb(64_47_32/6%)] sm:p-6">
+          <div className="rounded-[1.5rem] border border-border-default bg-surface-raised p-4 shadow-[0_18px_45px_rgb(64_47_32/6%)] sm:p-6">
             <BookingFlow
               user={user}
               appointments={appointments}
@@ -273,17 +273,17 @@ function CustomerOverview({
 }) {
   return (
     <div className="space-y-8">
-      <section className="relative overflow-hidden rounded-[1.75rem] bg-[#2d241d] px-6 py-8 text-[#fff9ed] shadow-[0_25px_60px_rgb(36_29_24/18%)] sm:px-9 sm:py-10">
+      <section className="relative overflow-hidden rounded-[1.75rem] bg-surface-hero px-6 py-8 text-text-on-dark shadow-[0_25px_60px_rgb(36_29_24/18%)] sm:px-9 sm:py-10">
         <div className="relative z-10 max-w-2xl">
-          <p className="mb-3 flex items-center gap-2 text-[0.68rem] font-bold uppercase tracking-[0.22em] text-[#e0a756]"><Sparkles className="h-4 w-4" aria-hidden="true" /> Your chair, your pace</p>
+          <p className="mb-3 flex items-center gap-2 text-[0.68rem] font-bold uppercase tracking-[0.22em] text-accent-gold"><Sparkles className="h-4 w-4" aria-hidden="true" /> Your chair, your pace</p>
           <h2 className="max-w-xl font-display text-4xl leading-[0.95] tracking-[-0.05em] sm:text-6xl">Look sharp. Feel ready.</h2>
-          <p className="mt-5 max-w-lg text-sm leading-7 text-[#d7c8b6] sm:text-base">Welcome back, {user.name.split(" ")[0]}. Your next appointment, your favorites, and the easiest way to book are all in one place.</p>
+          <p className="mt-5 max-w-lg text-sm leading-7 text-text-on-dark-muted sm:text-base">Welcome back, {user.name.split(" ")[0]}. Your next appointment, your favorites, and the easiest way to book are all in one place.</p>
           <div className="mt-7 flex flex-wrap gap-3">
-            <button type="button" onClick={onBook} className="inline-flex items-center gap-2 rounded-xl bg-[#e0a756] px-4 py-3 text-sm font-bold text-[#241d18] transition hover:bg-[#efbd72] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f8e0ae]"><CalendarDays className="h-4 w-4" aria-hidden="true" /> Book your next visit</button>
-            <button type="button" onClick={onBrowse} className="inline-flex items-center gap-2 rounded-xl border border-[#806d5d] px-4 py-3 text-sm font-bold text-[#fff9ed] transition hover:bg-[#3a2e26] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#e0a756]">Browse services <ArrowRight className="h-4 w-4" aria-hidden="true" /></button>
+            <button type="button" onClick={onBook} className="inline-flex items-center gap-2 rounded-xl bg-accent-gold px-4 py-3 text-sm font-bold text-text-primary transition hover:bg-accent-gold-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-gold/60"><CalendarDays className="h-4 w-4" aria-hidden="true" /> Book your next visit</button>
+            <button type="button" onClick={onBrowse} className="inline-flex items-center gap-2 rounded-xl border border-border-sidebar/60 px-4 py-3 text-sm font-bold text-text-on-dark transition hover:bg-border-sidebar-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-gold">Browse services <ArrowRight className="h-4 w-4" aria-hidden="true" /></button>
           </div>
         </div>
-        <div className="absolute -right-16 -top-20 h-72 w-72 rounded-full border-[36px] border-[#e0a756]/15" aria-hidden="true" />
+        <div className="absolute -right-16 -top-20 h-72 w-72 rounded-full border-[36px] border-accent-gold/15" aria-hidden="true" />
         <div className="absolute -bottom-28 right-24 h-60 w-60 rounded-full bg-[#a9562d]/20 blur-3xl" aria-hidden="true" />
       </section>
 
@@ -295,35 +295,35 @@ function CustomerOverview({
 
       <div className="grid gap-6 xl:grid-cols-[1.35fr_0.65fr]">
         <Surface className="overflow-hidden">
-          <div className="flex items-start justify-between gap-4 border-b border-[#eee5d8] px-5 py-5 sm:px-7">
-            <div><p className="mb-1 text-[0.65rem] font-bold uppercase tracking-[0.2em] text-[#a05d32]">Next on your calendar</p><h3 className="font-display text-2xl tracking-[-0.04em] text-[#241d18]">Your next chair time</h3></div>
-            <button type="button" onClick={onManage} className="text-sm font-bold text-[#a05d32] hover:text-[#7d4327]">View all <span aria-hidden="true">→</span></button>
+          <div className="flex items-start justify-between gap-4 border-b border-border-default/70 px-5 py-5 sm:px-7">
+            <div><p className="mb-1 text-[0.65rem] font-bold uppercase tracking-[0.2em] text-accent-rust">Next on your calendar</p><h3 className="font-display text-2xl tracking-[-0.04em] text-text-primary">Your next chair time</h3></div>
+            <button type="button" onClick={onManage} className="text-sm font-bold text-accent-rust hover:text-accent-rust/80">View all <span aria-hidden="true">→</span></button>
           </div>
           {nextAppointment ? (
             <div className="grid gap-6 px-5 py-7 sm:grid-cols-[1fr_auto] sm:px-7">
               <div>
-                <div className="flex flex-wrap items-center gap-2"><StatusPill status={nextAppointment.status} /><span className="text-sm text-[#8a7867]">{dateLabel(nextAppointment.date)}</span></div>
-                <h4 className="mt-4 font-display text-3xl tracking-[-0.04em] text-[#241d18]">{nextAppointment.service || nextAppointment.service_name}</h4>
-                <div className="mt-4 grid gap-3 text-sm text-[#786b5c] sm:grid-cols-2"><span className="flex items-center gap-2"><Clock3 className="h-4 w-4 text-[#d48d3d]" />{nextAppointment.time || nextAppointment.appointment_time}</span><span className="flex items-center gap-2"><Scissors className="h-4 w-4 text-[#d48d3d]" />with {nextAppointment.barber || nextAppointment.barber_name}</span></div>
+                <div className="flex flex-wrap items-center gap-2"><StatusPill status={nextAppointment.status} /><span className="text-sm text-text-tertiary">{dateLabel(nextAppointment.date)}</span></div>
+                <h4 className="mt-4 font-display text-3xl tracking-[-0.04em] text-text-primary">{nextAppointment.service || nextAppointment.service_name}</h4>
+                <div className="mt-4 grid gap-3 text-sm text-text-secondary sm:grid-cols-2"><span className="flex items-center gap-2"><Clock3 className="h-4 w-4 text-accent-gold/90" />{nextAppointment.time || nextAppointment.appointment_time}</span><span className="flex items-center gap-2"><Scissors className="h-4 w-4 text-accent-gold/90" />with {nextAppointment.barber || nextAppointment.barber_name}</span></div>
               </div>
-              <div className="flex flex-col justify-end rounded-2xl bg-[#f6efe4] p-4 sm:min-w-[150px]"><span className="text-xs font-bold uppercase tracking-[0.16em] text-[#8a7867]">Visit total</span><span className="mt-2 font-display text-2xl text-[#241d18]">₱{Number(nextAppointment.price || nextAppointment.total_amount || 0).toLocaleString("en-PH")}</span><span className="mt-1 text-xs text-[#8a7867]">Payment details in booking</span></div>
+              <div className="flex flex-col justify-end rounded-2xl bg-surface-sunken p-4 sm:min-w-[150px]"><span className="text-xs font-bold uppercase tracking-[0.16em] text-text-tertiary">Visit total</span><span className="mt-2 font-display text-2xl text-text-primary">₱{Number(nextAppointment.price || nextAppointment.total_amount || 0).toLocaleString("en-PH")}</span><span className="mt-1 text-xs text-text-tertiary">Payment details in booking</span></div>
             </div>
           ) : (
-            <div className="px-5 py-12 text-center sm:px-7"><CalendarDays className="mx-auto h-10 w-10 text-[#d48d3d]" aria-hidden="true" /><h4 className="mt-4 font-display text-2xl text-[#241d18]">Your calendar is open.</h4><p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-[#786b5c]">Choose a service and we will guide you through the rest.</p><button type="button" onClick={onBook} className="mt-5 rounded-xl bg-[#241d18] px-4 py-2.5 text-sm font-bold text-[#fff9ed]">Start a booking</button></div>
+            <div className="px-5 py-12 text-center sm:px-7"><CalendarDays className="mx-auto h-10 w-10 text-accent-gold/90" aria-hidden="true" /><h4 className="mt-4 font-display text-2xl text-text-primary">Your calendar is open.</h4><p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-text-secondary">Choose a service and we will guide you through the rest.</p><button type="button" onClick={onBook} className="mt-5 rounded-xl bg-surface-sidebar px-4 py-2.5 text-sm font-bold text-text-on-sidebar">Start a booking</button></div>
           )}
         </Surface>
 
         <Surface className="p-5 sm:p-7">
-          <p className="mb-1 text-[0.65rem] font-bold uppercase tracking-[0.2em] text-[#a05d32]">A smoother visit</p>
-          <h3 className="font-display text-2xl tracking-[-0.04em] text-[#241d18]">Before you arrive</h3>
+          <p className="mb-1 text-[0.65rem] font-bold uppercase tracking-[0.2em] text-accent-rust">A smoother visit</p>
+          <h3 className="font-display text-2xl tracking-[-0.04em] text-text-primary">Before you arrive</h3>
           <div className="mt-6 space-y-5">
-            {[{ title: "Reserve your slot", copy: "Pick the service and time that fit your day." }, { title: "Upload payment proof", copy: "Online bookings use a 50% GCash down payment." }, { title: "Show up ready", copy: "Your barber has the details before you sit down." }].map((item, index) => <div key={item.title} className="flex gap-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#e8eee1] text-xs font-bold text-[#587049]">{index + 1}</span><div><p className="text-sm font-bold text-[#4e4034]">{item.title}</p><p className="mt-1 text-sm leading-5 text-[#8a7867]">{item.copy}</p></div></div>)}
+            {[{ title: "Reserve your slot", copy: "Pick the service and time that fit your day." }, { title: "Upload payment proof", copy: "Online bookings use a 50% GCash down payment." }, { title: "Show up ready", copy: "Your barber has the details before you sit down." }].map((item, index) => <div key={item.title} className="flex gap-3"><span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent-sage/15 text-xs font-bold text-accent-sage">{index + 1}</span><div><p className="text-sm font-bold text-text-primary/80">{item.title}</p><p className="mt-1 text-sm leading-5 text-text-tertiary">{item.copy}</p></div></div>)}
           </div>
-          <div className="mt-7 rounded-2xl bg-[#f5e2d9] p-4"><p className="flex items-center gap-2 text-sm font-bold text-[#974d2a]"><CheckCircle2 className="h-4 w-4" aria-hidden="true" /> Need help?</p><p className="mt-1 text-xs leading-5 text-[#7f604e]">Your appointment page keeps cancellation, rescheduling, and payment instructions together.</p></div>
+          <div className="mt-7 rounded-2xl bg-accent-rust/15 p-4"><p className="flex items-center gap-2 text-sm font-bold text-accent-rust"><CheckCircle2 className="h-4 w-4" aria-hidden="true" /> Need help?</p><p className="mt-1 text-xs leading-5 text-text-secondary">Your appointment page keeps cancellation, rescheduling, and payment instructions together.</p></div>
         </Surface>
       </div>
 
-      <div className="flex items-center justify-between rounded-[1.35rem] border border-dashed border-[#d5c5b4] bg-[#f9f5ee] px-5 py-4"><div className="flex items-center gap-3"><div className="rounded-xl bg-[#e9e0d5] p-2.5 text-[#7b6856]"><History className="h-4 w-4" aria-hidden="true" /></div><p className="text-sm text-[#786b5c]">Need to revisit a past look or leave feedback?</p></div><button type="button" onClick={onManage} className="inline-flex items-center gap-1 text-sm font-bold text-[#a05d32]">Open history <ArrowRight className="h-4 w-4" aria-hidden="true" /></button></div>
+      <div className="flex items-center justify-between rounded-[1.35rem] border border-dashed border-border-default/80 bg-surface-sunken px-5 py-4"><div className="flex items-center gap-3"><div className="rounded-xl bg-surface-sunken p-2.5 text-text-secondary"><History className="h-4 w-4" aria-hidden="true" /></div><p className="text-sm text-text-secondary">Need to revisit a past look or leave feedback?</p></div><button type="button" onClick={onManage} className="inline-flex items-center gap-1 text-sm font-bold text-accent-rust">Open history <ArrowRight className="h-4 w-4" aria-hidden="true" /></button></div>
     </div>
   );
 }

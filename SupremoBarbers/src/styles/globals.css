@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./animations.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -13,6 +14,33 @@
   --brand-rust: #70401f;
   --brand-muted: #614d3c;
   --brand-line: #e3d6c3;
+
+  /* Semantic surface tokens */
+  --surface-app: #f4efe7;
+  --surface-sidebar: #241d18;
+  --surface-raised: #fffdfa;
+  --surface-sunken: #f6f1e9;
+  --surface-hero: #2d241d;
+
+  /* Semantic text tokens */
+  --text-primary: #3d2b20;
+  --text-secondary: #75685a;
+  --text-tertiary: #8a7867;
+  --text-on-dark: #fff9ed;
+  --text-on-dark-muted: #d7c8b6;
+  --text-on-dark-subtle: #cdbba7;
+  --text-on-sidebar: #f9f3e8;
+
+  /* Semantic accent tokens */
+  --accent-gold: #e0a756;
+  --accent-gold-hover: #efbd72;
+  --accent-rust: #a05d32;
+  --accent-sage: #587049;
+
+  /* Semantic border tokens */
+  --border-default: #ded2c3;
+  --border-sidebar: #40342d;
+  --border-sidebar-hover: #3a2e26;
 
   /* User-Friendly Supremo Barber Palette - Softer on Eyes */
   --background: #FFFDF8;
@@ -153,6 +181,27 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Semantic token Tailwind registrations */
+  --color-surface-app: var(--surface-app);
+  --color-surface-sidebar: var(--surface-sidebar);
+  --color-surface-raised: var(--surface-raised);
+  --color-surface-sunken: var(--surface-sunken);
+  --color-surface-hero: var(--surface-hero);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+  --color-text-on-dark: var(--text-on-dark);
+  --color-text-on-dark-muted: var(--text-on-dark-muted);
+  --color-text-on-dark-subtle: var(--text-on-dark-subtle);
+  --color-text-on-sidebar: var(--text-on-sidebar);
+  --color-accent-gold: var(--accent-gold);
+  --color-accent-gold-hover: var(--accent-gold-hover);
+  --color-accent-rust: var(--accent-rust);
+  --color-accent-sage: var(--accent-sage);
+  --color-border-default: var(--border-default);
+  --color-border-sidebar: var(--border-sidebar);
+  --color-border-sidebar-hover: var(--border-sidebar-hover);
 }
 
 @layer base {
@@ -340,89 +389,13 @@ input, textarea, select {
   }
 }
 
-/* Custom animations */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
+/* ==========================================================================
+   FullCalendar Custom Styling for Supremo Barber
+   ========================================================================== */
 
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes pulseSlow {
-
-  0%,
-  100% {
-    opacity: 1;
-  }
-
-  50% {
-    opacity: 0.7;
-  }
-}
-
-@keyframes scrollDown {
-  0% {
-    transform: translateY(0);
-    opacity: 0;
-  }
-
-  40% {
-    opacity: 1;
-  }
-
-  80% {
-    transform: translateY(12px);
-    opacity: 0;
-  }
-
-  100% {
-    transform: translateY(12px);
-    opacity: 0;
-  }
-}
-
-@keyframes slideInLeft {
-  from {
-    opacity: 0;
-    transform: translateX(-20px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes shimmer {
-  0% {
-    background-position: -1000px 0;
-  }
-
-  100% {
-    background-position: 1000px 0;
-  }
-}
-
-/* FullCalendar Custom Styling for Supremo Barber */
-.fullcalendar-supremo {
-  --fc-border-color: #E8DCC8;
+/* Shared color/behavior rules for both normal and compact calendars */
+.fc-supremo-base {
+  --fc-border-color: var(--border-default);
   --fc-button-bg-color: #DB9D47;
   --fc-button-border-color: #DB9D47;
   --fc-button-hover-bg-color: #C58A38;
@@ -434,115 +407,143 @@ input, textarea, select {
   --fc-page-bg-color: #FFFFFF;
 }
 
-.fullcalendar-supremo .fc {
+.fc-supremo-base .fc {
   font-family: inherit;
 }
 
-.fullcalendar-supremo .fc-toolbar-title {
+.fc-supremo-base .fc-toolbar-title {
   color: #5C4A3A;
-  font-size: 1.25rem;
   font-weight: 600;
 }
 
-.fullcalendar-supremo .fc-button {
+.fc-supremo-base .fc-button {
   background-color: #DB9D47;
   border-color: #DB9D47;
   color: white;
   text-transform: capitalize;
-  padding: 0.5rem 1rem;
-  font-size: 0.875rem;
-  border-radius: 0.5rem;
   transition: all 0.2s;
 }
 
-.fullcalendar-supremo .fc-button:hover:not(:disabled) {
+.fc-supremo-base .fc-button:hover:not(:disabled) {
   background-color: #C58A38;
   border-color: #C58A38;
 }
 
-.fullcalendar-supremo .fc-button:disabled {
+.fc-supremo-base .fc-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.fullcalendar-supremo .fc-button-active,
-.fullcalendar-supremo .fc-button-active:hover {
+.fc-supremo-base .fc-button-active,
+.fc-supremo-base .fc-button-active:hover {
   background-color: #B57A2F;
   border-color: #B57A2F;
 }
 
-.fullcalendar-supremo .fc-col-header-cell {
+.fc-supremo-base .fc-col-header-cell {
   background-color: #FBF7EF;
-  padding: 0.75rem 0.5rem;
   font-weight: 600;
   color: #5C4A3A;
-  border-color: #E8DCC8;
+  border-color: var(--border-default);
 }
 
-.fullcalendar-supremo .fc-daygrid-day {
+.fc-supremo-base .fc-daygrid-day {
   cursor: pointer;
   transition: background-color 0.2s;
 }
 
-.fullcalendar-supremo .fc-daygrid-day:hover {
+.fc-supremo-base .fc-daygrid-day:hover {
   background-color: #FBF7EF;
 }
 
-.fullcalendar-supremo .fc-day-today {
+.fc-supremo-base .fc-day-today {
   background-color: #FFF9F0 !important;
 }
 
-.fullcalendar-supremo .fc-day-today .fc-daygrid-day-number {
+.fc-supremo-base .fc-day-today .fc-daygrid-day-number {
   background-color: #DB9D47;
   color: white;
   border-radius: 50%;
-  width: 28px;
-  height: 28px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   font-weight: 600;
 }
 
-.fullcalendar-supremo .fc-day-selected {
+.fc-supremo-base .fc-day-selected {
   /* Removed: background-color and border for selected dates */
 }
 
-.fullcalendar-supremo .fc-day-selected .fc-daygrid-day-number {
+.fc-supremo-base .fc-day-selected .fc-daygrid-day-number {
   /* Removed: color and font-weight for selected dates */
 }
 
-.fullcalendar-supremo .fc-daygrid-day-number {
+.fc-supremo-base .fc-daygrid-day-number {
   color: #5C4A3A;
-  padding: 0.25rem;
-  font-size: 0.875rem;
 }
 
-.fullcalendar-supremo .fc-daygrid-day.fc-day-past:not(.fc-day-today) {
+.fc-supremo-base .fc-daygrid-day.fc-day-past:not(.fc-day-today) {
   background-color: #FAFAF8;
   opacity: 0.6;
 }
 
-.fullcalendar-supremo .fc-daygrid-day.fc-day-past:not(.fc-day-today) .fc-daygrid-day-number {
+.fc-supremo-base .fc-daygrid-day.fc-day-past:not(.fc-day-today) .fc-daygrid-day-number {
   color: #B5A490;
 }
 
-.fullcalendar-supremo .fc-daygrid-day.fc-day-other {
+.fc-supremo-base .fc-daygrid-day.fc-day-other {
   background-color: #FAFAF8;
   opacity: 0.5;
 }
 
+.fc-supremo-base .fc-scrollgrid {
+  border-color: var(--border-default);
+}
+
+.fc-supremo-base td,
+.fc-supremo-base th {
+  border-color: var(--border-default);
+}
+
+.fc-supremo-base .fc-daygrid-day-top {
+  display: flex !important;
+  justify-content: flex-end;
+  position: relative;
+  z-index: 1;
+}
+
+.fc-supremo-base .fc-daygrid-day-number {
+  display: block !important;
+  visibility: visible !important;
+}
+
+/* Normal sizing overrides */
+.fullcalendar-supremo .fc-toolbar-title {
+  font-size: 1.25rem;
+}
+
+.fullcalendar-supremo .fc-button {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  border-radius: 0.5rem;
+}
+
+.fullcalendar-supremo .fc-col-header-cell {
+  padding: 0.75rem 0.5rem;
+}
+
+.fullcalendar-supremo .fc-day-today .fc-daygrid-day-number {
+  width: 28px;
+  height: 28px;
+}
+
+.fullcalendar-supremo .fc-daygrid-day-number {
+  padding: 0.25rem;
+  font-size: 0.875rem;
+}
+
 .fullcalendar-supremo .fc-daygrid-day-events {
   margin-top: 0.25rem;
-}
-
-.fullcalendar-supremo .fc-scrollgrid {
-  border-color: #E8DCC8;
-}
-
-.fullcalendar-supremo td,
-.fullcalendar-supremo th {
-  border-color: #E8DCC8;
 }
 
 .fullcalendar-supremo .fc-daygrid-day-frame {
@@ -551,39 +552,15 @@ input, textarea, select {
   position: relative;
 }
 
-.fullcalendar-supremo .fc-daygrid-day-top {
-  display: flex !important;
-  justify-content: flex-end;
-  position: relative;
-  z-index: 1;
-}
-
 .fullcalendar-supremo .fc-daygrid-day-number {
-  display: block !important;
-  visibility: visible !important;
   padding: 2px 4px;
 }
 
-/* Compact Calendar Styling for Side-by-Side Layout */
-.fullcalendar-supremo-compact {
-  --fc-border-color: #E8DCC8;
-  --fc-button-bg-color: #DB9D47;
-  --fc-button-border-color: #DB9D47;
-  --fc-button-hover-bg-color: #C58A38;
-  --fc-button-hover-border-color: #C58A38;
-  --fc-button-active-bg-color: #B57A2F;
-  --fc-button-active-border-color: #B57A2F;
-  --fc-today-bg-color: #FFF9F0;
-  --fc-neutral-bg-color: #FAFAF8;
-  --fc-page-bg-color: #FFFFFF;
-}
-
+/* Compact Calendar Sizing overrides for Side-by-Side Layout */
 .fullcalendar-supremo-compact .fc {
-  font-family: inherit;
   font-size: 0.625rem;
 }
 
-/* Responsive font sizes for calendar */
 @media (min-width: 640px) {
   .fullcalendar-supremo-compact .fc {
     font-size: 0.7rem;
@@ -597,9 +574,7 @@ input, textarea, select {
 }
 
 .fullcalendar-supremo-compact .fc-toolbar-title {
-  color: #5C4A3A;
   font-size: 0.75rem;
-  font-weight: 600;
 }
 
 @media (min-width: 640px) {
@@ -615,14 +590,9 @@ input, textarea, select {
 }
 
 .fullcalendar-supremo-compact .fc-button {
-  background-color: #DB9D47;
-  border-color: #DB9D47;
-  color: white;
-  text-transform: capitalize;
   padding: 0.25rem 0.5rem;
   font-size: 0.5625rem;
   border-radius: 0.375rem;
-  transition: all 0.2s;
 }
 
 @media (min-width: 640px) {
@@ -640,11 +610,7 @@ input, textarea, select {
 }
 
 .fullcalendar-supremo-compact .fc-col-header-cell {
-  background-color: #FBF7EF;
   padding: 0.25rem 0.125rem;
-  font-weight: 600;
-  color: #5C4A3A;
-  border-color: #E8DCC8;
   font-size: 0.5625rem;
 }
 
@@ -662,29 +628,9 @@ input, textarea, select {
   }
 }
 
-.fullcalendar-supremo-compact .fc-daygrid-day {
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.fullcalendar-supremo-compact .fc-daygrid-day:hover {
-  background-color: #FBF7EF;
-}
-
-.fullcalendar-supremo-compact .fc-day-today {
-  background-color: #FFF9F0 !important;
-}
-
 .fullcalendar-supremo-compact .fc-day-today .fc-daygrid-day-number {
-  background-color: #DB9D47;
-  color: white;
-  border-radius: 50%;
   width: 16px;
   height: 16px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 600;
   font-size: 0.5625rem;
 }
 
@@ -704,16 +650,7 @@ input, textarea, select {
   }
 }
 
-.fullcalendar-supremo-compact .fc-day-selected {
-  /* Removed: background-color and border for selected dates */
-}
-
-.fullcalendar-supremo-compact .fc-day-selected .fc-daygrid-day-number {
-  /* Removed: color and font-weight for selected dates */
-}
-
 .fullcalendar-supremo-compact .fc-daygrid-day-number {
-  color: #5C4A3A;
   padding: 0.125rem;
   font-size: 0.5625rem;
 }
@@ -732,31 +669,8 @@ input, textarea, select {
   }
 }
 
-.fullcalendar-supremo-compact .fc-daygrid-day.fc-day-past:not(.fc-day-today) {
-  background-color: #FAFAF8;
-  opacity: 0.6;
-}
-
-.fullcalendar-supremo-compact .fc-daygrid-day.fc-day-past:not(.fc-day-today) .fc-daygrid-day-number {
-  color: #B5A490;
-}
-
-.fullcalendar-supremo-compact .fc-daygrid-day.fc-day-other {
-  background-color: #FAFAF8;
-  opacity: 0.5;
-}
-
 .fullcalendar-supremo-compact .fc-daygrid-day-events {
   margin-top: 0.125rem;
-}
-
-.fullcalendar-supremo-compact .fc-scrollgrid {
-  border-color: #E8DCC8;
-}
-
-.fullcalendar-supremo-compact td,
-.fullcalendar-supremo-compact th {
-  border-color: #E8DCC8;
 }
 
 .fullcalendar-supremo-compact .fc-daygrid-day-frame {
@@ -777,16 +691,7 @@ input, textarea, select {
   }
 }
 
-.fullcalendar-supremo-compact .fc-daygrid-day-top {
-  display: flex !important;
-  justify-content: flex-end;
-  position: relative;
-  z-index: 1;
-}
-
 .fullcalendar-supremo-compact .fc-daygrid-day-number {
-  display: block !important;
-  visibility: visible !important;
   padding: 1px 2px;
 }
 
@@ -1022,28 +927,27 @@ textarea,
   }
 }
 
-/* Hover effects with amber glow */
-.hover-lift:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 10px 25px -5px rgba(219, 157, 71, 0.3), 0 10px 10px -5px rgba(219, 157, 71, 0.15);
+/* Active/pressed feedback for interactive elements */
+button:active:not(:disabled),
+[role="button"]:active:not(:disabled) {
+  transform: scale(0.97);
 }
 
-/* Custom gradient effects */
-.amber-gradient {
-  background: linear-gradient(135deg, #DB9D47 0%, #C56E33 100%);
+/* Improved loading skeleton using brand colors */
+@keyframes shimmer-brand {
+  0% { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
 }
 
-.amber-gradient-hover:hover {
-  background: linear-gradient(135deg, #C88A35 0%, #B56020 100%);
-}
-
-.earthy-gradient {
-  background: linear-gradient(135deg, #7B8A4E 0%, #4B2E05 100%);
-}
-
-/* Text shadows for readability */
-.text-shadow {
-  text-shadow: 0 2px 4px rgba(75, 46, 5, 0.1);
+.skeleton-brand {
+  background: linear-gradient(
+    90deg,
+    var(--surface-sunken) 25%,
+    var(--brand-sand) 37%,
+    var(--surface-sunken) 63%
+  );
+  background-size: 800px 100%;
+  animation: shimmer-brand 1.5s infinite;
 }
 
 /* Hide scrollbar for horizontal scroll */
